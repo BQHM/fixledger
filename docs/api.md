@@ -443,6 +443,8 @@ POST /api/families/{familyId}/devices/{deviceId}/warranties
 
 请求：
 
+`warrantyType` 可选值：`OFFICIAL`、`EXTENDED`、`STORE`、`OTHER`。
+
 ```json
 {
   "warrantyType": "OFFICIAL",
@@ -619,7 +621,8 @@ PATCH /api/families/{familyId}/maintenance-records/{maintenanceId}/status
   "status": "COMPLETED",
   "resultDescription": "更换滤芯后恢复正常",
   "repairCost": 89.00,
-  "completedAt": "2026-05-11 18:00:00"
+  "completedAt": "2026-05-11 18:00:00",
+  "syncDeviceRepaired": true
 }
 ```
 
@@ -634,12 +637,55 @@ PATCH /api/families/{familyId}/maintenance-records/{maintenanceId}/status
 DELETE /api/families/{familyId}/maintenance-records/{maintenanceId}
 ```
 
+### 11.7 维修费用统计
+
+```http
+GET /api/families/{familyId}/maintenance-records/cost-summary?startDate=2026-05-01&endDate=2026-05-31
+```
+
+响应：
+
+```json
+{
+  "totalCost": 268.00,
+  "recordCount": 2
+}
+```
+
+规则：
+
+- 已取消维修不计入费用统计。
+- 日期范围按 `completedAt` 过滤。
+
 ## 12. Reminder 提醒接口
 
 ### 12.1 查询提醒列表
 
 ```http
 GET /api/families/{familyId}/reminders?pageNum=1&pageSize=10&status=PENDING&type=WARRANTY_EXPIRE_SOON
+```
+
+响应：
+
+```json
+{
+  "pageNum": 1,
+  "pageSize": 10,
+  "total": 1,
+  "pages": 1,
+  "records": [
+    {
+      "id": 1,
+      "reminderType": "WARRANTY_EXPIRE_SOON",
+      "bizType": "WARRANTY",
+      "bizId": 1,
+      "title": "净水器保修即将到期",
+      "content": "小米净水器将在 2026-05-20 过保",
+      "remindAt": "2026-05-10 08:00:00",
+      "status": "PENDING"
+    }
+  ]
+}
 ```
 
 ### 12.2 查询未读提醒数量
@@ -674,10 +720,23 @@ PATCH /api/families/{familyId}/reminders/{reminderId}/ignore
 POST /api/families/{familyId}/reminders/scan
 ```
 
+响应：
+
+```json
+{
+  "warrantyCreated": 2,
+  "consumableCreated": 1,
+  "notificationCreated": 3,
+  "skippedDuplicate": 4,
+  "failedCount": 0
+}
+```
+
 说明：
 
 - 开发阶段用于验证定时任务逻辑。
 - 生产环境应限制管理员权限。
+- 同一事项同一天通过 Redis Key 去重，避免重复生成提醒。
 
 ## 13. File 附件接口
 
@@ -693,7 +752,7 @@ Content-Type: multipart/form-data
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | file | File | 是 | 文件 |
-| bizType | string | 是 | DEVICE / WARRANTY / MAINTENANCE / CONSUMABLE / MANUAL |
+| bizType | string | 是 | DEVICE / WARRANTY / MANUAL / MAINTENANCE / CONSUMABLE |
 | bizId | long | 是 | 业务 ID |
 
 响应：
@@ -703,9 +762,13 @@ Content-Type: multipart/form-data
   "id": 1,
   "originalName": "invoice.jpg",
   "contentType": "image/jpeg",
-  "fileSize": 123456
+  "fileSize": 123456,
+  "bizType": "DEVICE",
+  "bizId": 1
 }
 ```
+
+限制：单文件最大 20MB；当前允许 `jpg`、`jpeg`、`png`、`pdf`。
 
 ### 13.2 查询业务附件
 
@@ -787,6 +850,28 @@ GET /api/families/{familyId}/dashboard/maintenance-cost-trend?months=6
 GET /api/families/{familyId}/dashboard/reminder-calendar?startDate=2026-05-01&endDate=2026-05-31
 ```
 
+响应：
+
+```json
+[
+  {
+    "date": "2026-05-20",
+    "count": 1,
+    "reminders": [
+      {
+        "id": 1,
+        "reminderType": "WARRANTY_EXPIRE_SOON",
+        "title": "净水器保修即将到期",
+        "status": "PENDING",
+        "bizType": "WARRANTY",
+        "bizId": 1,
+        "remindAt": "2026-05-20 08:00:00"
+      }
+    ]
+  }
+]
+```
+
 ## 15. AI 辅助接口
 
 ### 15.1 发票文本提取
@@ -819,6 +904,8 @@ POST /api/families/{familyId}/ai/invoice-parse
 规则：
 
 - AI 结果不能直接创建设备，必须由用户确认。
+- 开发测试默认使用 Mock Provider，不需要真实 API Key。
+- AI 分析结果会写入 `fl_ai_analysis` 便于追溯。
 
 ### 15.2 故障排查建议
 
@@ -831,9 +918,12 @@ POST /api/families/{familyId}/ai/troubleshooting
 ```json
 {
   "deviceId": 1,
+  "maintenanceId": 10,
   "faultDescription": "净水器出水变慢，机器有异响"
 }
 ```
+
+说明：`maintenanceId` 可选，用于把本次故障建议和已有维修记录建立追溯关系。
 
 响应：
 
@@ -931,3 +1021,31 @@ GET /api/system/dictionaries?type=device_status
 - 文件下载必须校验权限。
 - AI 接口不能接收敏感字段。
 - 管理接口必须限制角色。
+## 19. P7 本地演示与 OpenAPI
+
+P7 提供 Docker Compose 后端演示环境。启动后可以通过以下地址查看服务状态和接口文档：
+
+```text
+http://localhost:8080/actuator/health
+http://localhost:8080/swagger-ui.html
+http://localhost:8080/v3/api-docs
+```
+
+演示账号：
+
+```text
+username: demo
+password: fixledger123
+familyId: 1
+```
+
+推荐演示调用顺序：
+
+1. `POST /api/auth/login` 获取 `accessToken`。
+2. `GET /api/families` 查看默认家庭空间。
+3. `GET /api/families/1/devices?pageNum=1&pageSize=10` 查看示例设备。
+4. `GET /api/families/1/dashboard/summary` 查看首页统计。
+5. `POST /api/families/1/reminders/scan` 手动触发提醒扫描。
+6. `POST /api/families/1/ai/troubleshooting` 演示 Mock AI 故障建议。
+
+演示数据只用于本地和面试展示，生产环境不要启用 `SQL_INIT_MODE=always`。

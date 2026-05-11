@@ -1,4 +1,4 @@
-# OS
+﻿# OS
 .DS_Store
 Thumbs.db
 
@@ -25,6 +25,7 @@ build/
 
 # Node / Vue
 node_modules/
+.npm-cache/
 dist/
 .vite/
 

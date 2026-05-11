@@ -72,7 +72,7 @@
 | OFFICIAL | 官方保修 |
 | EXTENDED | 延保 |
 | STORE | 店铺保修 |
-| NONE | 无保修 |
+| OTHER | 其他 |
 
 ### 3.5 耗材状态 `consumable_status`
 
@@ -410,7 +410,8 @@ CREATE TABLE fl_maintenance_record (
   KEY idx_fl_maintenance_family (family_id),
   KEY idx_fl_maintenance_device (device_id),
   KEY idx_fl_maintenance_status (family_id, status),
-  KEY idx_fl_maintenance_occurred_at (occurred_at)
+  KEY idx_fl_maintenance_occurred_at (occurred_at),
+  KEY idx_fl_maintenance_completed_at (family_id, completed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
@@ -448,6 +449,7 @@ CREATE TABLE fl_notification_record (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   family_id BIGINT NOT NULL,
   user_id BIGINT DEFAULT NULL,
+  reminder_id BIGINT DEFAULT NULL,
   channel VARCHAR(32) NOT NULL,
   title VARCHAR(128) NOT NULL,
   content VARCHAR(1024) DEFAULT NULL,
@@ -605,20 +607,49 @@ erDiagram
 - 家居设备。
 - 其他。
 
-## 10. 后续扩展表
 
-### 10.1 fl_device_qrcode 设备二维码表
+## 10. P7 演示数据
+
+P7 增加 `backend/src/main/resources/db/demo-data.sql`，用于本地 Docker 或开发环境演示。默认不会在普通开发启动时执行，只有设置以下环境变量时才会加载：
+
+```dotenv
+SQL_INIT_MODE=always
+SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
+```
+
+演示数据包含：
+
+| 数据 | 说明 |
+| --- | --- |
+| 默认用户 | `demo / fixledger123` |
+| 默认家庭空间 | `演示家庭`，`family_id=1` |
+| 设备分类 | 厨房设备、清洁设备、数码设备 |
+| 示例设备 | 小米净水器、戴森吸尘器、华硕路由器 |
+| 保修记录 | 覆盖正常保修和即将到期保修 |
+| 耗材记录 | 覆盖滤芯、滤网和更换历史 |
+| 维修记录 | 覆盖已完成维修和维修中记录 |
+| 提醒与通知 | 覆盖耗材即将更换和保修即将到期 |
+| AI 分析 | 覆盖 Mock 故障排查建议留痕 |
+
+演示 SQL 使用固定主键和 `ON DUPLICATE KEY UPDATE`，方便重复执行；真实生产环境不应启用演示数据初始化。
+## 11. 后续扩展表
+
+### 11.1 fl_device_qrcode 设备二维码表
 
 用于生成设备标签二维码。
 
-### 10.2 fl_manual_text_index 说明书文本索引表
+### 11.2 fl_manual_text_index 说明书文本索引表
 
 用于说明书 PDF 文本解析和搜索。
 
-### 10.3 fl_webhook_config Webhook 配置表
+### 11.3 fl_webhook_config Webhook 配置表
 
 用于扩展外部通知。
 
-### 10.4 fl_export_record 导出记录表
+### 11.4 fl_export_record 导出记录表
 
 用于导出家庭设备资产清单和维修费用报表。
+
+
+
+

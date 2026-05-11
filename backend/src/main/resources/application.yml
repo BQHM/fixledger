@@ -1,0 +1,59 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: fixledger
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  servlet:
+    multipart:
+      max-file-size: ${FILE_MAX_SIZE:20MB}
+      max-request-size: ${FILE_MAX_REQUEST_SIZE:25MB}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: assign_id
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+fixledger:
+  jwt:
+    secret: ${JWT_SECRET:fixledger-local-dev-secret-must-be-replaced}
+    access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:86400}
+  file:
+    storage-type: local
+    local-root: ${FILE_STORAGE_ROOT:./uploads}
+  ai:
+    enabled: ${AI_ENABLED:false}
+    provider: ${AI_PROVIDER:mock}
+    api-key: ${AI_API_KEY:}
+    base-url: ${AI_BASE_URL:}
+    model: ${AI_MODEL:}
+  reminder:
+    scan-cron: ${REMINDER_SCAN_CRON:0 0 8 * * *}
+
+
+
+

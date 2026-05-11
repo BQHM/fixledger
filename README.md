@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 **FixLedger 家庭设备保修与耗材管理系统** - 管理家庭设备、保修凭证、维修记录和耗材更换提醒的生活化工具
 
@@ -174,24 +174,25 @@ flowchart LR
 
 ### MVP 阶段
 
-- [ ] 项目基础脚手架搭建：Spring Boot 后端、Vue3 前端、MySQL、Redis。
-- [ ] 用户注册、登录、JWT 认证与基础权限控制。
-- [ ] 家庭空间、家庭成员、设备分类和设备档案管理。
-- [ ] 保修记录、附件上传和设备详情聚合页。
-- [ ] 耗材周期配置、耗材更换记录和提醒任务。
-- [ ] 维修记录管理和维修状态流转。
-- [ ] 首页统计看板和临期提醒列表。
-- [ ] OpenAPI / Knife4j 接口文档。
+- [x] 后端基础脚手架搭建：Spring Boot、MySQL、Redis。
+- [x] 用户注册、登录、JWT 认证与基础权限控制。
+- [x] 家庭空间、家庭成员、设备分类和设备档案管理。
+- [x] 保修记录、附件上传和设备详情聚合页后端能力。
+- [x] 耗材周期配置、耗材更换记录和提醒任务。
+- [x] 维修记录管理和维修状态流转。
+- [x] 首页统计看板和临期提醒列表后端能力。
+- [x] OpenAPI 接口文档。
+- [x] Vue3 前端 MVP 页面：登录注册、首页看板、设备档案、保修、耗材、维修、提醒、附件和 AI 助手。
 
 ### 增强阶段
 
-- [ ] Redis 提醒去重和首页热点统计缓存。
-- [ ] AI 票据信息提取、故障排查建议和维修总结。
+- [x] Redis 提醒去重和首页热点统计缓存。
+- [x] AI 票据信息提取、故障排查建议和维修总结。
 - [ ] MinIO 文件存储适配。
 - [ ] 邮件或 Webhook 通知扩展。
 - [ ] 操作日志与关键操作审计。
-- [ ] Docker Compose 一键启动依赖服务。
-- [ ] 单元测试、接口测试和基础 E2E 测试。
+- [x] Docker Compose 一键启动 MySQL、Redis 和后端服务。
+- [x] 后端单元测试和接口测试。
 
 ### 后续计划
 
@@ -203,7 +204,7 @@ flowchart LR
 
 ## 效果展示
 
-当前仓库处于需求设计与项目初始化阶段，页面实现后会补充实际截图。计划展示页面包括：
+当前仓库已完成前端 MVP 页面，后续联调稳定后可补充实际截图。已实现页面包括：
 
 ### 设备管理
 
@@ -288,8 +289,6 @@ fix-ledger/
 
 ## 快速开始
 
-> 当前项目还处于初始化阶段，以下为目标运行方式。后续代码实现后，以实际脚本为准。
-
 环境要求：
 
 | 依赖 | 版本 | 必需 | 说明 |
@@ -297,7 +296,7 @@ fix-ledger/
 | JDK | 21+ | 是 | 后端运行环境，项目采用 JDK 21 + Spring Boot 3.x |
 | Maven | 3.9+ | 是 | 后端构建工具 |
 | Node.js | 18+ | 是 | 前端运行环境 |
-| pnpm | 8+ | 推荐 | 前端包管理器 |
+| npm | 10+ | 是 | 前端包管理器，随 Node.js 安装 |
 | MySQL | 8.x | 是 | 业务数据库 |
 | Redis | 7.x | 推荐 | 缓存与提醒去重 |
 | Docker | - | 推荐 | 一键启动依赖服务 |
@@ -318,27 +317,32 @@ cp .env.example .env
 `.env` 示例：
 
 ```dotenv
-# MySQL
+SPRING_PROFILES_ACTIVE=dev
+SERVER_PORT=8080
+BACKEND_PORT=8080
+
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
-MYSQL_DATABASE=fix_ledger
-MYSQL_USERNAME=root
-MYSQL_PASSWORD=123456
+MYSQL_DATABASE=fixledger
+MYSQL_USERNAME=fixledger
+MYSQL_PASSWORD=fixledger_dev_password
+MYSQL_ROOT_PASSWORD=root_password
 
-# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
+REDIS_DATABASE=0
 
-# JWT
-JWT_SECRET=replace_with_your_secret
-JWT_EXPIRE_SECONDS=86400
+JWT_SECRET=replace-with-at-least-32-byte-development-secret
+JWT_ACCESS_TOKEN_TTL_SECONDS=86400
 
-# File Storage
-FILE_STORAGE_TYPE=local
-FILE_STORAGE_LOCAL_PATH=./uploads
+FILE_STORAGE_ROOT=./uploads
+FILE_MAX_SIZE=20MB
+FILE_MAX_REQUEST_SIZE=25MB
 
-# AI
+SQL_INIT_MODE=never
+SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
+
 AI_ENABLED=false
 AI_PROVIDER=mock
 AI_API_KEY=
@@ -348,10 +352,17 @@ AI_MODEL=
 
 ### 3. 启动依赖服务
 
-如果提供了 `docker-compose.yml`，可以通过 Docker 启动 MySQL 和 Redis：
+可以通过 Docker 启动 MySQL 和 Redis：
 
 ```bash
 docker compose up -d mysql redis
+```
+
+如需同时初始化演示数据，可以在 `.env` 中设置：
+
+```dotenv
+SQL_INIT_MODE=always
+SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 ```
 
 ### 4. 启动后端
@@ -367,18 +378,28 @@ mvn spring-boot:run
 http://localhost:8080
 ```
 
-接口文档地址：
+健康检查与接口文档地址：
 
 ```text
-http://localhost:8080/doc.html
+http://localhost:8080/actuator/health
+http://localhost:8080/swagger-ui.html
+http://localhost:8080/v3/api-docs
+```
+
+演示账号：
+
+```text
+用户名：demo
+密码：fixledger123
+默认家庭空间 ID：1
 ```
 
 ### 5. 启动前端
 
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 前端服务默认启动于：
@@ -389,21 +410,21 @@ http://localhost:5173
 
 ## Docker 快速部署
 
-后续项目会提供完整 Docker Compose 支持，计划编排以下服务：
+当前 Docker Compose 编排 MySQL、Redis 和后端服务；前端页面已实现，前端 Dockerfile 与 Compose 前端服务将在联调稳定后补齐。
 
 | 服务 | 地址 | 默认账号 | 默认密码 | 说明 |
 | --- | --- | --- | --- | --- |
-| 前端应用 | `http://localhost` | - | - | Nginx 托管 Vue 前端 |
 | 后端 API | `http://localhost:8080` | - | - | Spring Boot 服务 |
-| 接口文档 | `http://localhost:8080/doc.html` | - | - | Knife4j / OpenAPI |
-| MySQL | `localhost:3306` | `root` | `123456` | 业务数据库 |
-| Redis | `localhost:6379` | - | - | 缓存服务 |
-| MinIO 控制台 | `http://localhost:9001` | `minioadmin` | `minioadmin` | 对象存储，可选 |
+| 接口文档 | `http://localhost:8080/swagger-ui.html` | - | - | OpenAPI UI |
+| MySQL | `localhost:3306` | `fixledger` | `fixledger_dev_password` | 业务数据库 |
+| Redis | `localhost:6379` | - | - | 缓存和提醒去重 |
+
+演示账号：`demo / fixledger123`。
 
 常用命令：
 
 ```bash
-# 构建并启动所有服务
+# 构建并启动后端、MySQL、Redis
 docker compose up -d --build
 
 # 查看服务状态
