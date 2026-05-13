@@ -24,6 +24,13 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * <p>
+ * 文件功能说明：耗材服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class ConsumableServiceImpl implements ConsumableService {
 
@@ -46,6 +53,16 @@ public class ConsumableServiceImpl implements ConsumableService {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 列表结果
+   */
   @Override
   public List<ConsumableResponse> listDeviceConsumables(
       Long userId,
@@ -64,6 +81,17 @@ public class ConsumableServiceImpl implements ConsumableService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public ConsumableResponse createConsumable(
@@ -96,6 +124,17 @@ public class ConsumableServiceImpl implements ConsumableService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param consumableId 耗材 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public ConsumableResponse updateConsumable(
@@ -125,6 +164,16 @@ public class ConsumableServiceImpl implements ConsumableService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param consumableId 耗材 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteConsumable(Long userId, Long familyId, Long consumableId) {
@@ -133,6 +182,17 @@ public class ConsumableServiceImpl implements ConsumableService {
     return consumableItemMapper.deleteById(entity.getId()) > 0;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param consumableId 耗材 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public ConsumableReplaceRecordResponse createReplaceRecord(
@@ -167,6 +227,16 @@ public class ConsumableServiceImpl implements ConsumableService {
     return toReplaceResponse(record);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param consumableId 耗材 ID
+   * @return 列表结果
+   */
   @Override
   public List<ConsumableReplaceRecordResponse> listReplaceRecords(
       Long userId,
@@ -186,6 +256,16 @@ public class ConsumableServiceImpl implements ConsumableService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现耗材分页查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @Override
   public PageResponse<ConsumableResponse> pageDueSoon(
       Long userId,

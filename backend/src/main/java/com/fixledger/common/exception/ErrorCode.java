@@ -1,5 +1,12 @@
 package com.fixledger.common.exception;
 
+/**
+ * <p>
+ * 文件功能说明：统一异常枚举，集中定义系统运行需要的固定值。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public enum ErrorCode {
 
   SYSTEM_ERROR(1000, "系统异常"),
@@ -47,10 +54,24 @@ public enum ErrorCode {
     this.message = message;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成查询异常处理。
+   * </p>
+   * @return 查询结果
+   */
   public int getCode() {
     return code;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成查询异常处理。
+   * </p>
+   * @return 查询结果
+   */
   public String getMessage() {
     return message;
   }

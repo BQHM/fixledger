@@ -9,6 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * <p>
+ * 文件功能说明：定时任务实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Slf4j
 @Component
 public class ReminderScheduler {

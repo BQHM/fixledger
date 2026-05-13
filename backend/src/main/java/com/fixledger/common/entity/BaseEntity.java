@@ -5,6 +5,13 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import java.time.LocalDateTime;
 
+/**
+ * <p>
+ * 文件功能说明：通用实体组件，为各业务模块提供可复用能力。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public class BaseEntity {
 
   @TableField(fill = FieldFill.INSERT)

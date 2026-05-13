@@ -37,6 +37,13 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * <p>
+ * 文件功能说明：首页看板服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class DashboardServiceImpl implements DashboardService {
 
@@ -73,6 +80,15 @@ public class DashboardServiceImpl implements DashboardService {
     this.redisService = redisService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现首页看板执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 业务响应数据
+   */
   @Override
   public DashboardSummaryResponse summary(Long userId, Long familyId) {
     familyService.checkFamilyMember(userId, familyId);
@@ -92,6 +108,15 @@ public class DashboardServiceImpl implements DashboardService {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现首页看板执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 业务响应数据
+   */
   @Override
   public List<DeviceCategoryDistributionResponse> deviceCategoryDistribution(
       Long userId,
@@ -119,6 +144,16 @@ public class DashboardServiceImpl implements DashboardService {
     return result;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现首页看板执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param months months 参数
+   * @return 业务响应数据
+   */
   @Override
   public List<MaintenanceCostTrendResponse> maintenanceCostTrend(
       Long userId,
@@ -142,6 +177,17 @@ public class DashboardServiceImpl implements DashboardService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现首页看板执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param startDate startDate 参数
+   * @param endDate endDate 参数
+   * @return 业务响应数据
+   */
   @Override
   public List<ReminderCalendarDayResponse> reminderCalendar(
       Long userId,

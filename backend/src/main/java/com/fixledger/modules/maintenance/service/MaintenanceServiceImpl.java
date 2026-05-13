@@ -25,6 +25,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：维修服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class MaintenanceServiceImpl implements MaintenanceService {
 
@@ -42,6 +49,17 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public MaintenanceResponse createMaintenance(
@@ -66,6 +84,16 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修分页查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @Override
   public PageResponse<MaintenanceResponse> pageMaintenance(
       Long userId,
@@ -81,12 +109,33 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return PageResponse.from(page.convert(this::toResponse));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param maintenanceId 维修记录 ID
+   * @return 查询结果
+   */
   @Override
   public MaintenanceResponse getMaintenanceDetail(Long userId, Long familyId, Long maintenanceId) {
     familyService.checkFamilyMember(userId, familyId);
     return toResponse(getMaintenance(familyId, maintenanceId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param maintenanceId 维修记录 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public MaintenanceResponse updateMaintenance(
@@ -113,6 +162,17 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param maintenanceId 维修记录 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public MaintenanceResponse updateMaintenanceStatus(
@@ -143,6 +203,16 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param maintenanceId 维修记录 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteMaintenance(Long userId, Long familyId, Long maintenanceId) {
@@ -151,6 +221,17 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return maintenanceRecordMapper.deleteById(entity.getId()) > 0;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现维修执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param startDate startDate 参数
+   * @param endDate endDate 参数
+   * @return 业务响应数据
+   */
   @Override
   public MaintenanceCostSummaryResponse costSummary(
       Long userId,
@@ -297,5 +378,3 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     );
   }
 }
-
-

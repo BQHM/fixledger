@@ -2,6 +2,9 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { useAuthStore } from '@/stores/auth';
 
+/**
+ * 功能说明：前端路由表，按登录页、注册页和主布局子页面组织。
+ */
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -43,6 +46,9 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 })
 });
 
+/**
+ * 功能说明：全局路由守卫，负责公开页面放行、未登录重定向和登录态恢复。
+ */
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (to.meta.public) {

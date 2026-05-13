@@ -8,9 +8,22 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+/**
+ * <p>
+ * 文件功能说明：基础配置组件，为各业务模块提供可复用能力。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Component
 public class AuditMetaObjectHandler implements MetaObjectHandler {
-
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成填充新增审计字段配置。
+   * </p>
+   * @param metaObject MyBatis 元对象
+   */
   @Override
   public void insertFill(MetaObject metaObject) {
     LocalDateTime now = LocalDateTime.now();
@@ -22,6 +35,13 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
     });
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成更新配置。
+   * </p>
+   * @param metaObject MyBatis 元对象
+   */
   @Override
   public void updateFill(MetaObject metaObject) {
     strictUpdateFill(metaObject, "updatedAt", LocalDateTime.class, LocalDateTime.now());
@@ -40,4 +60,3 @@ public class AuditMetaObjectHandler implements MetaObjectHandler {
     return java.util.Optional.of(currentUser.id());
   }
 }
-

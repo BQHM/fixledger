@@ -8,6 +8,13 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案请求对象，承载前端提交的参数并配合校验注解使用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public record UpdateDeviceRequest(
     Long categoryId,
 

@@ -1,5 +1,12 @@
 package com.fixledger.modules.user.enums;
 
+/**
+ * <p>
+ * 文件功能说明：用户业务枚举，统一维护状态码和展示描述。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public enum UserStatus {
 
   ENABLED("ENABLED", "启用"),

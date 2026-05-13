@@ -5,6 +5,13 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fixledger.common.entity.BaseEntity;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_device_category")
 public class DeviceCategoryEntity extends BaseEntity {
 

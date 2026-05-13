@@ -20,6 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：认证服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -40,6 +47,14 @@ public class AuthServiceImpl implements AuthService {
     this.jwtTokenProvider = jwtTokenProvider;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现认证注册用户业务逻辑。
+   * </p>
+   * @param request 请求参数
+   * @return 业务响应数据
+   */
   @Override
   @Transactional
   public RegisterResponse register(RegisterRequest request) {
@@ -62,6 +77,14 @@ public class AuthServiceImpl implements AuthService {
     return new RegisterResponse(user.getId(), user.getUsername(), user.getNickname());
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现认证登录认证业务逻辑。
+   * </p>
+   * @param request 请求参数
+   * @return 业务响应数据
+   */
   @Override
   @Transactional
   public LoginResponse login(LoginRequest request) {
@@ -90,11 +113,25 @@ public class AuthServiceImpl implements AuthService {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现认证退出登录业务逻辑。
+   * </p>
+   * @return 是否处理成功
+   */
   @Override
   public boolean logout() {
     return true;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现认证查询业务逻辑。
+   * </p>
+   * @return 查询结果
+   */
   @Override
   public UserProfileResponse getCurrentUser() {
     Long userId = CurrentUserContext.getUserId();
@@ -145,4 +182,3 @@ public class AuthServiceImpl implements AuthService {
     return StringUtils.hasText(value) ? value : null;
   }
 }
-

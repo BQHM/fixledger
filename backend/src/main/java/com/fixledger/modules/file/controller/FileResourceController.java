@@ -21,6 +21,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * <p>
+ * 文件功能说明：附件资源接口控制器，负责参数校验、认证上下文读取和调用业务服务。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @RestController
 @RequestMapping("/api/families/{familyId}/files")
 public class FileResourceController {
@@ -31,6 +38,17 @@ public class FileResourceController {
     this.fileResourceService = fileResourceService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理附件上传文件接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param file 上传文件
+   * @param bizType 业务类型
+   * @param bizId 业务 ID
+   * @return 统一响应结果
+   */
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public Result<FileResourceResponse> uploadFile(
       @PathVariable Long familyId,
@@ -42,6 +60,16 @@ public class FileResourceController {
     return Result.success(fileResourceService.uploadFile(userId, familyId, bizType, bizId, file));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理附件查询列表接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param bizType 业务类型
+   * @param bizId 业务 ID
+   * @return 列表结果
+   */
   @GetMapping
   public Result<List<FileResourceResponse>> listFiles(
       @PathVariable Long familyId,
@@ -52,6 +80,15 @@ public class FileResourceController {
     return Result.success(fileResourceService.listFiles(userId, familyId, bizType, bizId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理附件下载文件接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param fileId 文件 ID
+   * @return 业务响应数据
+   */
   @GetMapping("/{fileId}/download")
   public ResponseEntity<Resource> downloadFile(
       @PathVariable Long familyId,
@@ -66,6 +103,15 @@ public class FileResourceController {
         .body(download.resource());
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理附件删除接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param fileId 文件 ID
+   * @return 删除结果
+   */
   @DeleteMapping("/{fileId}")
   public Result<Boolean> deleteFile(
       @PathVariable Long familyId,

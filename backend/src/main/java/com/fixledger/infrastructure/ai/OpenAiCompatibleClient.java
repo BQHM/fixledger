@@ -17,6 +17,13 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * <p>
+ * 文件功能说明：AI 基础设施实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public class OpenAiCompatibleClient implements AiClient {
 
   private final AiProperties properties;
@@ -35,6 +42,14 @@ public class OpenAiCompatibleClient implements AiClient {
     this.restClient = RestClient.create();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成解析数据基础设施操作。
+   * </p>
+   * @param text 待解析文本
+   * @return 统一响应结果
+   */
   @Override
   public InvoiceParseResult parseInvoiceText(String text) {
     String prompt = promptTemplateService.render("invoice-parse.st", Map.of("text", text));
@@ -48,6 +63,15 @@ public class OpenAiCompatibleClient implements AiClient {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成生成建议基础设施操作。
+   * </p>
+   * @param context 设备上下文
+   * @param faultDescription 故障描述
+   * @return 处理结果
+   */
   @Override
   public TroubleshootingSuggestion suggestTroubleshooting(
       DeviceContext context,
@@ -61,6 +85,15 @@ public class OpenAiCompatibleClient implements AiClient {
     return new TroubleshootingSuggestion(textOrNull(json, "summary"), listOrEmpty(json));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成生成总结基础设施操作。
+   * </p>
+   * @param context 设备上下文
+   * @param records 维修记录列表
+   * @return 处理结果
+   */
   @Override
   public MaintenanceSummary summarizeMaintenance(
       DeviceContext context,
@@ -77,11 +110,25 @@ public class OpenAiCompatibleClient implements AiClient {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成返回 AI Provider 名称基础设施操作。
+   * </p>
+   * @return 处理结果
+   */
   @Override
   public String providerName() {
     return "openai_compatible";
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成返回 AI 模型名称基础设施操作。
+   * </p>
+   * @return 处理结果
+   */
   @Override
   public String modelName() {
     return properties.model();

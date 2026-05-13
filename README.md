@@ -191,7 +191,7 @@ flowchart LR
 - [ ] MinIO 文件存储适配。
 - [ ] 邮件或 Webhook 通知扩展。
 - [ ] 操作日志与关键操作审计。
-- [x] Docker Compose 一键启动 MySQL、Redis 和后端服务。
+- [x] Docker Compose 一键启动前端、后端、MySQL 和 Redis。
 - [x] 后端单元测试和接口测试。
 
 ### 后续计划
@@ -289,7 +289,7 @@ fix-ledger/
 
 ## 快速开始
 
-环境要求：
+环境要求（本地开发方式）：
 
 | 依赖 | 版本 | 必需 | 说明 |
 | --- | --- | --- | --- |
@@ -299,7 +299,9 @@ fix-ledger/
 | npm | 10+ | 是 | 前端包管理器，随 Node.js 安装 |
 | MySQL | 8.x | 是 | 业务数据库 |
 | Redis | 7.x | 推荐 | 缓存与提醒去重 |
-| Docker | - | 推荐 | 一键启动依赖服务 |
+| Docker | - | 推荐 | 一键启动完整项目 |
+
+如果使用 Docker 一键启动，只需要 Docker Desktop；JDK、Maven、Node.js、MySQL 和 Redis 是本地开发方式需要。
 
 ### 1. 克隆项目
 
@@ -320,6 +322,7 @@ cp .env.example .env
 SPRING_PROFILES_ACTIVE=dev
 SERVER_PORT=8080
 BACKEND_PORT=8080
+FRONTEND_PORT=5173
 
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
@@ -340,7 +343,7 @@ FILE_STORAGE_ROOT=./uploads
 FILE_MAX_SIZE=20MB
 FILE_MAX_REQUEST_SIZE=25MB
 
-SQL_INIT_MODE=never
+SQL_INIT_MODE=always
 SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 
 AI_ENABLED=false
@@ -410,21 +413,20 @@ http://localhost:5173
 
 ## Docker 快速部署
 
-当前 Docker Compose 编排 MySQL、Redis 和后端服务；前端页面已实现，前端 Dockerfile 与 Compose 前端服务将在联调稳定后补齐。
+Docker Compose 现在默认编排前端、后端、MySQL 和 Redis，适合面试演示时一条命令拉起完整系统。前端容器通过 Nginx 代理 `/api` 到后端容器，浏览器只需要访问前端地址。
 
 | 服务 | 地址 | 默认账号 | 默认密码 | 说明 |
 | --- | --- | --- | --- | --- |
+| 前端页面 | `http://localhost:5173` | `demo` | `fixledger123` | Vue3 + Nginx |
 | 后端 API | `http://localhost:8080` | - | - | Spring Boot 服务 |
 | 接口文档 | `http://localhost:8080/swagger-ui.html` | - | - | OpenAPI UI |
 | MySQL | `localhost:3306` | `fixledger` | `fixledger_dev_password` | 业务数据库 |
 | Redis | `localhost:6379` | - | - | 缓存和提醒去重 |
 
-演示账号：`demo / fixledger123`。
-
 常用命令：
 
 ```bash
-# 构建并启动后端、MySQL、Redis
+# 构建并启动前端、后端、MySQL、Redis
 docker compose up -d --build
 
 # 查看服务状态
@@ -433,12 +435,17 @@ docker compose ps
 # 查看后端日志
 docker compose logs -f backend
 
+# 查看前端日志
+docker compose logs -f frontend
+
 # 停止服务但保留数据
 docker compose down
 
 # 停止服务并清除数据卷，慎用
 docker compose down -v
 ```
+
+首次构建会拉取 MySQL、Redis、Maven/JDK、Node.js 和 Nginx 基础镜像，并在镜像内下载 Maven 与 npm 依赖。如果 Docker Hub 网络超时或认证失败，需要先在 Docker Desktop 配置镜像加速或代理；也可以在 `.env` 中覆盖 `MAVEN_IMAGE`、`JRE_IMAGE`、`NODE_IMAGE`、`NGINX_IMAGE` 为可访问的镜像仓库地址，然后重新执行 `docker compose up -d --build`。
 
 ## 使用场景
 

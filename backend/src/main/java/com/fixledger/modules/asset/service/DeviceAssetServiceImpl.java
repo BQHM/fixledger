@@ -23,6 +23,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class DeviceAssetServiceImpl implements DeviceAssetService {
 
@@ -40,6 +47,16 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案分页查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @Override
   public PageResponse<DeviceListResponse> pageDevices(
       Long userId,
@@ -58,6 +75,16 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return PageResponse.from(responsePage);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public CreateDeviceResponse createDevice(
@@ -75,12 +102,33 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return new CreateDeviceResponse(device.getId());
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 查询结果
+   */
   @Override
   public DeviceDetailResponse getDeviceDetail(Long userId, Long familyId, Long deviceId) {
     familyService.checkFamilyMember(userId, familyId);
     return toDetailResponse(getDevice(familyId, deviceId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public DeviceDetailResponse updateDevice(
@@ -98,6 +146,16 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return toDetailResponse(device);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteDevice(Long userId, Long familyId, Long deviceId) {
@@ -107,6 +165,17 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return deviceAssetMapper.deleteById(device.getId()) > 0;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public DeviceDetailResponse updateDeviceStatus(

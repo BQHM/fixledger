@@ -16,6 +16,13 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class DeviceCategoryServiceImpl implements DeviceCategoryService {
 
@@ -33,6 +40,15 @@ public class DeviceCategoryServiceImpl implements DeviceCategoryService {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 列表结果
+   */
   @Override
   public List<DeviceCategoryResponse> listCategories(Long userId, Long familyId) {
     familyService.checkFamilyMember(userId, familyId);
@@ -45,6 +61,16 @@ public class DeviceCategoryServiceImpl implements DeviceCategoryService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public DeviceCategoryResponse createCategory(
@@ -65,6 +91,17 @@ public class DeviceCategoryServiceImpl implements DeviceCategoryService {
     return toResponse(category);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param categoryId 设备分类 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public DeviceCategoryResponse updateCategory(
@@ -84,6 +121,16 @@ public class DeviceCategoryServiceImpl implements DeviceCategoryService {
     return toResponse(category);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现设备档案删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param categoryId 设备分类 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteCategory(Long userId, Long familyId, Long categoryId) {
@@ -139,5 +186,3 @@ public class DeviceCategoryServiceImpl implements DeviceCategoryService {
     );
   }
 }
-
-

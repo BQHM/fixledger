@@ -25,4 +25,3 @@ public final class CurrentUserContext {
     return currentUser;
   }
 }
-

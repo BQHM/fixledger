@@ -15,6 +15,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * <p>
+ * 文件功能说明：认证安全过滤器，负责请求进入业务层前的安全处理。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 

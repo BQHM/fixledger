@@ -32,7 +32,12 @@ export interface MaintenanceCostSummary {
   totalCost: number;
   recordCount: number;
 }
-
+/**
+ * 功能说明：查询维修记录数据。
+ * @param familyId 家庭空间 ID
+ * @param params 查询参数
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getMaintenancePage(familyId: number, params: MaintenanceQuery = {}) {
   return request<PageResponse<MaintenanceRecord>>({
     url: `/api/families/${familyId}/maintenance-records`,
@@ -40,7 +45,13 @@ export function getMaintenancePage(familyId: number, params: MaintenanceQuery = 
     params
   });
 }
-
+/**
+ * 功能说明：创建维修记录数据。
+ * @param familyId 家庭空间 ID
+ * @param deviceId 设备 ID
+ * @param data 请求数据
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function createMaintenance(familyId: number, deviceId: number, data: MaintenanceForm) {
   return request<MaintenanceRecord>({
     url: `/api/families/${familyId}/devices/${deviceId}/maintenance-records`,
@@ -48,14 +59,22 @@ export function createMaintenance(familyId: number, deviceId: number, data: Main
     data
   });
 }
-
+/**
+ * 功能说明：查询维修记录数据。
+ * @param familyId 家庭空间 ID
+ * @param maintenanceId 维修记录 ID
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getMaintenanceDetail(familyId: number, maintenanceId: number) {
   return request<MaintenanceRecord>({
     url: `/api/families/${familyId}/maintenance-records/${maintenanceId}`,
     method: 'get'
   });
 }
-
+/**
+ * 功能说明：更新维修记录数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function updateMaintenance(
   familyId: number,
   maintenanceId: number,
@@ -67,7 +86,10 @@ export function updateMaintenance(
     data
   });
 }
-
+/**
+ * 功能说明：更新维修记录数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function updateMaintenanceStatus(
   familyId: number,
   maintenanceId: number,
@@ -79,14 +101,22 @@ export function updateMaintenanceStatus(
     data
   });
 }
-
+/**
+ * 功能说明：删除维修记录数据。
+ * @param familyId 家庭空间 ID
+ * @param maintenanceId 维修记录 ID
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function deleteMaintenance(familyId: number, maintenanceId: number) {
   return request<boolean>({
     url: `/api/families/${familyId}/maintenance-records/${maintenanceId}`,
     method: 'delete'
   });
 }
-
+/**
+ * 功能说明：查询维修记录数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getMaintenanceCostSummary(
   familyId: number,
   params: { startDate?: string; endDate?: string } = {}

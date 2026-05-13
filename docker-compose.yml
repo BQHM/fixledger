@@ -1,4 +1,11 @@
 services:
+  # =========================================
+  # 1. MySQL 数据库服务
+  # -----------------------------------------
+  # 作用：
+  #   - 存储用户、家庭空间、设备、保修、耗材、维修、提醒、AI 分析等业务数据。
+  #   - 使用命名卷持久化数据，容器重启后数据不会丢失。
+  # =========================================
   mysql:
     image: mysql:8.4
     container_name: fixledger-mysql
@@ -24,6 +31,13 @@ services:
       retries: 10
       start_period: 30s
 
+  # =========================================
+  # 2. Redis 缓存服务
+  # -----------------------------------------
+  # 作用：
+  #   - 提醒去重、首页统计缓存、后续验证码和临时缓存。
+  #   - 开启 AOF，保证开发环境重启后缓存数据尽量保留。
+  # =========================================
   redis:
     image: redis:7.4-alpine
     container_name: fixledger-redis
@@ -39,10 +53,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # =========================================
+  # 3. 后端应用服务
+  # -----------------------------------------
+  # 作用：
+  #   - 提供认证、设备档案、保修、耗材、维修、提醒、看板和 AI 辅助接口。
+  #   - 默认连接 compose 网络内的 mysql / redis 服务。
+  # =========================================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.9-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
     container_name: fixledger-backend
     restart: unless-stopped
     depends_on:
@@ -51,7 +75,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SERVER_PORT: 8080
       MYSQL_HOST: mysql
       MYSQL_PORT: 3306
@@ -74,17 +98,38 @@ services:
       AI_MODEL: ${AI_MODEL:-}
       SQL_INIT_MODE: ${SQL_INIT_MODE:-always}
       SQL_DATA_LOCATIONS: ${SQL_DATA_LOCATIONS:-classpath:db/demo-data.sql}
+      REMINDER_SCAN_CRON: ${REMINDER_SCAN_CRON:-0 0 8 * * *}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     volumes:
       - backend_uploads:/app/uploads
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
 
+  # =========================================
+  # 4. 前端 Web 服务
+  # -----------------------------------------
+  # 作用：
+  #   - 构建 Vue3 静态页面并通过 Nginx 提供访问。
+  #   - 将 /api、/actuator、/swagger-ui 等路径代理到 backend 服务。
+  # =========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-alpine}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
+    container_name: fixledger-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
+# =========================================
+# 数据卷
+# -----------------------------------------
+# docker compose down 不会删除这些卷；只有 docker compose down -v 才会清空数据。
+# =========================================
 volumes:
   mysql_data:
   redis_data:

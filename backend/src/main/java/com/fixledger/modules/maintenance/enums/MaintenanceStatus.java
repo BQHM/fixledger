@@ -3,6 +3,13 @@ package com.fixledger.modules.maintenance.enums;
 import java.util.Arrays;
 import java.util.Set;
 
+/**
+ * <p>
+ * 文件功能说明：维修业务枚举，统一维护状态码和展示描述。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public enum MaintenanceStatus {
 
   PENDING("PENDING", "待处理"),
@@ -27,6 +34,14 @@ public enum MaintenanceStatus {
     return description;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：执行业务处理。
+   * </p>
+   * @param target target 参数
+   * @return 是否处理成功
+   */
   public boolean canTransitionTo(MaintenanceStatus target) {
     return switch (this) {
       case PENDING -> Set.of(REPORTED, CANCELED).contains(target);
@@ -36,6 +51,14 @@ public enum MaintenanceStatus {
     };
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：按编码转换枚举。
+   * </p>
+   * @param code 编码值
+   * @return 处理结果
+   */
   public static MaintenanceStatus fromCode(String code) {
     return Arrays.stream(values())
         .filter(status -> status.code.equals(code))

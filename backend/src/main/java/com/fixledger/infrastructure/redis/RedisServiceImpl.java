@@ -6,6 +6,13 @@ import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+/**
+ * <p>
+ * 文件功能说明：Redis 基础设施实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class RedisServiceImpl implements RedisService {
 
@@ -15,6 +22,16 @@ public class RedisServiceImpl implements RedisService {
     this.stringRedisTemplate = stringRedisTemplate;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成写入 Redis 去重键基础设施操作。
+   * </p>
+   * @param key 缓存键
+   * @param value 缓存值
+   * @param ttl 过期时间
+   * @return 是否处理成功
+   */
   @Override
   public boolean setIfAbsent(String key, String value, Duration ttl) {
     try {
@@ -25,6 +42,15 @@ public class RedisServiceImpl implements RedisService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成写入数据基础设施操作。
+   * </p>
+   * @param key 缓存键
+   * @param value 缓存值
+   * @param ttl 过期时间
+   */
   @Override
   public void set(String key, String value, Duration ttl) {
     try {
@@ -34,6 +60,14 @@ public class RedisServiceImpl implements RedisService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成查询基础设施操作。
+   * </p>
+   * @param key 缓存键
+   * @return 查询结果
+   */
   @Override
   public Optional<String> get(String key) {
     try {
@@ -43,6 +77,13 @@ public class RedisServiceImpl implements RedisService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成删除基础设施操作。
+   * </p>
+   * @param key 缓存键
+   */
   @Override
   public void delete(String key) {
     try {

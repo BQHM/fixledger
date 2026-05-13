@@ -7,6 +7,13 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：耗材请求对象，承载前端提交的参数并配合校验注解使用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public record CreateReplaceRecordRequest(
     @NotNull(message = "更换日期不能为空")
     @PastOrPresent(message = "更换日期不能晚于今天")

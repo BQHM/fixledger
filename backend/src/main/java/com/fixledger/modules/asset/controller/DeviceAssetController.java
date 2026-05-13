@@ -23,6 +23,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案接口控制器，负责参数校验、认证上下文读取和调用业务服务。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Validated
 @RestController
 @RequestMapping("/api/families/{familyId}/devices")
@@ -34,6 +41,15 @@ public class DeviceAssetController {
     this.deviceAssetService = deviceAssetService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案分页查询接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @GetMapping
   public Result<PageResponse<DeviceListResponse>> pageDevices(
       @PathVariable Long familyId,
@@ -43,6 +59,15 @@ public class DeviceAssetController {
     return Result.success(deviceAssetService.pageDevices(userId, familyId, query));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案创建接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @PostMapping
   public Result<CreateDeviceResponse> createDevice(
       @PathVariable Long familyId,
@@ -52,6 +77,15 @@ public class DeviceAssetController {
     return Result.success(deviceAssetService.createDevice(userId, familyId, request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案查询接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 查询结果
+   */
   @GetMapping("/{deviceId}")
   public Result<DeviceDetailResponse> getDeviceDetail(
       @PathVariable Long familyId,
@@ -61,6 +95,16 @@ public class DeviceAssetController {
     return Result.success(deviceAssetService.getDeviceDetail(userId, familyId, deviceId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案更新接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @PutMapping("/{deviceId}")
   public Result<DeviceDetailResponse> updateDevice(
       @PathVariable Long familyId,
@@ -71,6 +115,15 @@ public class DeviceAssetController {
     return Result.success(deviceAssetService.updateDevice(userId, familyId, deviceId, request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案删除接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 删除结果
+   */
   @DeleteMapping("/{deviceId}")
   public Result<Boolean> deleteDevice(
       @PathVariable Long familyId,
@@ -80,6 +133,16 @@ public class DeviceAssetController {
     return Result.success(deviceAssetService.deleteDevice(userId, familyId, deviceId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案更新接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @PatchMapping("/{deviceId}/status")
   public Result<DeviceDetailResponse> updateDeviceStatus(
       @PathVariable Long familyId,

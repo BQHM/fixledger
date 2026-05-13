@@ -7,6 +7,13 @@ import com.fixledger.common.entity.BaseEntity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_device_asset")
 public class DeviceAssetEntity extends BaseEntity {
 

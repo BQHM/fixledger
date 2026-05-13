@@ -10,11 +10,50 @@ const service = axios.create({
   timeout: 15000
 });
 
+const MIN_PAGE_NUM = 1;
+const MIN_PAGE_SIZE = 1;
+const MAX_PAGE_SIZE = 100;
+
+function normalizePaginationParams(params: AxiosRequestConfig['params']) {
+  if (!params) return params;
+
+  if (params instanceof URLSearchParams) {
+    clampSearchParam(params, 'pageNum', MIN_PAGE_NUM);
+    clampSearchParam(params, 'pageSize', MIN_PAGE_SIZE, MAX_PAGE_SIZE);
+    return params;
+  }
+
+  if (typeof params !== 'object') return params;
+
+  const normalized = { ...params } as Record<string, unknown>;
+  normalized.pageNum = clampNumber(normalized.pageNum, MIN_PAGE_NUM);
+  normalized.pageSize = clampNumber(normalized.pageSize, MIN_PAGE_SIZE, MAX_PAGE_SIZE);
+  return normalized;
+}
+
+function clampSearchParam(params: URLSearchParams, key: string, min: number, max?: number) {
+  const value = params.get(key);
+  if (value === null) return;
+  const clamped = clampNumber(value, min, max);
+  if (clamped !== value) {
+    params.set(key, String(clamped));
+  }
+}
+
+function clampNumber(value: unknown, min: number, max?: number) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return value;
+  if (max !== undefined && numberValue > max) return max;
+  if (numberValue < min) return min;
+  return value;
+}
+
 service.interceptors.request.use((config) => {
   const auth = useAuthStore();
   if (auth.token) {
     config.headers.Authorization = `Bearer ${auth.token}`;
   }
+  config.params = normalizePaginationParams(config.params);
   return config;
 });
 

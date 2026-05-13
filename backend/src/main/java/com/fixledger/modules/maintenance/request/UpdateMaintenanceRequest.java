@@ -7,6 +7,13 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * <p>
+ * 文件功能说明：维修请求对象，承载前端提交的参数并配合校验注解使用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public record UpdateMaintenanceRequest(
     @NotBlank(message = "维修标题不能为空")
     @Size(max = 128, message = "维修标题最多 128 个字符")

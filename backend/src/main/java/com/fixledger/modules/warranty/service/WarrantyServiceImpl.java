@@ -21,6 +21,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：保修服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class WarrantyServiceImpl implements WarrantyService {
 
@@ -40,6 +47,16 @@ public class WarrantyServiceImpl implements WarrantyService {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现保修查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 列表结果
+   */
   @Override
   public List<WarrantyResponse> listDeviceWarranties(
       Long userId,
@@ -57,6 +74,17 @@ public class WarrantyServiceImpl implements WarrantyService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现保修创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public WarrantyResponse createWarranty(
@@ -83,6 +111,17 @@ public class WarrantyServiceImpl implements WarrantyService {
     return toResponse(warranty);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现保修更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param warrantyId 保修记录 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public WarrantyResponse updateWarranty(
@@ -107,6 +146,16 @@ public class WarrantyServiceImpl implements WarrantyService {
     return toResponse(warranty);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现保修删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param warrantyId 保修记录 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteWarranty(Long userId, Long familyId, Long warrantyId) {
@@ -115,6 +164,16 @@ public class WarrantyServiceImpl implements WarrantyService {
     return warrantyRecordMapper.deleteById(warranty.getId()) > 0;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现保修分页查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @Override
   public PageResponse<WarrantyResponse> pageExpiring(
       Long userId,
@@ -211,5 +270,3 @@ public class WarrantyServiceImpl implements WarrantyService {
     );
   }
 }
-
-

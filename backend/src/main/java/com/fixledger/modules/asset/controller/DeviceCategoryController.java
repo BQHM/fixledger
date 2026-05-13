@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * <p>
+ * 文件功能说明：设备档案接口控制器，负责参数校验、认证上下文读取和调用业务服务。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @RestController
 @RequestMapping("/api/families/{familyId}/device-categories")
 public class DeviceCategoryController {
@@ -27,12 +34,29 @@ public class DeviceCategoryController {
     this.deviceCategoryService = deviceCategoryService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案查询列表接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @return 列表结果
+   */
   @GetMapping
   public Result<List<DeviceCategoryResponse>> listCategories(@PathVariable Long familyId) {
     Long userId = CurrentUserContext.getUserId();
     return Result.success(deviceCategoryService.listCategories(userId, familyId));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案创建接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @PostMapping
   public Result<DeviceCategoryResponse> createCategory(
       @PathVariable Long familyId,
@@ -42,6 +66,16 @@ public class DeviceCategoryController {
     return Result.success(deviceCategoryService.createCategory(userId, familyId, request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案更新接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param categoryId 设备分类 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @PutMapping("/{categoryId}")
   public Result<DeviceCategoryResponse> updateCategory(
       @PathVariable Long familyId,
@@ -54,6 +88,15 @@ public class DeviceCategoryController {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备档案删除接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param categoryId 设备分类 ID
+   * @return 删除结果
+   */
   @DeleteMapping("/{categoryId}")
   public Result<Boolean> deleteCategory(
       @PathVariable Long familyId,

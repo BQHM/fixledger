@@ -1,11 +1,11 @@
-# FixLedger API 设计
+﻿# FixLedger API 设计
 
 ## 1. API 设计原则
 
 - API 前缀统一使用 `/api`。
 - 返回值统一使用 `Result<T>`。
 - 认证方式使用 Bearer Token。
-- 分页接口统一使用 `pageNum`、`pageSize`，响应统一返回 `PageResponse<T>`。
+- 分页接口统一使用 `pageNum`、`pageSize`，响应统一返回 `PageResponse<T>`；`pageNum >= 1`，`1 <= pageSize <= 100`。
 - 请求体使用 JSON。
 - 文件上传使用 `multipart/form-data`。
 - Controller 只做参数校验和 Service 调用。

@@ -11,12 +11,25 @@ import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilde
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * <p>
+ * 文件功能说明：基础配置类，集中声明 Spring 容器中的基础 Bean。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Configuration
 public class JacksonConfig {
 
   private static final String DATE_PATTERN = "yyyy-MM-dd";
   private static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";
-
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成配置 JSON 序列化规则配置。
+   * </p>
+   * @return 处理结果
+   */
   @Bean
   public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
     DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_PATTERN);

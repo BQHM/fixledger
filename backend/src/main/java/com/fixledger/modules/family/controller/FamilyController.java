@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * <p>
+ * 文件功能说明：家庭空间接口控制器，负责参数校验、认证上下文读取和调用业务服务。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @RestController
 @RequestMapping("/api/families")
 public class FamilyController {
@@ -27,16 +34,40 @@ public class FamilyController {
     this.familyService = familyService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理家庭空间查询列表接口请求。
+   * </p>
+   * @return 列表结果
+   */
   @GetMapping
   public Result<List<FamilyResponse>> listFamilies() {
     return Result.success(familyService.listFamilies(CurrentUserContext.getUserId()));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理家庭空间创建接口请求。
+   * </p>
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @PostMapping
   public Result<FamilyResponse> createFamily(@Valid @RequestBody CreateFamilyRequest request) {
     return Result.success(familyService.createFamily(CurrentUserContext.getUserId(), request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理家庭空间更新接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @PutMapping("/{familyId}")
   public Result<FamilyResponse> updateFamily(
       @PathVariable Long familyId,
@@ -47,6 +78,14 @@ public class FamilyController {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理家庭空间查询列表接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @return 列表结果
+   */
   @GetMapping("/{familyId}/members")
   public Result<List<FamilyMemberResponse>> listMembers(@PathVariable Long familyId) {
     return Result.success(familyService.listMembers(CurrentUserContext.getUserId(), familyId));

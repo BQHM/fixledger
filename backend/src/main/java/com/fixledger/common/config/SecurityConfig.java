@@ -18,6 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * <p>
+ * 文件功能说明：基础配置类，集中声明 Spring 容器中的基础 Bean。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -32,6 +39,16 @@ public class SecurityConfig {
       "/swagger-ui.html"
   };
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成配置安全过滤链配置。
+   * </p>
+   * @param http http 参数
+   * @param objectMapper JSON 处理器
+   * @param jwtAuthenticationFilter jwtAuthenticationFilter 参数
+   * @return 处理结果
+   */
   @Bean
   public SecurityFilterChain securityFilterChain(
       HttpSecurity http,
@@ -54,6 +71,13 @@ public class SecurityConfig {
         .build();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成声明密码编码器配置。
+   * </p>
+   * @return 处理结果
+   */
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();

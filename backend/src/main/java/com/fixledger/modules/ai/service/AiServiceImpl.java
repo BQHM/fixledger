@@ -34,6 +34,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：AI 辅助服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Slf4j
 @Service
 public class AiServiceImpl implements AiService {
@@ -70,6 +77,16 @@ public class AiServiceImpl implements AiService {
     this.objectMapper = objectMapper;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现AI 辅助解析数据业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 业务响应数据
+   */
   @Override
   public InvoiceParseResponse parseInvoice(
       Long userId,
@@ -127,6 +144,16 @@ public class AiServiceImpl implements AiService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现AI 辅助生成建议业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 业务响应数据
+   */
   @Override
   public TroubleshootingResponse suggestTroubleshooting(
       Long userId,
@@ -191,6 +218,16 @@ public class AiServiceImpl implements AiService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现AI 辅助生成总结业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 业务响应数据
+   */
   @Override
   public MaintenanceSummaryResponse summarizeMaintenance(
       Long userId,

@@ -20,6 +20,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：家庭空间服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class FamilyServiceImpl implements FamilyService {
 
@@ -37,12 +44,30 @@ public class FamilyServiceImpl implements FamilyService {
     this.userMapper = userMapper;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param request 请求参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public FamilyResponse createFamily(Long userId, CreateFamilyRequest request) {
     return createFamilyInternal(userId, request);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间创建业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param nicknameOrUsername nicknameOrUsername 参数
+   * @return 创建后的数据
+   */
   @Override
   @Transactional
   public FamilyResponse createDefaultFamily(Long userId, String nicknameOrUsername) {
@@ -51,6 +76,14 @@ public class FamilyServiceImpl implements FamilyService {
     return createFamilyInternal(userId, request);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @return 列表结果
+   */
   @Override
   public List<FamilyResponse> listFamilies(Long userId) {
     List<FamilyMemberEntity> members = familyMemberMapper.selectList(
@@ -69,6 +102,16 @@ public class FamilyServiceImpl implements FamilyService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间更新业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public FamilyResponse updateFamily(Long userId, Long familyId, UpdateFamilyRequest request) {
@@ -87,6 +130,15 @@ public class FamilyServiceImpl implements FamilyService {
     return toFamilyResponse(family, member.getRole());
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 列表结果
+   */
   @Override
   public List<FamilyMemberResponse> listMembers(Long userId, Long familyId) {
     checkFamilyMember(userId, familyId);
@@ -100,11 +152,27 @@ public class FamilyServiceImpl implements FamilyService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   */
   @Override
   public void checkFamilyMember(Long userId, Long familyId) {
     getMember(userId, familyId);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现家庭空间查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @return 查询结果
+   */
   @Override
   public Long getDefaultFamilyId(Long userId) {
     // 默认家庭取用户最早加入的家庭空间，用于登录后初始化上下文。
@@ -176,4 +244,3 @@ public class FamilyServiceImpl implements FamilyService {
     );
   }
 }
-

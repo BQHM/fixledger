@@ -5,6 +5,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：保修请求对象，承载前端提交的参数并配合校验注解使用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public record UpdateWarrantyRequest(
     @Size(max = 32, message = "保修类型最多 32 个字符")
     String warrantyType,

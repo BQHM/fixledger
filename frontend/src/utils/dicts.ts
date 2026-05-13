@@ -54,11 +54,20 @@ export const fileBizTypeOptions: SelectOption[] = [
   { label: '耗材', value: 'CONSUMABLE' },
   { label: '说明书', value: 'MANUAL' }
 ];
-
+/**
+ * 功能说明：根据字典值返回展示文案。
+ * @param options 字典选项
+ * @param value 字典值
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function labelOf(options: SelectOption[], value?: string) {
   return options.find((item) => item.value === value)?.label ?? value ?? '-';
 }
-
+/**
+ * 功能说明：根据业务状态返回 Element Plus 标签类型。
+ * @param value 字典值
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function statusType(value?: string) {
   if (!value) return 'info';
   if (['NORMAL', 'COMPLETED', 'READ', 'SENT', 'REPAIRED'].includes(value)) return 'success';
@@ -70,7 +79,11 @@ export function statusType(value?: string) {
   }
   return 'info';
 }
-
+/**
+ * 功能说明：将文件字节数格式化为可读文本。
+ * @param size 文件字节数
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function formatFileSize(size?: number) {
   if (!size) return '0 B';
   if (size < 1024) return `${size} B`;

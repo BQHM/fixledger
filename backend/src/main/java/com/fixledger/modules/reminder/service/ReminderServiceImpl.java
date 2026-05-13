@@ -35,6 +35,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：提醒通知服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class ReminderServiceImpl implements ReminderService {
 
@@ -66,6 +73,16 @@ public class ReminderServiceImpl implements ReminderService {
     this.redisService = redisService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒分页查询业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param query 查询条件
+   * @return 分页结果
+   */
   @Override
   public PageResponse<ReminderResponse> pageReminders(
       Long userId,
@@ -82,6 +99,15 @@ public class ReminderServiceImpl implements ReminderService {
     return PageResponse.from(page.convert(this::toResponse));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒执行业务处理业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 业务响应数据
+   */
   @Override
   public UnreadCountResponse unreadCount(Long userId, Long familyId) {
     familyService.checkFamilyMember(userId, familyId);
@@ -91,6 +117,16 @@ public class ReminderServiceImpl implements ReminderService {
     return new UnreadCountResponse(count);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒标记提醒业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param reminderId 提醒 ID
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public ReminderResponse markRead(Long userId, Long familyId, Long reminderId) {
@@ -102,6 +138,16 @@ public class ReminderServiceImpl implements ReminderService {
     return toResponse(reminder);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒忽略提醒业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param reminderId 提醒 ID
+   * @return 更新后的数据
+   */
   @Override
   @Transactional
   public ReminderResponse ignore(Long userId, Long familyId, Long reminderId) {
@@ -113,6 +159,15 @@ public class ReminderServiceImpl implements ReminderService {
     return toResponse(reminder);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒扫描提醒业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @return 业务响应数据
+   */
   @Override
   @Transactional
   public ReminderScanResponse scanFamily(Long userId, Long familyId) {
@@ -120,6 +175,15 @@ public class ReminderServiceImpl implements ReminderService {
     return doScanFamily(familyId, LocalDate.now());
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现提醒扫描提醒业务逻辑。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param today 业务日期
+   * @return 业务响应数据
+   */
   @Override
   @Transactional
   public ReminderScanResponse scanFamily(Long familyId, LocalDate today) {
@@ -366,5 +430,3 @@ public class ReminderServiceImpl implements ReminderService {
     }
   }
 }
-
-

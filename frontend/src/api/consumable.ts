@@ -27,14 +27,22 @@ export interface ReplaceRecordForm {
   cost?: number;
   note?: string;
 }
-
+/**
+ * 功能说明：查询耗材数据。
+ * @param familyId 家庭空间 ID
+ * @param deviceId 设备 ID
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getDeviceConsumables(familyId: number, deviceId: number) {
   return request<ConsumableItem[]>({
     url: `/api/families/${familyId}/devices/${deviceId}/consumables`,
     method: 'get'
   });
 }
-
+/**
+ * 功能说明：创建耗材数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function createConsumable(
   familyId: number,
   deviceId: number,
@@ -46,7 +54,10 @@ export function createConsumable(
     data
   });
 }
-
+/**
+ * 功能说明：更新耗材数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function updateConsumable(
   familyId: number,
   consumableId: number,
@@ -58,14 +69,24 @@ export function updateConsumable(
     data
   });
 }
-
+/**
+ * 功能说明：删除耗材数据。
+ * @param familyId 家庭空间 ID
+ * @param consumableId 耗材 ID
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function deleteConsumable(familyId: number, consumableId: number) {
   return request<boolean>({
     url: `/api/families/${familyId}/consumables/${consumableId}`,
     method: 'delete'
   });
 }
-
+/**
+ * 功能说明：查询耗材数据。
+ * @param familyId 家庭空间 ID
+ * @param params 查询参数
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getDueSoonConsumables(familyId: number, params: ConsumableQuery = {}) {
   return request<PageResponse<ConsumableItem>>({
     url: `/api/families/${familyId}/consumables/due-soon`,
@@ -73,7 +94,10 @@ export function getDueSoonConsumables(familyId: number, params: ConsumableQuery 
     params
   });
 }
-
+/**
+ * 功能说明：创建耗材数据。
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function createReplaceRecord(
   familyId: number,
   consumableId: number,
@@ -85,7 +109,12 @@ export function createReplaceRecord(
     data
   });
 }
-
+/**
+ * 功能说明：查询耗材数据。
+ * @param familyId 家庭空间 ID
+ * @param consumableId 耗材 ID
+ * @returns 请求结果或格式化后的展示数据
+ */
 export function getReplaceRecords(familyId: number, consumableId: number) {
   return request<ReplaceRecord[]>({
     url: `/api/families/${familyId}/consumables/${consumableId}/replace-records`,

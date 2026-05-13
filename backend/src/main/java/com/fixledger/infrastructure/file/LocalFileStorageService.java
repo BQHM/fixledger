@@ -14,6 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * <p>
+ * 文件功能说明：文件存储实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class LocalFileStorageService implements FileStorageService {
 
@@ -23,6 +30,16 @@ public class LocalFileStorageService implements FileStorageService {
     this.properties = properties;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成存储上传文件基础设施操作。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param bizType 业务类型
+   * @param file 上传文件
+   * @return 处理结果
+   */
   @Override
   public StoredFile store(Long familyId, String bizType, MultipartFile file) {
     try {
@@ -58,6 +75,14 @@ public class LocalFileStorageService implements FileStorageService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成读取文件资源基础设施操作。
+   * </p>
+   * @param storagePath 文件存储路径
+   * @return 处理结果
+   */
   @Override
   public Resource loadAsResource(String storagePath) {
     try {

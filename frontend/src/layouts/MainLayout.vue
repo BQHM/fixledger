@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import {
-  Bell,
-  Box,
-  AlarmClock,
+  Calendar,
   Cpu,
   Files,
   HomeFilled,
+  House,
   MagicStick,
-  Monitor,
-  Setting,
-  Tools
+  Memo,
+  Setting
 } from '@element-plus/icons-vue';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -20,19 +18,30 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 
-const activeMenu = computed(() => '/' + route.path.split('/')[1]);
+const activeMenu = computed(() => {
+  if (route.path.startsWith('/devices')) return '/devices';
+  if (route.path.startsWith('/files')) return '/files';
+  if (route.path.startsWith('/ai-tools')) return '/ai-tools';
+  if (route.path.startsWith('/settings')) return '/settings/family';
+  if (route.path.startsWith('/dashboard') && route.query.focus === 'calendar') return '/dashboard?focus=calendar';
+  return '/dashboard';
+});
 
-const menus = [
-  { path: '/dashboard', label: '首页看板', icon: HomeFilled },
-  { path: '/devices', label: '设备档案', icon: Monitor },
-  { path: '/warranties', label: '保修管理', icon: AlarmClock },
-  { path: '/consumables', label: '耗材管理', icon: Box },
-  { path: '/maintenance', label: '维修记录', icon: Tools },
-  { path: '/reminders', label: '提醒中心', icon: Bell },
-  { path: '/files', label: '附件库', icon: Files },
-  { path: '/ai-tools', label: 'AI 助手', icon: MagicStick },
-  { path: '/settings/family', label: '家庭设置', icon: Setting }
+const primaryMenus = [
+  { path: '/dashboard', label: '我的家', hint: '健康分 / 本周事项', icon: HomeFilled },
+  { path: '/dashboard?focus=calendar', label: '家庭日历', hint: '保修 / 耗材 / 维修提醒', icon: Calendar },
+  { path: '/devices', label: '设备护照', hint: '房间设备 / 生命周期', icon: Memo },
+  { path: '/files', label: '凭证盒', hint: '发票 / 说明书 / 维修单', icon: Files },
+  { path: '/ai-tools', label: '智能助手', hint: '票据提取 / 故障建议', icon: MagicStick }
 ];
+
+const secondaryMenus = [
+  { path: '/settings/family', label: '我的家庭', icon: Setting }
+];
+
+const currentFamilyName = computed(() => {
+  return auth.families.find((family) => family.id === auth.currentFamilyId)?.name ?? '我的家';
+});
 
 onMounted(() => {
   if (auth.token && auth.families.length === 0) {
@@ -53,33 +62,53 @@ async function handleLogout() {
 
 <template>
   <el-container class="app-layout">
-    <el-aside class="app-sidebar" width="260px">
+    <el-aside class="app-sidebar" width="286px">
       <div class="brand-block" @click="router.push('/dashboard')">
-        <div class="brand-mark">FL</div>
+        <div class="brand-mark">
+          <el-icon><House /></el-icon>
+        </div>
         <div>
           <div class="brand-title">FixLedger</div>
-          <div class="brand-subtitle">家庭设备档案本</div>
+          <div class="brand-subtitle">家庭设备管家</div>
         </div>
       </div>
 
+      <div class="home-card">
+        <span class="home-card-label">当前家庭</span>
+        <strong>{{ currentFamilyName }}</strong>
+        <small>把设备、凭证和提醒按家庭场景整理。</small>
+      </div>
+
       <el-menu :default-active="activeMenu" router class="app-menu">
-        <el-menu-item v-for="menu in menus" :key="menu.path" :index="menu.path">
+        <el-menu-item v-for="menu in primaryMenus" :key="menu.label" :index="menu.path" class="scene-menu-item">
           <el-icon><component :is="menu.icon" /></el-icon>
-          <span>{{ menu.label }}</span>
+          <span class="menu-copy">
+            <strong>{{ menu.label }}</strong>
+            <small>{{ menu.hint }}</small>
+          </span>
         </el-menu-item>
       </el-menu>
 
+      <div class="secondary-menu">
+        <el-menu :default-active="activeMenu" router class="app-menu">
+          <el-menu-item v-for="menu in secondaryMenus" :key="menu.path" :index="menu.path">
+            <el-icon><component :is="menu.icon" /></el-icon>
+            <span>{{ menu.label }}</span>
+          </el-menu-item>
+        </el-menu>
+      </div>
+
       <div class="side-note">
         <el-icon><Cpu /></el-icon>
-        <span>AI 只做辅助建议，核心数据仍由用户确认。</span>
+        <span>AI 只做辅助建议，真正的家庭设备记录仍由你确认。</span>
       </div>
     </el-aside>
 
     <el-container>
       <el-header class="app-header">
         <div>
-          <div class="header-eyebrow">Home Maintenance Ledger</div>
-          <div class="header-title">把家里的设备、凭证和提醒放在一个地方</div>
+          <div class="header-eyebrow">Family Device Companion</div>
+          <div class="header-title">今天先看家里有哪些设备小事要处理</div>
         </div>
         <div class="header-actions">
           <el-select
@@ -126,7 +155,9 @@ async function handleLogout() {
   height: 100vh;
   padding: 22px 18px;
   border-right: 1px solid rgba(47, 125, 104, 0.12);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(230, 241, 235, 0.8));
+  background:
+    radial-gradient(circle at 18% 4%, rgba(242, 166, 90, 0.24), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(230, 241, 235, 0.82));
   backdrop-filter: blur(22px);
 }
 
@@ -134,18 +165,19 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 8px 22px;
+  padding: 10px 8px 18px;
   cursor: pointer;
 }
 
 .brand-mark {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--fl-green);
   color: #fff;
+  font-size: 22px;
   font-weight: 900;
   box-shadow: 0 14px 30px rgba(47, 125, 104, 0.32);
 }
@@ -162,21 +194,77 @@ async function handleLogout() {
   font-size: 12px;
 }
 
+.home-card {
+  display: grid;
+  gap: 5px;
+  margin: 0 4px 16px;
+  padding: 15px;
+  border: 1px solid rgba(47, 125, 104, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 32px rgba(36, 49, 47, 0.06);
+}
+
+.home-card-label {
+  color: var(--fl-muted);
+  font-size: 12px;
+}
+
+.home-card strong {
+  color: var(--fl-green-dark);
+  font-size: 18px;
+}
+
+.home-card small {
+  color: var(--fl-muted);
+  line-height: 1.5;
+}
+
 .app-menu {
   border-right: none;
   background: transparent;
 }
 
 :deep(.el-menu-item) {
-  height: 48px;
-  margin: 4px 0;
-  border-radius: 14px;
+  min-height: 52px;
+  height: auto;
+  margin: 6px 0;
+  padding: 10px 12px !important;
+  border-radius: 16px;
   color: var(--fl-ink);
+  line-height: 1.2;
 }
 
 :deep(.el-menu-item.is-active) {
   background: var(--fl-green);
   color: #fff;
+  box-shadow: 0 16px 28px rgba(47, 125, 104, 0.24);
+}
+
+.scene-menu-item :deep(.el-icon) {
+  font-size: 20px;
+}
+
+.menu-copy {
+  display: grid;
+  gap: 4px;
+  margin-left: 2px;
+}
+
+.menu-copy strong {
+  font-size: 15px;
+}
+
+.menu-copy small {
+  color: inherit;
+  font-size: 11px;
+  opacity: 0.72;
+}
+
+.secondary-menu {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(47, 125, 104, 0.18);
 }
 
 .side-note {

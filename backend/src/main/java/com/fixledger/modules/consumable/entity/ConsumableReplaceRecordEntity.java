@@ -7,6 +7,13 @@ import com.fixledger.common.entity.BaseEntity;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：耗材持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_consumable_replace_record")
 public class ConsumableReplaceRecordEntity extends BaseEntity {
 

@@ -121,18 +121,20 @@ onUnmounted(() => {
         </el-table-column>
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="router.push(`/devices/${row.id}/edit`)">编辑</el-button>
-            <el-dropdown @command="(status: string) => handleStatus(row, status)">
-              <el-button link type="primary">改状态</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="item in deviceStatusOptions" :key="item.value" :command="item.value">
-                    {{ item.label }}
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <div class="table-actions">
+              <el-button link type="primary" @click="router.push(`/devices/${row.id}/edit`)">编辑</el-button>
+              <el-dropdown class="table-action-dropdown" @command="(status: string) => handleStatus(row, status)">
+                <el-button link type="primary">改状态</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="item in deviceStatusOptions" :key="item.value" :command="item.value">
+                      {{ item.label }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -158,5 +160,25 @@ onUnmounted(() => {
 .pager {
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.table-actions :deep(.el-button) {
+  height: auto;
+  margin-left: 0;
+  padding: 0;
+}
+
+.table-action-dropdown,
+.table-action-dropdown :deep(.el-tooltip__trigger) {
+  display: flex;
+  align-items: center;
 }
 </style>

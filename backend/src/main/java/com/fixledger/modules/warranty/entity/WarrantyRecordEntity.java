@@ -6,6 +6,13 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fixledger.common.entity.BaseEntity;
 import java.time.LocalDate;
 
+/**
+ * <p>
+ * 文件功能说明：保修持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_warranty_record")
 public class WarrantyRecordEntity extends BaseEntity {
 

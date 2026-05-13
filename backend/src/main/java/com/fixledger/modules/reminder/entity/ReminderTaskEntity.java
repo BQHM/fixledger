@@ -6,6 +6,13 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fixledger.common.entity.BaseEntity;
 import java.time.LocalDateTime;
 
+/**
+ * <p>
+ * 文件功能说明：提醒通知持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_reminder_task")
 public class ReminderTaskEntity extends BaseEntity {
 

@@ -26,6 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * <p>
+ * 文件功能说明：附件资源服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Service
 public class FileResourceServiceImpl implements FileResourceService {
 
@@ -63,6 +70,18 @@ public class FileResourceServiceImpl implements FileResourceService {
     this.consumableItemMapper = consumableItemMapper;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现附件上传文件业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param bizType 业务类型
+   * @param bizId 业务 ID
+   * @param file 上传文件
+   * @return 业务响应数据
+   */
   @Override
   public FileResourceResponse uploadFile(
       Long userId,
@@ -92,6 +111,17 @@ public class FileResourceServiceImpl implements FileResourceService {
     return toResponse(entity);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现附件查询列表业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param bizType 业务类型
+   * @param bizId 业务 ID
+   * @return 列表结果
+   */
   @Override
   public List<FileResourceResponse> listFiles(
       Long userId,
@@ -112,6 +142,16 @@ public class FileResourceServiceImpl implements FileResourceService {
         .toList();
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现附件下载文件业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param fileId 文件 ID
+   * @return 处理结果
+   */
   @Override
   public FileDownloadResource downloadFile(Long userId, Long familyId, Long fileId) {
     familyService.checkFamilyMember(userId, familyId);
@@ -125,6 +165,16 @@ public class FileResourceServiceImpl implements FileResourceService {
     );
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：实现附件删除业务逻辑。
+   * </p>
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param fileId 文件 ID
+   * @return 是否处理成功
+   */
   @Override
   @Transactional
   public boolean deleteFile(Long userId, Long familyId, Long fileId) {
@@ -261,6 +311,3 @@ public class FileResourceServiceImpl implements FileResourceService {
     );
   }
 }
-
-
-

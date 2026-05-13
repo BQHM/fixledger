@@ -8,6 +8,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.util.StringUtils;
 
+/**
+ * <p>
+ * 文件功能说明：AI 基础设施实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public class MockAiClient implements AiClient {
 
   private static final Pattern NAME_PATTERN = Pattern.compile("商品名称[:：]\\s*([^\\n\\r]+)");
@@ -16,7 +23,14 @@ public class MockAiClient implements AiClient {
       "(?:金额|价格)[:：]\\s*([0-9]+(?:\\.[0-9]+)?)"
   );
   private static final Pattern SELLER_PATTERN = Pattern.compile("(?:销售方|商家)[:：]\\s*([^\\n\\r]+)");
-
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成解析数据基础设施操作。
+   * </p>
+   * @param text 待解析文本
+   * @return 统一响应结果
+   */
   @Override
   public InvoiceParseResult parseInvoiceText(String text) {
     String deviceName = firstMatch(NAME_PATTERN, text);
@@ -27,6 +41,15 @@ public class MockAiClient implements AiClient {
     return new InvoiceParseResult(deviceName, purchaseDate, price, seller, category);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成生成建议基础设施操作。
+   * </p>
+   * @param context 设备上下文
+   * @param faultDescription 故障描述
+   * @return 处理结果
+   */
   @Override
   public TroubleshootingSuggestion suggestTroubleshooting(
       DeviceContext context,
@@ -38,6 +61,15 @@ public class MockAiClient implements AiClient {
     return new TroubleshootingSuggestion(summary, suggestions);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成生成总结基础设施操作。
+   * </p>
+   * @param context 设备上下文
+   * @param records 维修记录列表
+   * @return 处理结果
+   */
   @Override
   public MaintenanceSummary summarizeMaintenance(
       DeviceContext context,
@@ -56,11 +88,25 @@ public class MockAiClient implements AiClient {
     return new MaintenanceSummary(summary, careSuggestion);
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成返回 AI Provider 名称基础设施操作。
+   * </p>
+   * @return 处理结果
+   */
   @Override
   public String providerName() {
     return "mock";
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成返回 AI 模型名称基础设施操作。
+   * </p>
+   * @return 处理结果
+   */
   @Override
   public String modelName() {
     return "mock-rule-engine";
@@ -139,4 +185,3 @@ public class MockAiClient implements AiClient {
     return new BigDecimal(value);
   }
 }
-

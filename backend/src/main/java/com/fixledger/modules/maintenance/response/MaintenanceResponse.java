@@ -3,6 +3,13 @@ package com.fixledger.modules.maintenance.response;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * <p>
+ * 文件功能说明：维修响应对象，封装返回给前端展示的数据结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 public record MaintenanceResponse(
     Long id,
     Long deviceId,

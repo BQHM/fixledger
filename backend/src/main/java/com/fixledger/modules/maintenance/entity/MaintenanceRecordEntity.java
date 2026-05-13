@@ -7,6 +7,13 @@ import com.fixledger.common.entity.BaseEntity;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * <p>
+ * 文件功能说明：维修持久化实体，对应数据库中的业务表结构。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @TableName("fl_maintenance_record")
 public class MaintenanceRecordEntity extends BaseEntity {
 

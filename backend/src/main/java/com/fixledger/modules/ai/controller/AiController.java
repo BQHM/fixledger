@@ -17,6 +17,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * <p>
+ * 文件功能说明：AI 辅助接口控制器，负责参数校验、认证上下文读取和调用业务服务。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Validated
 @RestController
 @RequestMapping("/api/families/{familyId}/ai")
@@ -28,6 +35,15 @@ public class AiController {
     this.aiService = aiService;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理AI 辅助解析数据接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 统一响应结果
+   */
   @PostMapping("/invoice-parse")
   public Result<InvoiceParseResponse> parseInvoice(
       @PathVariable Long familyId,
@@ -37,6 +53,15 @@ public class AiController {
     return Result.success(aiService.parseInvoice(userId, familyId, request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理AI 辅助生成建议接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 统一响应结果
+   */
   @PostMapping("/troubleshooting")
   public Result<TroubleshootingResponse> suggestTroubleshooting(
       @PathVariable Long familyId,
@@ -46,6 +71,15 @@ public class AiController {
     return Result.success(aiService.suggestTroubleshooting(userId, familyId, request));
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理AI 辅助生成总结接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param request 请求参数
+   * @return 统一响应结果
+   */
   @PostMapping("/maintenance-summary")
   public Result<MaintenanceSummaryResponse> summarizeMaintenance(
       @PathVariable Long familyId,

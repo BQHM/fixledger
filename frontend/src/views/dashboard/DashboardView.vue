@@ -1,20 +1,34 @@
 <script setup lang="ts">
+import { ArrowLeft, ArrowRight, Files, Refresh, WarningFilled } from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-import {
-  getCategoryDistribution,
-  getDashboardSummary,
-  getMaintenanceCostTrend,
-  getReminderCalendar
-} from '@/api/dashboard';
+import { getCategoryDistribution, getDashboardSummary, getMaintenanceCostTrend, getReminderCalendar } from '@/api/dashboard';
+import { getDevicePage } from '@/api/device';
 import { getMaintenancePage } from '@/api/maintenance';
 import { getReminderPage } from '@/api/reminder';
 import { useAuthStore } from '@/stores/auth';
 import type { MaintenanceRecord, ReminderItem } from '@/types/business';
-import type { CategoryDistribution, DashboardSummary, MaintenanceCostTrend, ReminderCalendarDay } from '@/types/dashboard';
-import { labelOf, maintenanceStatusOptions, statusType } from '@/utils/dicts';
+import type { DeviceListItem } from '@/types/device';
+import type {
+  CategoryDistribution,
+  DashboardSummary,
+  MaintenanceCostTrend,
+  ReminderCalendarDay,
+  ReminderCalendarItem
+} from '@/types/dashboard';
+import { labelOf, maintenanceStatusOptions, reminderTypeOptions, statusType } from '@/utils/dicts';
 
+interface CalendarCell {
+  date: string;
+  day: number;
+  inCurrentMonth: boolean;
+  isToday: boolean;
+  reminders: ReminderCalendarItem[];
+}
+
+const router = useRouter();
 const auth = useAuthStore();
 const loading = ref(false);
 const summary = ref<DashboardSummary>();
@@ -23,33 +37,124 @@ const costs = ref<MaintenanceCostTrend[]>([]);
 const calendar = ref<ReminderCalendarDay[]>([]);
 const reminders = ref<ReminderItem[]>([]);
 const maintenance = ref<MaintenanceRecord[]>([]);
+const devices = ref<DeviceListItem[]>([]);
+const selectedMonth = ref(startOfMonth(new Date()));
+const selectedDate = ref(formatDate(new Date()));
 const categoryChartRef = ref<HTMLDivElement>();
 const costChartRef = ref<HTMLDivElement>();
 let categoryChart: echarts.ECharts | undefined;
 let costChart: echarts.ECharts | undefined;
 
+const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 const familyId = computed(() => auth.currentFamilyId);
+const familyName = computed(() => auth.families.find((family) => family.id === auth.currentFamilyId)?.name ?? '我的家');
+
+const healthScore = computed(() => {
+  const overdue = summary.value?.consumableOverdueCount ?? 0;
+  const dueSoon = summary.value?.consumableDueSoonCount ?? 0;
+  const expiring = summary.value?.warrantyExpiringCount ?? 0;
+  const repairing = summary.value?.repairingCount ?? 0;
+  return Math.max(60, 100 - overdue * 10 - dueSoon * 6 - expiring * 5 - repairing * 8);
+});
+
+const healthTone = computed(() => {
+  if (healthScore.value >= 88) return '状态很好，家里的设备都挺省心。';
+  if (healthScore.value >= 75) return '整体稳定，有几件设备小事需要留意。';
+  return '需要重点处理，建议先看红色图钉和维修事项。';
+});
 
 const metrics = computed(() => [
   { label: '设备总数', value: summary.value?.deviceTotal ?? 0, suffix: '台' },
   { label: '即将过保', value: summary.value?.warrantyExpiringCount ?? 0, suffix: '项' },
-  { label: '耗材待更换', value: (summary.value?.consumableDueSoonCount ?? 0) + (summary.value?.consumableOverdueCount ?? 0), suffix: '项' },
+  {
+    label: '耗材待更换',
+    value: (summary.value?.consumableDueSoonCount ?? 0) + (summary.value?.consumableOverdueCount ?? 0),
+    suffix: '项'
+  },
   { label: '维修中', value: summary.value?.repairingCount ?? 0, suffix: '台' },
   { label: '本月维修费用', value: summary.value?.monthlyMaintenanceCost ?? 0, suffix: '元' }
 ]);
+
+const roomOverview = computed(() => {
+  const roomMap = new Map<string, DeviceListItem[]>();
+  devices.value.forEach((device) => {
+    const room = device.location?.trim() || '未设置位置';
+    roomMap.set(room, [...(roomMap.get(room) ?? []), device]);
+  });
+  return Array.from(roomMap.entries())
+    .map(([room, list]) => ({ room, devices: list, attention: list.filter((item) => item.nextReminderDate).length }))
+    .sort((a, b) => b.devices.length - a.devices.length)
+    .slice(0, 6);
+});
+
+const weekTasks = computed(() => {
+  const now = new Date();
+  const end = addDays(now, 7);
+  return reminders.value
+    .filter((item) => {
+      const remindDate = new Date(item.remindAt);
+      return remindDate >= now && remindDate <= end;
+    })
+    .slice(0, 4);
+});
+
+const monthTitle = computed(() => {
+  const month = selectedMonth.value;
+  return `${month.getFullYear()}年${month.getMonth() + 1}月`;
+});
+
+const calendarByDate = computed(() => {
+  const map = new Map<string, ReminderCalendarItem[]>();
+  calendar.value.forEach((day) => map.set(day.date, day.reminders ?? []));
+  return map;
+});
+
+const calendarCells = computed<CalendarCell[]>(() => {
+  const month = selectedMonth.value;
+  const first = startOfMonth(month);
+  const last = endOfMonth(month);
+  const firstWeekday = first.getDay() === 0 ? 7 : first.getDay();
+  const start = addDays(first, -(firstWeekday - 1));
+  const cells: CalendarCell[] = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const date = addDays(start, index);
+    const dateKey = formatDate(date);
+    cells.push({
+      date: dateKey,
+      day: date.getDate(),
+      inCurrentMonth: date >= first && date <= last,
+      isToday: dateKey === formatDate(new Date()),
+      reminders: calendarByDate.value.get(dateKey) ?? []
+    });
+  }
+
+  return cells;
+});
+
+const selectedDayReminders = computed(() => calendarByDate.value.get(selectedDate.value) ?? []);
+const monthReminderCount = computed(() => calendar.value.reduce((sum, day) => sum + day.count, 0));
+const importantReminderCount = computed(() =>
+  calendar.value.reduce(
+    (sum, day) => sum + day.reminders.filter((item) => reminderLevel(item) === 'danger').length,
+    0
+  )
+);
 
 async function loadData() {
   if (!familyId.value) return;
   loading.value = true;
   try {
-    const [summaryData, categoryData, costData, calendarData, reminderPage, maintenancePage] =
+    const range = getSelectedMonthRange();
+    const [summaryData, categoryData, costData, calendarData, reminderPage, maintenancePage, devicePage] =
       await Promise.all([
         getDashboardSummary(familyId.value),
         getCategoryDistribution(familyId.value),
         getMaintenanceCostTrend(familyId.value, 6),
-        getReminderCalendar(familyId.value),
-        getReminderPage(familyId.value, { pageNum: 1, pageSize: 6 }),
-        getMaintenancePage(familyId.value, { pageNum: 1, pageSize: 6 })
+        getReminderCalendar(familyId.value, range.startDate, range.endDate),
+        getReminderPage(familyId.value, { pageNum: 1, pageSize: 8 }),
+        getMaintenancePage(familyId.value, { pageNum: 1, pageSize: 6 }),
+        getDevicePage(familyId.value, { pageNum: 1, pageSize: 100 })
       ]);
     summary.value = summaryData;
     categories.value = categoryData;
@@ -57,11 +162,81 @@ async function loadData() {
     calendar.value = calendarData;
     reminders.value = reminderPage.records;
     maintenance.value = maintenancePage.records;
+    devices.value = devicePage.records;
     await nextTick();
     renderCharts();
   } finally {
     loading.value = false;
   }
+}
+
+async function changeMonth(offset: number) {
+  selectedMonth.value = startOfMonth(addMonths(selectedMonth.value, offset));
+  selectedDate.value = formatDate(selectedMonth.value);
+  await loadData();
+}
+
+function selectDay(cell: CalendarCell) {
+  selectedDate.value = cell.date;
+}
+
+function getSelectedMonthRange() {
+  return {
+    startDate: formatDate(startOfMonth(selectedMonth.value)),
+    endDate: formatDate(endOfMonth(selectedMonth.value))
+  };
+}
+
+function reminderLevel(item: ReminderCalendarItem | ReminderItem) {
+  if (['CONSUMABLE_OVERDUE', 'WARRANTY_EXPIRED', 'MAINTENANCE_FOLLOW_UP'].includes(item.reminderType)) {
+    return 'danger';
+  }
+  return 'warning';
+}
+
+function dayPinLevel(remindersForDay: ReminderCalendarItem[]) {
+  if (remindersForDay.some((item) => reminderLevel(item) === 'danger')) return 'danger';
+  if (remindersForDay.length > 0) return 'warning';
+  return 'info';
+}
+
+function openReminderTarget(item: ReminderCalendarItem | ReminderItem) {
+  if (item.bizType === 'DEVICE') {
+    router.push(`/devices/${item.bizId}`);
+  } else if (item.bizType === 'MAINTENANCE') {
+    router.push(`/maintenance/${item.bizId}`);
+  } else {
+    router.push('/reminders');
+  }
+}
+
+function reminderTagType(item: ReminderCalendarItem) {
+  return reminderLevel(item) === 'danger' ? 'danger' : 'warning';
+}
+
+function formatDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function addMonths(date: Date, offset: number) {
+  return new Date(date.getFullYear(), date.getMonth() + offset, 1);
+}
+
+function addDays(date: Date, offset: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + offset);
+  return next;
 }
 
 function renderCharts() {
@@ -120,21 +295,146 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-loading="loading" class="page-shell">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">首页看板</h1>
-        <p class="page-subtitle">用一屏讲清楚设备、保修、耗材、维修和提醒的核心闭环。</p>
+  <div v-loading="loading" class="page-shell home-shell">
+    <section class="home-hero">
+      <div class="hero-copy">
+        <p class="section-kicker">我的家</p>
+        <h1>{{ familyName }}</h1>
+        <p>先看这个家本周有哪些设备小事，再决定要不要处理保修、耗材或维修。</p>
+        <div class="hero-actions">
+          <el-button type="primary" :icon="Refresh" @click="loadData">刷新家庭状态</el-button>
+          <el-button :icon="Files" @click="router.push('/files')">打开凭证盒</el-button>
+        </div>
       </div>
-      <el-button type="primary" @click="loadData">刷新数据</el-button>
-    </div>
+      <div class="health-card">
+        <span>家庭设备健康分</span>
+        <strong>{{ healthScore }}</strong>
+        <p>{{ healthTone }}</p>
+      </div>
+    </section>
 
-    <div class="metric-grid">
+    <div class="metric-grid home-metrics">
       <div v-for="item in metrics" :key="item.label" class="metric-card">
         <div class="metric-label">{{ item.label }}</div>
         <div class="metric-value">{{ item.value }}<small>{{ item.suffix }}</small></div>
       </div>
     </div>
+
+    <div class="home-grid">
+      <el-card class="glass-card task-card" shadow="never">
+        <template #header>
+          <div class="card-title-row">
+            <span>本周设备小事</span>
+            <el-button link type="primary" @click="router.push('/reminders')">全部待办</el-button>
+          </div>
+        </template>
+        <el-empty v-if="weekTasks.length === 0" description="本周暂时没有要处理的设备事项" />
+        <div v-else class="task-list">
+          <article v-for="item in weekTasks" :key="item.id" class="task-item">
+            <div class="task-icon" :class="`task-${reminderLevel(item)}`">
+              <el-icon><WarningFilled /></el-icon>
+            </div>
+            <div>
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.content || item.remindAt }}</p>
+            </div>
+            <el-button link type="primary" @click="openReminderTarget(item)">去处理</el-button>
+          </article>
+        </div>
+      </el-card>
+
+      <el-card class="glass-card room-card" shadow="never">
+        <template #header>
+          <div class="card-title-row">
+            <span>房间设备概览</span>
+            <el-button link type="primary" @click="router.push('/devices')">设备护照</el-button>
+          </div>
+        </template>
+        <el-empty v-if="roomOverview.length === 0" description="还没有设备位置，先给设备设置房间吧" />
+        <div v-else class="room-list">
+          <article v-for="room in roomOverview" :key="room.room" class="room-item">
+            <div>
+              <strong>{{ room.room }}</strong>
+              <p>{{ room.devices.slice(0, 3).map((item) => item.name).join('、') }}</p>
+            </div>
+            <span>{{ room.devices.length }} 台</span>
+          </article>
+        </div>
+      </el-card>
+    </div>
+
+    <el-card class="glass-card calendar-card" shadow="never">
+      <div class="calendar-head">
+        <div>
+          <p class="section-kicker">家庭日历</p>
+          <h2>{{ monthTitle }}</h2>
+          <p class="calendar-summary">
+            本月共有 {{ monthReminderCount }} 条提醒，{{ importantReminderCount }} 条需要优先处理。
+          </p>
+        </div>
+        <div class="month-switcher">
+          <el-button :icon="ArrowLeft" circle @click="changeMonth(-1)" />
+          <strong>{{ monthTitle }}</strong>
+          <el-button :icon="ArrowRight" circle @click="changeMonth(1)" />
+        </div>
+      </div>
+
+      <div class="calendar-layout">
+        <div class="month-calendar">
+          <div class="weekday-row">
+            <span v-for="day in weekdays" :key="day">{{ day }}</span>
+          </div>
+          <div class="calendar-grid">
+            <button
+              v-for="cell in calendarCells"
+              :key="cell.date"
+              class="calendar-cell"
+              :class="{
+                'is-muted': !cell.inCurrentMonth,
+                'is-today': cell.isToday,
+                'is-selected': selectedDate === cell.date,
+                'has-reminders': cell.reminders.length > 0
+              }"
+              type="button"
+              @click="selectDay(cell)"
+            >
+              <span class="date-number">{{ cell.day }}</span>
+              <span
+                v-if="cell.reminders.length > 0"
+                class="pushpin"
+                :class="`pushpin-${dayPinLevel(cell.reminders)}`"
+                aria-hidden="true"
+              />
+              <div class="cell-reminders">
+                <span v-for="item in cell.reminders.slice(0, 2)" :key="item.id" class="cell-reminder-title">
+                  {{ item.title }}
+                </span>
+                <span v-if="cell.reminders.length > 2" class="more-reminders">
+                  +{{ cell.reminders.length - 2 }}
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <aside class="day-panel">
+          <p class="section-kicker">{{ selectedDate }}</p>
+          <h3>当天提醒</h3>
+          <el-empty v-if="selectedDayReminders.length === 0" description="这天没有设备事项" />
+          <div v-else class="day-reminder-list">
+            <article v-for="item in selectedDayReminders" :key="item.id" class="day-reminder-card">
+              <div class="day-reminder-title-row">
+                <span class="pushpin pushpin-inline" :class="`pushpin-${reminderLevel(item)}`" aria-hidden="true" />
+                <strong>{{ item.title }}</strong>
+              </div>
+              <el-tag :type="reminderTagType(item)" effect="plain">
+                {{ labelOf(reminderTypeOptions, item.reminderType) }}
+              </el-tag>
+            </article>
+          </div>
+        </aside>
+      </div>
+    </el-card>
 
     <div class="section-grid">
       <el-card class="glass-card" shadow="never">
@@ -152,7 +452,7 @@ onUnmounted(() => {
         <template #header>最近提醒</template>
         <el-timeline>
           <el-timeline-item
-            v-for="item in reminders"
+            v-for="item in reminders.slice(0, 6)"
             :key="item.id"
             :timestamp="item.remindAt"
             :type="statusType(item.status)"
@@ -177,54 +477,430 @@ onUnmounted(() => {
         </el-table>
       </el-card>
     </div>
-
-    <el-card class="glass-card" shadow="never">
-      <template #header>未来 30 天提醒日历</template>
-      <el-empty v-if="calendar.length === 0" description="暂无提醒" />
-      <div v-else class="calendar-list">
-        <div v-for="day in calendar" :key="day.date" class="calendar-day">
-          <div class="calendar-date">{{ day.date }}</div>
-          <div class="calendar-items">
-            <el-tag v-for="item in day.reminders" :key="item.id" type="warning" effect="plain">
-              {{ item.title }}
-            </el-tag>
-          </div>
-        </div>
-      </div>
-    </el-card>
   </div>
 </template>
 
 <style scoped>
+.home-shell {
+  gap: 22px;
+}
+
+.home-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 22px;
+  padding: 28px;
+  border: 1px solid rgba(47, 125, 104, 0.12);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(242, 166, 90, 0.26), transparent 28%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(225, 241, 234, 0.86));
+  box-shadow: 0 22px 52px rgba(36, 49, 47, 0.1);
+}
+
+.hero-copy h1 {
+  margin: 0;
+  color: var(--fl-ink);
+  font-size: 38px;
+  letter-spacing: -0.04em;
+}
+
+.hero-copy p {
+  max-width: 640px;
+  color: var(--fl-muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.health-card {
+  display: grid;
+  align-content: center;
+  padding: 24px;
+  border-radius: 26px;
+  background: var(--fl-green);
+  color: #fff;
+  box-shadow: 0 20px 42px rgba(47, 125, 104, 0.28);
+}
+
+.health-card span {
+  font-size: 13px;
+  opacity: 0.82;
+}
+
+.health-card strong {
+  margin-top: 6px;
+  font-size: 64px;
+  line-height: 1;
+}
+
+.health-card p {
+  margin: 10px 0 0;
+  line-height: 1.7;
+  opacity: 0.9;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 18px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-list,
+.room-list {
+  display: grid;
+  gap: 12px;
+}
+
+.task-item,
+.room-item {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.task-item {
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+}
+
+.task-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 15px;
+  color: #fff;
+}
+
+.task-danger {
+  background: var(--fl-danger);
+}
+
+.task-warning {
+  background: var(--fl-orange);
+}
+
+.task-item strong,
+.room-item strong {
+  color: var(--fl-ink);
+}
+
+.task-item p,
+.room-item p {
+  overflow: hidden;
+  margin: 5px 0 0;
+  color: var(--fl-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.room-item span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(47, 125, 104, 0.1);
+  color: var(--fl-green-dark);
+  font-weight: 800;
+}
+
 .metric-value small {
   margin-left: 4px;
   color: var(--fl-muted);
   font-size: 14px;
 }
 
-.calendar-list {
-  display: grid;
-  gap: 12px;
+.calendar-card {
+  overflow: hidden;
 }
 
-.calendar-day {
+.calendar-head {
   display: flex;
-  gap: 18px;
+  gap: 24px;
   align-items: center;
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(47, 125, 104, 0.06);
+  justify-content: space-between;
+  margin-bottom: 22px;
 }
 
-.calendar-date {
-  min-width: 120px;
+.section-kicker {
+  margin: 0 0 6px;
+  color: var(--fl-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.calendar-head h2 {
+  margin: 0;
+  color: var(--fl-green-dark);
+  font-size: 28px;
+}
+
+.calendar-summary {
+  margin: 8px 0 0;
+  color: var(--fl-muted);
+}
+
+.month-switcher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(47, 125, 104, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.66);
+  color: var(--fl-green-dark);
+}
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 22px;
+}
+
+.weekday-row,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.weekday-row {
+  margin-bottom: 8px;
+  color: var(--fl-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.calendar-grid {
+  gap: 8px;
+}
+
+.calendar-cell {
+  position: relative;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid rgba(47, 125, 104, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--fl-text);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.calendar-cell:hover {
+  border-color: rgba(47, 125, 104, 0.28);
+  box-shadow: 0 14px 30px rgba(45, 74, 65, 0.08);
+  transform: translateY(-2px);
+}
+
+.calendar-cell.is-muted {
+  color: rgba(45, 74, 65, 0.35);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.calendar-cell.is-today {
+  border-color: rgba(47, 125, 104, 0.36);
+}
+
+.calendar-cell.is-selected {
+  border-color: rgba(217, 83, 79, 0.55);
+  box-shadow: 0 16px 34px rgba(217, 83, 79, 0.12);
+}
+
+.calendar-cell.has-reminders {
+  background: linear-gradient(145deg, rgba(255, 249, 238, 0.95), rgba(255, 255, 255, 0.76));
+}
+
+.date-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   color: var(--fl-green-dark);
   font-weight: 900;
 }
 
-.calendar-items {
+.is-today .date-number {
+  background: rgba(47, 125, 104, 0.12);
+}
+
+.pushpin {
+  --pin-color: #d9534f;
+  --pin-dark: #a73935;
+  --pin-light: #ffaaa6;
+  position: absolute;
+  top: 10px;
+  right: 13px;
+  width: 24px;
+  height: 30px;
+  filter: drop-shadow(0 8px 8px rgba(88, 44, 34, 0.22));
+  transform: rotate(-14deg);
+}
+
+.pushpin::before {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(87, 31, 26, 0.18);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.92) 0 12%, transparent 13%),
+    radial-gradient(circle at 50% 58%, var(--pin-light) 0 12%, var(--pin-color) 43%, var(--pin-dark) 100%);
+  box-shadow:
+    inset -4px -5px 8px rgba(68, 24, 20, 0.26),
+    inset 3px 3px 6px rgba(255, 255, 255, 0.42);
+  content: '';
+}
+
+.pushpin::after {
+  position: absolute;
+  top: 16px;
+  left: 11px;
+  width: 3px;
+  height: 15px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f7e6bf 0%, #b88c3b 74%, #7b5a22 100%);
+  box-shadow: 1px 2px 3px rgba(74, 44, 18, 0.32);
+  content: '';
+}
+
+.pushpin-warning {
+  --pin-color: #f2a65a;
+  --pin-dark: #b86922;
+  --pin-light: #ffd6a1;
+}
+
+.pushpin-danger {
+  --pin-color: #d9534f;
+  --pin-dark: #9f2e2a;
+  --pin-light: #ffaaa6;
+}
+
+.pushpin-inline {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 28px;
+  transform: rotate(-12deg) scale(0.82);
+}
+
+.cell-reminders {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.cell-reminder-title,
+.more-reminders {
+  overflow: hidden;
+  color: var(--fl-green-dark);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more-reminders {
+  color: #d9534f;
+}
+
+.day-panel {
+  min-height: 100%;
+  padding: 20px;
+  border: 1px solid rgba(47, 125, 104, 0.12);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(242, 166, 90, 0.2), transparent 32%),
+    rgba(255, 255, 255, 0.62);
+}
+
+.day-panel h3 {
+  margin: 0 0 16px;
+  color: var(--fl-green-dark);
+  font-size: 22px;
+}
+
+.day-reminder-list {
+  display: grid;
+  gap: 12px;
+}
+
+.day-reminder-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 12px 24px rgba(45, 74, 65, 0.06);
+}
+
+.day-reminder-title-row {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  color: var(--fl-text);
+}
+
+@media (max-width: 1180px) {
+  .home-hero,
+  .home-grid,
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-hero {
+    padding: 20px;
+  }
+
+  .health-card strong {
+    font-size: 48px;
+  }
+
+  .calendar-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .calendar-grid {
+    gap: 6px;
+  }
+
+  .calendar-cell {
+    min-height: 86px;
+    padding: 8px;
+  }
+
+  .cell-reminder-title {
+    display: none;
+  }
 }
 </style>

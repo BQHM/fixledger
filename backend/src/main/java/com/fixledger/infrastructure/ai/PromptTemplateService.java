@@ -9,6 +9,13 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
+/**
+ * <p>
+ * 文件功能说明：AI 基础设施实现，封装外部依赖和技术细节。
+ * </p>
+ *
+ * @Author FixLedger
+ */
 @Component
 public class PromptTemplateService {
 
@@ -18,6 +25,16 @@ public class PromptTemplateService {
     this.resourceLoader = resourceLoader;
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：完成执行业务处理基础设施操作。
+   * </p>
+   * @param templateName templateName 参数
+   * @param MapString MapString 参数
+   * @param variables variables 参数
+   * @return 处理结果
+   */
   public String render(String templateName, Map<String, String> variables) {
     String rendered = loadTemplate(templateName);
     for (Map.Entry<String, String> entry : variables.entrySet()) {
