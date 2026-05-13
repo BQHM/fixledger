@@ -163,7 +163,7 @@ CREATE TABLE sys_user (
 - 密码必须存储哈希值。
 - 邮箱可选，但如果填写需要唯一。
 
-## 4.2 sys_role 角色表
+## 4.2 sys_role 角色表（二期规划）
 
 ```sql
 CREATE TABLE sys_role (
@@ -180,7 +180,7 @@ CREATE TABLE sys_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-## 4.3 sys_user_role 用户角色表
+## 4.3 sys_user_role 用户角色表（二期规划）
 
 ```sql
 CREATE TABLE sys_user_role (
@@ -197,7 +197,7 @@ CREATE TABLE sys_user_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-## 4.4 sys_operation_log 操作日志表
+## 4.4 sys_operation_log 操作日志表（二期规划）
 
 ```sql
 CREATE TABLE sys_operation_log (
@@ -477,20 +477,18 @@ CREATE TABLE fl_file_resource (
   biz_type VARCHAR(64) NOT NULL,
   biz_id BIGINT NOT NULL,
   original_name VARCHAR(255) NOT NULL,
-  storage_type VARCHAR(32) NOT NULL,
-  bucket_name VARCHAR(128) DEFAULT NULL,
-  object_key VARCHAR(512) NOT NULL,
-  content_type VARCHAR(128) DEFAULT NULL,
+  storage_name VARCHAR(255) NOT NULL,
+  storage_path VARCHAR(1024) NOT NULL,
+  content_type VARCHAR(128) NOT NULL,
   file_size BIGINT NOT NULL,
-  file_hash VARCHAR(128) DEFAULT NULL,
+  extension VARCHAR(32) DEFAULT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
   created_by BIGINT DEFAULT NULL,
   updated_by BIGINT DEFAULT NULL,
   deleted TINYINT NOT NULL DEFAULT 0,
-  KEY idx_fl_file_family (family_id),
-  KEY idx_fl_file_biz (biz_type, biz_id),
-  KEY idx_fl_file_hash (file_hash)
+  KEY idx_fl_file_resource_family (family_id),
+  KEY idx_fl_file_resource_biz (family_id, biz_type, biz_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
@@ -507,7 +505,7 @@ CREATE TABLE fl_ai_analysis (
   provider VARCHAR(64) NOT NULL DEFAULT 'mock',
   model VARCHAR(128) DEFAULT NULL,
   input_summary VARCHAR(1024) DEFAULT NULL,
-  result_json JSON DEFAULT NULL,
+  result_json TEXT DEFAULT NULL,
   status VARCHAR(32) NOT NULL,
   error_message VARCHAR(1024) DEFAULT NULL,
   created_at DATETIME NOT NULL,
@@ -587,7 +585,9 @@ erDiagram
 
 ## 9. 初始化数据
 
-### 9.1 系统角色
+### 9.1 系统角色（二期规划）
+
+当前版本暂未创建 `sys_role` 和 `sys_user_role`，系统角色作为 RBAC 二期规划。
 
 | role_code | role_name |
 | --- | --- |
@@ -596,7 +596,7 @@ erDiagram
 
 ### 9.2 默认设备分类
 
-每个家庭空间创建后初始化：
+规划中每个家庭空间创建后初始化；当前演示数据已为 `family_id=1` 初始化厨房设备、清洁设备和数码设备，新家庭自动初始化默认分类待增强：
 
 - 数码设备。
 - 大家电。
@@ -610,7 +610,7 @@ erDiagram
 
 ## 10. P7 演示数据
 
-P7 增加 `backend/src/main/resources/db/demo-data.sql`，用于本地 Docker 或开发环境演示。默认不会在普通开发启动时执行，只有设置以下环境变量时才会加载：
+P7 增加 `backend/src/main/resources/db/demo-data.sql` 和 `backend/src/main/resources/db/schema.sql`，用于本地 Docker 或开发环境演示。默认不会在普通开发启动时执行，只有设置以下环境变量时才会加载：
 
 ```dotenv
 SQL_INIT_MODE=always
@@ -629,7 +629,7 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 | 耗材记录 | 覆盖滤芯、滤网和更换历史 |
 | 维修记录 | 覆盖已完成维修和维修中记录 |
 | 提醒与通知 | 覆盖耗材即将更换和保修即将到期 |
-| AI 分析 | 覆盖 Mock 故障排查建议留痕 |
+| AI 分析 | 覆盖 Mock 故障排查建议留痕；接口测试可能额外产生票据解析记录 |
 
 演示 SQL 使用固定主键和 `ON DUPLICATE KEY UPDATE`，方便重复执行；真实生产环境不应启用演示数据初始化。
 ## 11. 后续扩展表
@@ -649,7 +649,28 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 ### 11.4 fl_export_record 导出记录表
 
 用于导出家庭设备资产清单和维修费用报表。
+## 12. P9.1 当前表结构对齐说明
 
+截至 P9.1，当前实际初始化脚本位于 `backend/src/main/resources/db/schema.sql`，已建表如下：
 
+- `sys_user`
+- `fl_family_space`
+- `fl_family_member`
+- `fl_device_category`
+- `fl_device_asset`
+- `fl_warranty_record`
+- `fl_file_resource`
+- `fl_consumable_item`
+- `fl_consumable_replace_record`
+- `fl_maintenance_record`
+- `fl_reminder_task`
+- `fl_notification_record`
+- `fl_ai_analysis`
 
+当前暂未实现的规划表：
 
+- `sys_role`
+- `sys_user_role`
+- `sys_operation_log`
+
+当前演示数据库查询结果显示，演示环境已经包含用户、家庭、设备分类、设备、保修、耗材、更换记录、维修记录、提醒、通知、附件和 AI 分析数据，能够支撑面试演示核心闭环。

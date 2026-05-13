@@ -1,4 +1,4 @@
-﻿# FixLedger API 设计
+# FixLedger API 设计
 
 ## 1. API 设计原则
 
@@ -963,7 +963,7 @@ POST /api/families/{familyId}/ai/maintenance-summary
 }
 ```
 
-## 16. System 系统接口
+## 16. System 系统接口（二期规划）
 
 ### 16.1 查询操作日志
 
@@ -971,9 +971,9 @@ POST /api/families/{familyId}/ai/maintenance-summary
 GET /api/system/operation-logs?pageNum=1&pageSize=10&module=DEVICE
 ```
 
-需要管理员权限。
+需要管理员权限；当前版本暂未实现系统管理 Controller。
 
-### 16.2 查询系统字典
+### 16.2 查询系统字典（二期规划）
 
 ```http
 GET /api/system/dictionaries?type=device_status
@@ -1010,7 +1010,7 @@ GET /api/system/dictionaries?type=device_status
 
 - 家庭成员邀请。
 - 邮件通知。
-- 操作日志查询。
+- 操作日志查询和系统字典接口。
 - AI 真实 Provider。
 - MinIO 临时访问 URL。
 
@@ -1049,3 +1049,28 @@ familyId: 1
 6. `POST /api/families/1/ai/troubleshooting` 演示 Mock AI 故障建议。
 
 演示数据只用于本地和面试展示，生产环境不要启用 `SQL_INIT_MODE=always`。
+## 20. P9.1 当前接口实现对齐说明
+
+截至 P9.1，当前后端 Controller 已实现的接口范围如下：
+
+- `AuthController`：注册、登录、退出登录、当前用户。
+- `FamilyController`：家庭列表、创建家庭、修改家庭、家庭成员列表。
+- `DeviceCategoryController`：设备分类列表、新增、修改、删除。
+- `DeviceAssetController`：设备分页、创建、详情、修改、删除、状态修改。
+- `WarrantyController`：设备保修列表、新增、修改、删除、即将过保查询。
+- `ConsumableController`：设备耗材列表、新增、修改、删除、记录更换、更换记录列表、即将更换查询。
+- `MaintenanceController`：维修分页、创建、详情、修改、状态流转、删除、费用统计。
+- `ReminderController`：提醒分页、未读数量、标记已读、忽略、手动扫描。
+- `FileResourceController`：附件上传、查询、下载、逻辑删除。
+- `DashboardController`：我的家总览、分类分布、维修费用趋势、提醒日历。
+- `AiController`：票据文本提取、故障排查建议、维修总结。
+
+当前暂未实现的接口能力：
+
+- 家庭成员邀请、移除和角色调整。
+- 系统操作日志、系统字典和管理员接口。
+- 邮件、Webhook 等外部通知接口。
+- MinIO / RustFS 临时访问 URL。
+- Refresh Token 和 Redis Token 黑名单接口。
+
+接口分页统一遵守 `pageNum >= 1`、`1 <= pageSize <= 100`，前端 Axios 请求拦截器也会对分页参数做兜底修正。

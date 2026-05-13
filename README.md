@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 **FixLedger 家庭设备保修与耗材管理系统** - 管理家庭设备、保修凭证、维修记录和耗材更换提醒的生活化工具
 
@@ -61,7 +61,7 @@ flowchart LR
     Dashboard --> MySQL
 
     API --> Redis[("Redis")]
-    API --> Storage["本地文件 / MinIO"]
+    API --> Storage["本地文件 / 对象存储预留"]
     AI --> LLM["大模型 API / Mock 模式"]
 
     Scheduler["Spring Scheduler"] --> Reminder
@@ -81,22 +81,22 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 与基础 CRUD 能力 |
 | MySQL | 8.x | 业务数据存储 |
-| Redis | 7.x | 验证码、提醒去重、热点数据缓存 |
+| Redis | 7.x | 提醒去重、首页统计缓存；验证码和 Token 黑名单为后续增强 |
 | Spring Scheduler | - | 保修到期、耗材更换等定时提醒 |
 | Spring Validation | - | 参数校验 |
-| SpringDoc OpenAPI / Knife4j | - | API 接口文档 |
+| SpringDoc OpenAPI | 2.6.x | API 接口文档 |
 | Lombok | - | 简化实体类和 DTO 编写 |
 | MapStruct | - | DTO / Entity 映射 |
-| MinIO / 本地文件存储 | - | 发票、保修卡、说明书、维修单附件 |
-| Spring AI / 自定义 AI Client | - | AI 信息提取与辅助分析 |
+| 本地文件存储 / 对象存储预留 | - | 当前本地保存附件，后续可扩展 MinIO 或 RustFS |
+| 自定义 AI Client | - | Mock 与 OpenAI-compatible Provider，AI 默认可关闭 |
 | Maven | 3.9+ | 构建工具 |
 
 技术选型说明：
 
 1. 后端采用 JDK 21 + Spring Boot 3.x：JDK 21 是 LTS 版本，适合在简历项目中体现较新的 Java 实践；Spring Boot 3.x 生态更成熟，和 MyBatis Plus、Spring Security、Knife4j、Redis 等常用组件的兼容性更稳。
 2. 数据库选择 MySQL，是因为家庭设备、保修、维修、提醒等数据关系明确，适合关系型建模，也贴合常见 Java 项目开发环境。
-3. 引入 Redis 主要用于验证码、登录态辅助缓存、提醒任务去重、首页统计缓存等场景，避免重复提醒和频繁查询数据库。
-4. 文件存储第一版可以使用本地文件系统，后续可切换为 MinIO，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
+3. 当前引入 Redis 主要用于提醒任务去重和首页统计缓存；验证码、登录态辅助缓存和 Token 黑名单是后续安全增强方向。
+4. 文件存储当前使用本地文件系统，后续可切换为 MinIO 或 RustFS，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
 5. AI 模块采用可替换的 Client 设计，可以接入兼容 OpenAI 风格的 API，也可以在本地开发阶段使用 Mock 模式，避免 AI 接口影响核心业务。
 
 ### 前端技术
@@ -105,7 +105,7 @@ flowchart LR
 | --- | --- | --- |
 | Vue | 3.x | 前端 UI 框架 |
 | TypeScript | 5.x | 前端开发语言 |
-| Vite | 5.x | 前端构建工具 |
+| Vite | 6.x | 前端构建工具 |
 | Element Plus | 2.x | 后台管理组件库 |
 | Vue Router | 4.x | 路由管理 |
 | Pinia | 2.x | 状态管理 |
@@ -182,7 +182,7 @@ flowchart LR
 - [x] 维修记录管理和维修状态流转。
 - [x] 首页统计看板和临期提醒列表后端能力。
 - [x] OpenAPI 接口文档。
-- [x] Vue3 前端 MVP 页面：登录注册、首页看板、设备档案、保修、耗材、维修、提醒、附件和 AI 助手。
+- [x] Vue3 前端 MVP 页面：登录注册、我的家首页、设备护照、保修、耗材、维修、提醒、凭证盒和智能助手。
 
 ### 增强阶段
 
@@ -208,20 +208,20 @@ flowchart LR
 
 ### 设备管理
 
-- 首页看板：设备总数、即将过保、耗材到期、维修中设备。
-- 设备列表：按分类、状态、品牌、保修状态筛选设备。
+- 我的家首页：家庭健康分、本周事项、家庭日历、设备总数、即将过保、耗材到期和维修中设备。
+- 设备护照：当前支持按分类、状态、品牌筛选设备，后续升级为按房间组织的卡片墙。
 - 设备详情：集中展示基础信息、保修凭证、耗材周期、维修历史和附件。
 
 ### 保修与耗材
 
-- 保修日历：查看未来即将过保的设备。
+- 家庭日历：查看未来即将过保、耗材更换和维修跟进事项。
 - 耗材提醒：查看即将更换和已超期的耗材。
 - 更换记录：记录滤芯、滤网、电池等耗材更换历史。
 
 ### 维修与 AI 辅助
 
 - 维修记录：记录故障、报修、维修过程和费用。
-- AI 排查建议：根据故障描述生成初步排查思路。
+- 智能助手：根据故障描述生成初步排查思路。
 - 维护总结：根据设备历史记录生成维护建议。
 
 ## 项目结构
@@ -253,7 +253,7 @@ fix-ledger/
 │   │       ├── maintenance/           # 维修记录
 │   │       ├── reminder/              # 提醒任务
 │   │       ├── dashboard/             # 统计看板
-│   │       └── system/                # 系统管理
+│   │       └── user/                  # 用户实体和用户状态
 │   └── src/main/resources/
 │       ├── application.yml            # 应用配置
 │       ├── mapper/                    # MyBatis XML
@@ -295,7 +295,7 @@ fix-ledger/
 | --- | --- | --- | --- |
 | JDK | 21+ | 是 | 后端运行环境，项目采用 JDK 21 + Spring Boot 3.x |
 | Maven | 3.9+ | 是 | 后端构建工具 |
-| Node.js | 18+ | 是 | 前端运行环境 |
+| Node.js | 22+ | 是 | 前端运行环境；项目 Dockerfile 使用 Node 22 Alpine |
 | npm | 10+ | 是 | 前端包管理器，随 Node.js 安装 |
 | MySQL | 8.x | 是 | 业务数据库 |
 | Redis | 7.x | 推荐 | 缓存与提醒去重 |
@@ -353,9 +353,9 @@ AI_BASE_URL=
 AI_MODEL=
 ```
 
-### 3. 启动依赖服务
+### 3. 启动依赖服务（本地开发方式）
 
-可以通过 Docker 启动 MySQL 和 Redis：
+本地开发时可以只通过 Docker 启动 MySQL 和 Redis，然后在本机运行后端和前端：
 
 ```bash
 docker compose up -d mysql redis
@@ -409,6 +409,22 @@ npm run dev
 
 ```text
 http://localhost:5173
+```
+
+### 6. 一键启动完整项目
+
+如果只是面试演示或快速体验，推荐直接使用 Docker Compose：
+
+```bash
+docker compose up -d --build
+```
+
+启动后访问：
+
+```text
+前端：http://localhost:5173
+后端：http://localhost:8080
+接口文档：http://localhost:8080/swagger-ui.html
 ```
 
 ## Docker 快速部署
@@ -473,11 +489,11 @@ AI 只是辅助能力，不参与核心业务判断。它主要用于减少手�
 
 ### Q: 提醒任务如何避免重复通知？
 
-后端通过 Spring Scheduler 定时扫描即将过保和耗材到期的数据，生成提醒任务。Redis 用于记录近期已发送的提醒标识，例如 `reminder:warranty:deviceId:date`，避免同一天重复发送相同提醒。
+后端通过 Spring Scheduler 定时扫描即将过保和耗材到期的数据，生成提醒任务。Redis Key 统一定义在后端常量中，格式类似 `fixledger:reminder:dedupe:{type}:{bizId}:{date}`，避免同一天重复发送相同提醒。
 
 ### Q: 文件存储怎么设计？
 
-开发阶段可以使用本地文件存储，保存发票、保修卡、说明书和维修单。为了后续扩展，文件模块会抽象统一接口，后续可切换到 MinIO 或其他 S3 兼容对象存储。
+当前开发阶段使用本地文件存储，保存发票、保修卡、说明书和维修单。为了后续扩展，文件模块已经抽象统一接口，后续可切换到 MinIO、RustFS 或其他 S3 兼容对象存储。
 
 ### Q: 这个项目如何体现 Java 后端能力？
 
@@ -490,5 +506,13 @@ AI 只是辅助能力，不参与核心业务判断。它主要用于减少手�
 ## 许可证
 
 MIT License
+## P9.1 文档对齐状态
 
+截至 P9.1，项目文档已经按当前实现重新对齐：
 
+- 当前 MVP 已完成，后续进入系统性完善阶段。
+- Docker Compose 已支持一键启动前端、后端、MySQL 和 Redis。
+- 文件存储当前为本地文件系统，对象存储为后续增强。
+- AI 默认使用 Mock，可选接入 OpenAI-compatible Provider。
+- 首页产品表达已从“首页看板”升级为“我的家”。
+- 系统管理、操作日志、家庭成员邀请、邮件/Webhook 通知仍是后续规划。

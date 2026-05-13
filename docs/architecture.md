@@ -61,13 +61,13 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 和基础 CRUD |
 | MySQL | 8.x | 业务数据库 |
-| Redis | 7.x | 缓存、提醒去重、验证码、JWT 黑名单 |
+| Redis | 7.x | 提醒去重、首页统计缓存；验证码和 JWT 黑名单为后续增强 |
 | Spring Scheduler | - | 保修和耗材提醒定时任务 |
 | Spring Validation | - | 参数校验 |
 | MapStruct | - | DTO / Entity 转换 |
-| SpringDoc OpenAPI / Knife4j | - | 接口文档 |
-| MinIO / 本地文件存储 | - | 附件存储 |
-| Spring AI / 自定义 AI Client | - | AI 辅助能力 |
+| SpringDoc OpenAPI | 2.6.x | 接口文档，访问 `/swagger-ui.html` 和 `/v3/api-docs` |
+| 本地文件存储 / MinIO 预留 | - | 当前使用本地文件存储，后续可切换对象存储 |
+| 自定义 AI Client | - | Mock Provider 与 OpenAI-compatible Client，AI 默认可关闭 |
 | Maven | 3.9+ | 构建工具 |
 
 选择 JDK 21 + Spring Boot 3.x 的原因：
@@ -82,7 +82,7 @@ flowchart LR
 | --- | --- | --- |
 | Vue | 3.x | UI 框架 |
 | TypeScript | 5.x | 类型约束 |
-| Vite | 5.x | 构建工具 |
+| Vite | 6.x | 构建工具 |
 | Element Plus | 2.x | 后台组件库 |
 | Pinia | 2.x | 状态管理 |
 | Vue Router | 4.x | 路由管理 |
@@ -177,7 +177,7 @@ modules.maintenance
 modules.reminder
 modules.dashboard
 modules.ai
-modules.system
+modules.system（规划中）
 ```
 
 ### 5.1 common
@@ -289,9 +289,9 @@ AI 辅助模块：
 - 维修总结。
 - AI 结果记录。
 
-### 5.13 system
+### 5.13 system（规划中）
 
-系统模块：
+系统模块当前为规划方向，暂未实现独立代码包。后续可扩展：
 
 - 操作日志。
 - 字典配置。
@@ -318,29 +318,30 @@ frontend/src/
 页面放在 `views/`：
 
 - 登录页。
-- 首页看板。
-- 设备列表。
+- 我的家首页（路由 `/dashboard`）。
+- 设备护照 / 设备列表。
 - 设备详情。
 - 保修管理。
 - 耗材管理。
 - 维修管理。
-- 附件管理。
-- AI 辅助页面。
-- 系统设置。
+- 凭证盒 / 附件管理。
+- 智能助手 / AI 辅助页面。
+- 家庭设置。
 
 ### 6.2 API 层
 
 接口封装放在 `api/`：
 
-- `authApi.ts`。
-- `familyApi.ts`。
-- `deviceApi.ts`。
-- `warrantyApi.ts`。
-- `consumableApi.ts`。
-- `maintenanceApi.ts`。
-- `reminderApi.ts`。
-- `dashboardApi.ts`。
-- `aiApi.ts`。
+- `auth.ts`。
+- `family.ts`。
+- `device.ts`。
+- `warranty.ts`。
+- `consumable.ts`。
+- `maintenance.ts`。
+- `reminder.ts`。
+- `dashboard.ts`。
+- `ai.ts`。
+- `file.ts`。
 
 页面禁止直接写 URL。
 
@@ -348,10 +349,8 @@ frontend/src/
 
 Pinia Store：
 
-- `useUserStore`。
-- `useFamilyStore`。
-- `usePermissionStore`。
-- `useAppStore`。
+- 当前已实现 `useAuthStore`，统一管理 Token、当前用户、家庭空间列表和当前家庭。
+- 后续可按复杂度拆分 `useFamilyStore`、`usePermissionStore` 和 `useAppStore`。
 
 ## 7. 数据流
 
@@ -436,7 +435,7 @@ sequenceDiagram
 - 使用 Spring Security + JWT。
 - 登录成功后返回 Access Token。
 - 后端通过过滤器解析 Token 并设置用户上下文。
-- 退出登录时可将 Token ID 写入 Redis 黑名单。
+- 当前退出登录为前端清理 Token；Redis JWT 黑名单和 Refresh Token 为后续增强。
 
 ### 8.2 数据隔离
 
@@ -461,9 +460,9 @@ Redis 使用场景：
 
 | 场景 | Key | TTL |
 | --- | --- | --- |
-| 验证码 | `fixledger:captcha:{uuid}` | 5 分钟 |
-| JWT 黑名单 | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
-| 用户信息 | `fixledger:user:profile:{userId}` | 30 分钟 |
+| 验证码（二期） | `fixledger:captcha:{uuid}` | 5 分钟 |
+| JWT 黑名单（二期） | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
+| 用户信息（二期） | `fixledger:user:profile:{userId}` | 30 分钟 |
 | 提醒去重 | `fixledger:reminder:dedupe:{type}:{bizId}:{date}` | 2 天 |
 | 首页统计 | `fixledger:dashboard:summary:{familyId}` | 5 分钟 |
 | AI 任务状态 | `fixledger:ai:task:{taskId}` | 1 小时 |
@@ -538,7 +537,7 @@ AI Prompt 放在：
 ```text
 backend/src/main/resources/prompts/
 ├── invoice-parse.st
-├── troubleshooting-suggestion.st
+├── troubleshooting.st
 └── maintenance-summary.st
 ```
 
@@ -550,8 +549,8 @@ FileController
 FileResourceService
   ↓
 FileStorageService
-  ├── LocalFileStorageService
-  └── MinioFileStorageService
+  ├── LocalFileStorageService（当前实现）
+  └── MinioFileStorageService（二期预留）
 ```
 
 文件元数据存 MySQL，文件内容存本地文件系统或 MinIO。
@@ -569,7 +568,7 @@ FileStorageService
 
 ```text
 本机 JDK 21
-本机 Node.js
+本机 Node.js / npm
 Docker MySQL
 Docker Redis
 本地文件存储
@@ -636,3 +635,15 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - 二维码标签。
 - PDF 说明书搜索。
 - 资产清单导出。
+## 16. P9.1 当前工程实现对齐
+
+当前代码实现与架构文档的对齐结论：
+
+- 后端实际版本为 Spring Boot `3.3.6`、JDK `21`、MyBatis Plus `3.5.9`、SpringDoc `2.6.0`。
+- 前端实际版本为 Vue `3.5.x`、TypeScript `5.6.x`、Vite `6.0.x`、Element Plus `2.8.x`。
+- Docker Compose 默认编排 `mysql`、`redis`、`backend`、`frontend` 四个服务，前端 Nginx 代理 `/api` 到后端。
+- 数据库初始化脚本位于 `backend/src/main/resources/db/schema.sql`，演示数据位于 `backend/src/main/resources/db/demo-data.sql`。
+- Prompt 模板位于 `backend/src/main/resources/prompts/`，当前包含票据提取、故障排查和维修总结三个模板。
+- 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
+- 当前文件存储实现为 `LocalFileStorageService`，对象存储通过 `FileStorageService` 抽象预留。
+- 当前登录退出未实现 Redis Token 黑名单，后续安全阶段再评估 Refresh Token 和黑名单机制。
