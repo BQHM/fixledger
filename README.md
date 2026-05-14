@@ -13,6 +13,23 @@
 
 ---
 
+
+## 文档导航
+
+如果你是第一次阅读项目，建议按下面顺序理解：
+
+| 文档 | 作用 |
+| --- | --- |
+| `docs/spec.md` | 项目级规格：目标、技术栈、命令、结构、代码风格、测试策略、边界和成功标准 |
+| `docs/requirements.md` | 需求说明：项目背景、用户、功能范围和验收标准 |
+| `docs/architecture.md` | 架构设计：分层、模块、数据流、Redis、AI、文件存储和部署 |
+| `docs/api.md` | 接口设计：统一响应、认证、分页、错误码和各模块 API |
+| `docs/database.md` | 数据库设计：表结构、索引、枚举、演示数据和 RustFS 元数据存储方式 |
+| `docs/ui.md` | UI 设计：我的家、家庭日历、设备护照、凭证盒和智能助手 |
+| `docs/tasks.md` | 开发留痕：阶段计划、验收、验证记录和后续任务 |
+| `docs/decisions/` | ADR：核心技术栈、RustFS、AI 辅助定位、家庭场景 UI 等关键决策 |
+
+`AGENTS.md` 是项目编码规范和边界约束；README 面向运行、展示和面试讲解。
 ## 项目介绍
 
 FixLedger 是一个面向家庭家电和数码设备的保修、维修、耗材更换管理系统。
@@ -61,7 +78,7 @@ flowchart LR
     Dashboard --> MySQL
 
     API --> Redis[("Redis")]
-    API --> Storage["本地文件 / 对象存储预留"]
+    API --> Storage["RustFS / 本地文件兜底"]
     AI --> LLM["大模型 API / Mock 模式"]
 
     Scheduler["Spring Scheduler"] --> Reminder
@@ -87,7 +104,7 @@ flowchart LR
 | SpringDoc OpenAPI | 2.6.x | API 接口文档 |
 | Lombok | - | 简化实体类和 DTO 编写 |
 | MapStruct | - | DTO / Entity 映射 |
-| 本地文件存储 / 对象存储预留 | - | 当前本地保存附件，后续可扩展 MinIO 或 RustFS |
+| RustFS / 本地文件存储 | - | Docker 默认使用 RustFS，本地存储保留为测试和兜底 |
 | 自定义 AI Client | - | Mock 与 OpenAI-compatible Provider，AI 默认可关闭 |
 | Maven | 3.9+ | 构建工具 |
 
@@ -96,7 +113,7 @@ flowchart LR
 1. 后端采用 JDK 21 + Spring Boot 3.x：JDK 21 是 LTS 版本，适合在简历项目中体现较新的 Java 实践；Spring Boot 3.x 生态更成熟，和 MyBatis Plus、Spring Security、Knife4j、Redis 等常用组件的兼容性更稳。
 2. 数据库选择 MySQL，是因为家庭设备、保修、维修、提醒等数据关系明确，适合关系型建模，也贴合常见 Java 项目开发环境。
 3. 当前引入 Redis 主要用于提醒任务去重和首页统计缓存；验证码、登录态辅助缓存和 Token 黑名单是后续安全增强方向。
-4. 文件存储当前使用本地文件系统，后续可切换为 MinIO 或 RustFS，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
+4. 文件存储当前优先使用 RustFS 这类 S3 兼容对象存储，保留本地文件系统作为测试和兜底，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
 5. AI 模块采用可替换的 Client 设计，可以接入兼容 OpenAI 风格的 API，也可以在本地开发阶段使用 Mock 模式，避免 AI 接口影响核心业务。
 
 ### 前端技术
@@ -170,7 +187,7 @@ flowchart LR
 - **分类分布**：按设备分类、品牌、使用状态统计家庭设备情况。
 - **提醒日历**：以日历形式查看未来保修到期和耗材更换计划。
 
-## TODO
+## 项目进度
 
 ### MVP 阶段
 
@@ -188,10 +205,10 @@ flowchart LR
 
 - [x] Redis 提醒去重和首页热点统计缓存。
 - [x] AI 票据信息提取、故障排查建议和维修总结。
-- [ ] MinIO 文件存储适配。
+- [x] RustFS 文件存储适配。
 - [ ] 邮件或 Webhook 通知扩展。
 - [ ] 操作日志与关键操作审计。
-- [x] Docker Compose 一键启动前端、后端、MySQL 和 Redis。
+- [x] Docker Compose 一键启动前端、后端、MySQL、Redis 和 RustFS。
 - [x] 后端单元测试和接口测试。
 
 ### 后续计划
@@ -339,9 +356,22 @@ REDIS_DATABASE=0
 JWT_SECRET=replace-with-at-least-32-byte-development-secret
 JWT_ACCESS_TOKEN_TTL_SECONDS=86400
 
+FILE_STORAGE_TYPE=rustfs
 FILE_STORAGE_ROOT=./uploads
 FILE_MAX_SIZE=20MB
 FILE_MAX_REQUEST_SIZE=25MB
+FILE_S3_ENDPOINT=http://rustfs:9000
+FILE_S3_ACCESS_KEY=fixledger
+FILE_S3_SECRET_KEY=fixledger123
+FILE_S3_BUCKET=fixledger-files
+FILE_S3_REGION=us-east-1
+FILE_S3_PATH_STYLE_ACCESS=true
+FILE_S3_CREATE_BUCKET=true
+
+# RustFS 使用 FILE_S3_ACCESS_KEY / FILE_S3_SECRET_KEY 作为账号密码。
+RUSTFS_IMAGE=rustfs/rustfs:latest
+RUSTFS_API_PORT=9000
+RUSTFS_CONSOLE_PORT=9001
 
 SQL_INIT_MODE=always
 SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
@@ -355,10 +385,17 @@ AI_MODEL=
 
 ### 3. 启动依赖服务（本地开发方式）
 
-本地开发时可以只通过 Docker 启动 MySQL 和 Redis，然后在本机运行后端和前端：
+本地开发时如果 `FILE_STORAGE_TYPE=local`，可以只通过 Docker 启动 MySQL 和 Redis，然后在本机运行后端和前端。若复制 `.env.example` 后未修改，默认是 `rustfs`，建议直接使用后面的 Docker 一键启动：
 
 ```bash
 docker compose up -d mysql redis
+```
+
+如果本机后端也要使用 RustFS，请同时启动 RustFS。由于 Compose 默认给后端容器使用 `http://rustfs:9000`，本机运行后端时要临时覆盖为 `http://localhost:9000`：
+
+```bash
+docker compose up -d mysql redis rustfs
+$env:FILE_S3_ENDPOINT="http://localhost:9000"
 ```
 
 如需同时初始化演示数据，可以在 `.env` 中设置：
@@ -427,9 +464,25 @@ docker compose up -d --build
 接口文档：http://localhost:8080/swagger-ui.html
 ```
 
+
+## 常用命令
+
+| 场景 | 命令 |
+| --- | --- |
+| Docker 构建并启动完整项目 | `docker compose up -d --build` |
+| Docker 启动已有镜像 | `docker compose up -d` |
+| 查看服务状态 | `docker compose ps` |
+| 查看后端日志 | `docker compose logs -f backend` |
+| 查看前端日志 | `docker compose logs -f frontend` |
+| 停止并保留数据卷 | `docker compose down` |
+| 校验 Docker Compose 配置 | `docker compose config --quiet` |
+| 后端测试 | `cd backend; mvn test` |
+| 后端本地启动 | `cd backend; mvn spring-boot:run` |
+| 前端开发启动 | `cd frontend; npm run dev` |
+| 前端类型检查和构建 | `cd frontend; npm run build` |
 ## Docker 快速部署
 
-Docker Compose 现在默认编排前端、后端、MySQL 和 Redis，适合面试演示时一条命令拉起完整系统。前端容器通过 Nginx 代理 `/api` 到后端容器，浏览器只需要访问前端地址。
+Docker Compose 现在默认编排前端、后端、MySQL、Redis 和 RustFS，适合面试演示时一条命令拉起完整系统。前端容器通过 Nginx 代理 `/api` 到后端容器，浏览器只需要访问前端地址。
 
 | 服务 | 地址 | 默认账号 | 默认密码 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -438,11 +491,13 @@ Docker Compose 现在默认编排前端、后端、MySQL 和 Redis，适合面�
 | 接口文档 | `http://localhost:8080/swagger-ui.html` | - | - | OpenAPI UI |
 | MySQL | `localhost:3306` | `fixledger` | `fixledger_dev_password` | 业务数据库 |
 | Redis | `localhost:6379` | - | - | 缓存和提醒去重 |
+| RustFS API | `http://localhost:9000` | `fixledger` | `fixledger123` | S3 兼容对象存储 |
+| RustFS 控制台 | `http://localhost:9001` | `fixledger` | `fixledger123` | 对象存储控制台 |
 
 常用命令：
 
 ```bash
-# 构建并启动前端、后端、MySQL、Redis
+# 构建并启动前端、后端、MySQL、Redis、RustFS
 docker compose up -d --build
 
 # 查看服务状态
@@ -461,7 +516,7 @@ docker compose down
 docker compose down -v
 ```
 
-首次构建会拉取 MySQL、Redis、Maven/JDK、Node.js 和 Nginx 基础镜像，并在镜像内下载 Maven 与 npm 依赖。如果 Docker Hub 网络超时或认证失败，需要先在 Docker Desktop 配置镜像加速或代理；也可以在 `.env` 中覆盖 `MAVEN_IMAGE`、`JRE_IMAGE`、`NODE_IMAGE`、`NGINX_IMAGE` 为可访问的镜像仓库地址，然后重新执行 `docker compose up -d --build`。
+首次构建会拉取 MySQL、Redis、RustFS、Maven/JDK、Node.js 和 Nginx 基础镜像，并在镜像内下载 Maven 与 npm 依赖。如果 Docker Hub 网络超时或认证失败，需要先在 Docker Desktop 配置镜像加速或代理；也可以在 `.env` 中覆盖 `MAVEN_IMAGE`、`JRE_IMAGE`、`NODE_IMAGE`、`NGINX_IMAGE` 为可访问的镜像仓库地址，然后重新执行 `docker compose up -d --build`。
 
 ## 使用场景
 
@@ -493,7 +548,7 @@ AI 只是辅助能力，不参与核心业务判断。它主要用于减少手�
 
 ### Q: 文件存储怎么设计？
 
-当前开发阶段使用本地文件存储，保存发票、保修卡、说明书和维修单。为了后续扩展，文件模块已经抽象统一接口，后续可切换到 MinIO、RustFS 或其他 S3 兼容对象存储。
+当前 Docker 演示环境使用 RustFS 保存发票、保修卡、说明书和维修单。本地测试环境仍可使用本地文件存储。文件模块通过 `FileStorageService` 抽象，后续也可以切换到 MinIO 或其他 S3 兼容对象存储。
 
 ### Q: 这个项目如何体现 Java 后端能力？
 
@@ -501,18 +556,21 @@ AI 只是辅助能力，不参与核心业务判断。它主要用于减少手�
 
 ## 贡献
 
-欢迎提交 Issue 和 Pull Request。建议在提交功能前先补充对应的需求说明、接口说明和数据库设计，保持文档与代码同步。
+欢迎提交 Issue 和 Pull Request。建议在提交功能前先补充对应的需求说明、接口说明、数据库设计和任务记录；涉及关键架构取舍时同步补充 `docs/decisions/`。
 
 ## 许可证
 
 MIT License
-## P9.1 文档对齐状态
 
-截至 P9.1，项目文档已经按当前实现重新对齐：
+## P9.8 文档对齐状态
+
+截至 P9.8，项目文档已经按当前实现和 skills 规范重新对齐：
 
 - 当前 MVP 已完成，后续进入系统性完善阶段。
-- Docker Compose 已支持一键启动前端、后端、MySQL 和 Redis。
-- 文件存储当前为本地文件系统，对象存储为后续增强。
+- 已新增 `docs/spec.md`，统一项目目标、命令、结构、风格、测试、边界和成功标准。
+- 已新增 `docs/decisions/`，记录核心技术栈、RustFS、AI 辅助定位和家庭场景 UI 的 ADR。
+- Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS。
+- 文件存储当前已接入 RustFS；本地文件系统保留为测试和兜底。
 - AI 默认使用 Mock，可选接入 OpenAI-compatible Provider。
 - 首页产品表达已从“首页看板”升级为“我的家”。
 - 系统管理、操作日志、家庭成员邀请、邮件/Webhook 通知仍是后续规划。

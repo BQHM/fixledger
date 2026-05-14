@@ -14,8 +14,19 @@
 - 家庭空间是核心数据隔离维度，需要隔离的表必须包含 `family_id`。
 - 金额使用 `DECIMAL`，禁止浮点类型。
 - 时间使用 `DATETIME`；Java 侧使用 `LocalDateTime`，纯日期使用 `LocalDate`。
-- 附件只存元数据，文件内容存本地文件系统或 MinIO。
+- 附件只存元数据，文件内容默认存 RustFS；本地文件系统保留为测试和兜底。
 
+
+## 1.1 表结构变更边界
+
+数据库设计必须服务于 `docs/spec.md` 的家庭设备生命周期目标。新增或修改表结构时遵守：
+
+- 先更新 `docs/database.md`，再修改 SQL 或 Entity。
+- 需要数据隔离的业务表必须包含 `family_id` 并建立常用查询索引。
+- 核心生命周期数据优先逻辑删除，不随意物理删除。
+- 文件表只保存元数据和对象 Key，不保存公开访问 URL。
+- 金额、日期、状态枚举和提醒时间必须能被接口文档和前端展示一致解释。
+- 破坏性结构调整必须在 `docs/tasks.md` 记录迁移影响，必要时新增 ADR。
 ## 2. 通用字段
 
 大部分业务表包含以下字段：
@@ -215,7 +226,7 @@ CREATE TABLE sys_operation_log (
   error_message VARCHAR(1024) DEFAULT NULL,
   created_at DATETIME NOT NULL,
   KEY idx_sys_operation_log_user_id (user_id),
-  KEY idx_sys_operation_log_family_id (family_id),
+  KEY idx_sys_operation_log_family (family_id),
   KEY idx_sys_operation_log_biz (biz_type, biz_id),
   KEY idx_sys_operation_log_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -492,6 +503,17 @@ CREATE TABLE fl_file_resource (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
+
+### 4.15.1 RustFS 存储说明
+
+接入 RustFS 后，`fl_file_resource` 表结构不需要新增字段：
+
+- `storage_name` 保存对象文件名。
+- `storage_path` 保存 RustFS Bucket 内的对象 Key，例如 `families/1/device/2026/05/uuid.pdf`。本地测试环境仍保存相对路径。
+- `original_name`、`content_type`、`file_size`、`extension` 继续用于下载响应和前端展示。
+
+文件内容存放在 RustFS Bucket，MySQL 只保存元数据。下载附件时仍由后端根据 `family_id` 校验权限，再从 RustFS 读取对象流返回，避免直接暴露对象存储地址。
+
 ## 4.16 fl_ai_analysis AI 分析结果表
 
 ```sql
@@ -632,6 +654,7 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 | AI 分析 | 覆盖 Mock 故障排查建议留痕；接口测试可能额外产生票据解析记录 |
 
 演示 SQL 使用固定主键和 `ON DUPLICATE KEY UPDATE`，方便重复执行；真实生产环境不应启用演示数据初始化。
+
 ## 11. 后续扩展表
 
 ### 11.1 fl_device_qrcode 设备二维码表
@@ -648,10 +671,11 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 
 ### 11.4 fl_export_record 导出记录表
 
-用于导出家庭设备资产清单和维修费用报表。
-## 12. P9.1 当前表结构对齐说明
+用于导出家庭设备清单和维修费用报表。
 
-截至 P9.1，当前实际初始化脚本位于 `backend/src/main/resources/db/schema.sql`，已建表如下：
+## 12. P9.7.1 当前表结构对齐说明
+
+截至 P9.7.1，当前实际初始化脚本位于 `backend/src/main/resources/db/schema.sql`，已建表如下：
 
 - `sys_user`
 - `fl_family_space`
@@ -674,3 +698,5 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 - `sys_operation_log`
 
 当前演示数据库查询结果显示，演示环境已经包含用户、家庭、设备分类、设备、保修、耗材、更换记录、维修记录、提醒、通知、附件和 AI 分析数据，能够支撑面试演示核心闭环。
+
+RustFS 接入后无需新增表字段，`fl_file_resource.storage_path` 保存对象 Key；下载仍由后端校验 `family_id` 后转发对象流。

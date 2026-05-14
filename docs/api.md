@@ -11,6 +11,16 @@
 - Controller 只做参数校验和 Service 调用。
 - 业务异常统一返回错误码和错误信息。
 
+
+## 1.1 接口契约边界
+
+接口设计必须服务于 `docs/spec.md` 的家庭设备生命周期目标。新增或修改接口时，需要同步记录：
+
+- 请求路径、认证要求、请求体、响应体和错误码。
+- 是否带 `familyId`，以及家庭空间权限校验方式。
+- 分页接口是否遵守 `pageNum >= 1`、`1 <= pageSize <= 100`。
+- 是否涉及文件、AI、通知等外部能力；如果涉及，核心业务不能依赖外部能力成功。
+- 如果接口契约发生破坏性变更，必须在 `docs/tasks.md` 记录调整说明，必要时新增 ADR。
 ## 2. 通用响应结构
 
 ### 2.1 成功响应
@@ -788,6 +798,17 @@ GET /api/families/{familyId}/files/{fileId}/download
 DELETE /api/families/{familyId}/files/{fileId}
 ```
 
+
+### 13.5 RustFS 存储说明
+
+接口路径、请求参数和响应结构不因 RustFS 接入而变化。上传时后端会将文件内容写入 RustFS Bucket，并把对象 Key 保存到 `fl_file_resource.storage_path`。`storage-type=rustfs`、`s3` 或 `minio` 均复用 S3 兼容实现。下载时仍通过：
+
+```http
+GET /api/families/{familyId}/files/{fileId}/download
+```
+
+后端先校验登录用户是否属于该家庭空间，再从 RustFS 读取对象流返回。前端不直接访问 RustFS 对象地址。
+
 ## 14. Dashboard 看板接口
 
 ### 14.1 首页总览
@@ -1012,7 +1033,7 @@ GET /api/system/dictionaries?type=device_status
 - 邮件通知。
 - 操作日志查询和系统字典接口。
 - AI 真实 Provider。
-- MinIO 临时访问 URL。
+- 对象存储临时访问 URL（可选，当前 RustFS 下载仍由后端鉴权后转发对象流）。
 
 ## 18. 接口安全要求
 
@@ -1021,6 +1042,8 @@ GET /api/system/dictionaries?type=device_status
 - 文件下载必须校验权限。
 - AI 接口不能接收敏感字段。
 - 管理接口必须限制角色。
+- AI 接口返回内容需要做长度限制和空值兜底，不能让 AI 结果自动覆盖用户数据。
+
 ## 19. P7 本地演示与 OpenAPI
 
 P7 提供 Docker Compose 后端演示环境。启动后可以通过以下地址查看服务状态和接口文档：
@@ -1049,9 +1072,9 @@ familyId: 1
 6. `POST /api/families/1/ai/troubleshooting` 演示 Mock AI 故障建议。
 
 演示数据只用于本地和面试展示，生产环境不要启用 `SQL_INIT_MODE=always`。
-## 20. P9.1 当前接口实现对齐说明
+## 20. P9.7.1 当前接口实现对齐说明
 
-截至 P9.1，当前后端 Controller 已实现的接口范围如下：
+截至 P9.7.1，当前后端 Controller 已实现的接口范围如下：
 
 - `AuthController`：注册、登录、退出登录、当前用户。
 - `FamilyController`：家庭列表、创建家庭、修改家庭、家庭成员列表。
@@ -1070,7 +1093,7 @@ familyId: 1
 - 家庭成员邀请、移除和角色调整。
 - 系统操作日志、系统字典和管理员接口。
 - 邮件、Webhook 等外部通知接口。
-- MinIO / RustFS 临时访问 URL。
+- 对象存储临时访问 URL（当前 RustFS 下载仍由后端鉴权后转发对象流）。
 - Refresh Token 和 Redis Token 黑名单接口。
 
 接口分页统一遵守 `pageNum >= 1`、`1 <= pageSize <= 100`，前端 Axios 请求拦截器也会对分页参数做兜底修正。

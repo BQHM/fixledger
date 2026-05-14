@@ -62,7 +62,7 @@
 | P6 AI 辅助 | P6.3 故障排查建议 | 按设备上下文生成故障建议并关联维修记录 | 已完成 |
 | P6 AI 辅助 | P6.4 维修总结 | 基于维修历史生成设备维护总结 | 已完成 |
 | P7 工程化完善 | P7.1 测试 | 核心业务 Service 和 Mock AI 测试 | 已完成 |
-| P7 工程化完善 | P7.2 Docker 与部署 | 前后端、MySQL、Redis 一键启动 | 已完成 |
+| P7 工程化完善 | P7.2 Docker 与部署 | 前后端、MySQL、Redis 一键启动；P9.7.1 后补充 RustFS | 已完成 |
 | P7 工程化完善 | P7.3 演示数据 | 初始化演示用户、家庭、设备和业务数据 | 已完成 |
 | P7 工程化完善 | P7.4 文档收尾 | README、接口、数据库和任务状态同步 | 已完成 |
 | P8 产品化体验重构 | P8.1 主导航场景化 | 一级导航从后台模块转为家庭场景入口 | 已完成 |
@@ -75,7 +75,9 @@
 | P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 计划中 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 计划中 |
 | P9 系统性完善阶段 | P9.6 产品体验继续打磨 | 继续推进设备护照、家庭日历、凭证盒和智能助手 | 计划中 |
-| P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 计划中 |
+| P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 进行中，RustFS 已接入 |
+| P9 系统性完善阶段 | P9.7.1 RustFS 文件存储接入 | 将上传文件从本地存储切换为 RustFS/S3 兼容对象存储 | 已完成 |
+| P9 系统性完善阶段 | P9.8 Skills 文档规范对齐 | 按 skills 规范补齐规格、ADR、任务模板、边界和验证口径 | 已完成 |
 | P10 文档对齐 | P10.1 需求文档复核 | 深度复核 `requirements.md` 与当前产品边界 | 计划中 |
 | P10 文档对齐 | P10.2 架构文档复核 | 深度复核 `architecture.md` 与当前工程实现 | 计划中 |
 | P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 计划中 |
@@ -136,6 +138,29 @@
 调整说明：
 - 如果范围变化，记录变化原因和影响。
 ```
+
+### 2.2.1 Skills 执行规范
+
+本项目后续执行必须同时遵守 `AGENTS.md` 和 Codex skills 工作流。`AGENTS.md` 负责项目业务边界和编码约束，skills 负责“先规格、再计划、再任务、再实现、再验证、再留档”的过程规范。
+
+适用规则：
+
+1. 新功能或跨多文件变更先更新 `docs/spec.md` 或对应专题文档，再进入实现。
+2. 重大架构、依赖、部署、AI、文件存储、权限边界变化必须在 `docs/decisions/` 新增或更新 ADR。
+3. 每个新小版本必须使用任务模板记录 `Acceptance`、`Verify`、`Files`，避免只写“做了什么”。
+4. 文档要解释“为什么这样做”，不是只复述代码和字段。
+5. 每个阶段结束时记录验证证据：测试命令、构建命令、Docker 检查、人工冒烟或未验证原因。
+6. 如果需求存在不确定性，先在文档的 `Open Questions` 或任务的“调整说明”中显式记录，不带着隐含假设开发。
+
+新任务推荐模板：
+
+```text
+- [ ] Task: 说明本次要完成的独立任务
+  - Acceptance: 可观察、可测试的完成条件
+  - Verify: 具体验证命令或人工检查方式
+  - Files: 预计触达的文件或目录
+```
+
 ## 2.3 当前执行批次
 
 当前处于 P0 文档与后端脚手架阶段，本轮优先完成后端基础工程，不进入具体业务模块。
@@ -238,7 +263,7 @@
 
 暂不进入范围：
 
-- MinIO 存储、临时访问 URL 和文件预览。
+- 对象存储、临时访问 URL 和文件预览。P9.7.1 已完成 RustFS 对象存储接入，临时访问 URL 和文件预览仍为后续增强。
 - 保修提醒任务生成和 Redis 去重。
 - 前端保修管理页、附件上传组件。
 ## 2.7 当前执行批次
@@ -306,7 +331,7 @@
 
 - P6 后端 AI 辅助 Maven 测试已通过。
 - 当前测试覆盖 Mock 票据提取、AI 分析留痕、故障排查建议、故障建议关联维修记录、维修总结、无维修记录兜底、家庭空间权限和 AI Controller 认证。
-- 后端完整 Maven 测试已通过，当前共 69 个测试用例，失败 0、错误 0。
+- 后端完整 Maven 测试已通过，当前共 72 个测试用例，失败 0、错误 0。
 
 暂不进入范围：
 
@@ -866,7 +891,7 @@
 - [x] 编写后端 Dockerfile。
 - [x] 编写前端 Dockerfile。
 - [x] 编写 docker-compose.yml。
-- [x] 编排 MySQL、Redis、后端和前端。
+- [x] 编排 MySQL、Redis、后端和前端；P9.7.1 补充 RustFS。
 - [x] 补充部署说明。
 
 验收标准：
@@ -928,8 +953,8 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 调整说明：
 
-- 系统管理员、RBAC、操作日志、家庭成员邀请、邮件/Webhook、MinIO/RustFS 和 Refresh Token 明确调整为后续增强。
-- 当前文件存储对齐为本地文件系统，对象存储仅保留抽象和规划。
+- 系统管理员、RBAC、操作日志、家庭成员邀请、邮件/Webhook 和 Refresh Token 明确调整为后续增强。
+- P9.1 时文件存储仍对齐为本地文件系统；P9.7.1 已推进 RustFS 对象存储接入。
 - 首页表达对齐为“我的家”，但路由仍保持 `/dashboard`。
 
 ### P9.2 代码质量治理
@@ -998,9 +1023,84 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 - 页面表达更像家庭设备管家，而不是普通后台管理平台。
 - 新增体验仍然服务于家庭设备生命周期管理。
 
+### P9.7.1 RustFS 文件存储接入
+
+目标：
+
+- 将附件上传从默认本地文件存储升级为 RustFS 对象存储，保持业务层仍通过 `FileStorageService` 调用。
+
+范围：
+
+- 更新 `docs/tasks.md`、`docs/architecture.md`、`docs/database.md`、`docs/api.md`、`README.md` 和 `.env.example` 的 RustFS 说明。
+- 在后端新增 S3/RustFS 存储实现，支持上传、下载和 Bucket 自动创建。
+- 更新 `docker-compose.yml`，新增 `rustfs` 服务并让后端默认使用 RustFS。
+- 保留本地文件存储实现，便于测试和无对象存储环境兜底。
+
+验收标准：
+
+- Docker Compose 启动后包含 RustFS 服务，并默认将后端文件存储切到 RustFS。
+- 后端配置 `FILE_STORAGE_TYPE=rustfs` 时，上传文件写入 RustFS Bucket；`s3`、`minio` 可复用同一套 S3 兼容实现。
+- 附件元数据仍写入 `fl_file_resource`，业务接口路径和响应结构不变。
+- 后端测试通过，且不依赖真实外网服务。
+
+验证记录：
+
+- 已补充 RustFS/S3 配置、Docker Compose 服务和文档说明。`FILE_S3_ACCESS_KEY` / `FILE_S3_SECRET_KEY` 同时作为后端访问 RustFS 与 RustFS 容器账号。
+- 已保留 `application-test.yml` 使用本地文件存储，保证后端测试不依赖 RustFS。`FileStorageServiceConditionTest` 覆盖 `local`、`rustfs`、`minio` 存储实现选择。
+- 已执行 `docker compose config --services` 和 `docker compose config --quiet`，服务包含 `mysql`、`redis`、`rustfs`、`backend`、`frontend`。
+- 已在 JDK 21 环境执行后端 `mvn test`，共 72 个测试用例，失败 0、错误 0。
+- 已执行 `git diff --check`，未发现空白符错误。
+
+调整说明：
+
+- RustFS 兼容 S3 API，因此后端按 S3 Client 抽象接入，不直接依赖 RustFS 私有协议。
+- 业务接口路径和响应结构保持不变，只有底层 `FileStorageService` 实现切换。对象 Key 使用 `families/{familyId}/{bizType}/{yyyy}/{MM}/{uuid}.{extension}`，由后端鉴权后转发下载。
+
+
+### P9.8 Skills 文档规范对齐
+
+目标：
+
+- 按 `using-agent-skills`、`spec-driven-development`、`planning-and-task-breakdown`、`documentation-and-adrs` 和 `code-review-and-quality` 的规范，补齐项目文档的规格、决策、任务、边界和验证口径。
+
+任务拆分：
+
+- [x] Task: 新增项目级规格文档
+  - Acceptance: `docs/spec.md` 包含 Objective、Tech Stack、Commands、Project Structure、Code Style、Testing Strategy、Boundaries、Success Criteria、Open Questions。
+  - Verify: 人工检查章节完整；通过 `rg` 确认关键章节存在。
+  - Files: `docs/spec.md`。
+- [x] Task: 新增架构决策记录
+  - Acceptance: `docs/decisions/` 包含核心技术栈、RustFS 文件存储、AI 辅助定位、家庭场景 UI 的 ADR。
+  - Verify: 人工检查每个 ADR 包含 Context、Decision、Consequences、Verification。
+  - Files: `docs/decisions/README.md`、`docs/decisions/0001-core-stack-and-layering.md`、`docs/decisions/0002-rustfs-file-storage.md`、`docs/decisions/0003-ai-as-auxiliary-capability.md`、`docs/decisions/0004-household-scene-first-ui.md`。
+- [x] Task: 调整任务留痕规范
+  - Acceptance: `docs/tasks.md` 明确 skills 执行规范，并要求后续小版本记录 Acceptance、Verify、Files。
+  - Verify: 人工检查 P9.8 任务记录和模板可复用。
+  - Files: `docs/tasks.md`。
+- [x] Task: 修正文档交叉引用和过期表述
+  - Acceptance: README、需求、架构、接口、数据库、UI 文档都能指向规格文档或 ADR，不再把当前 RustFS 能力描述成未完成的 MinIO 预留。
+  - Verify: 使用 `rg` 检查过期关键词；执行 `git diff --check`。
+  - Files: `README.md`、`docs/requirements.md`、`docs/architecture.md`、`docs/api.md`、`docs/database.md`、`docs/ui.md`。
+
+验收标准：
+
+- 文档符合 skills 要求的规格、任务、ADR 和验证结构。
+- 后续开发可以先读 `docs/spec.md` 和 `docs/decisions/` 理解项目边界与关键取舍。
+- 文档仍保持 FixLedger 的家庭设备生命周期定位，不退化成泛后台或 AI 产品。
+
+验证记录：
+
+- 已读取并应用 `using-agent-skills`、`spec-driven-development`、`planning-and-task-breakdown`、`documentation-and-adrs`、`code-review-and-quality`。
+- 已执行文档关键词检查、控制字符检查和 `git diff --check`，结果见本次回复。
+
+调整说明：
+
+- P9.8 只调整项目文档，不改业务代码、不改数据库脚本、不改前端页面。
+- 旧阶段历史记录保留，不重写开发过程；后续新增任务按 skills 模板执行。
+
 ### P9.7 可选增强能力
 
-- [ ] 评估本地文件、MinIO 和 RustFS 的使用边界，决定是否接入对象存储。
+- [x] 评估本地文件、MinIO 和 RustFS 的使用边界，当前优先接入 RustFS 对象存储。
 - [ ] 在保留 Mock 的前提下接入真实 OpenAI-compatible Provider。
 - [ ] 扩展站内通知、邮件、Webhook 等通知渠道。
 - [ ] 增加 GitHub Actions 或其他 CI 流程，自动运行后端测试和前端构建。
@@ -1072,7 +1172,7 @@ MVP 完成需要满足：
 | --- | --- |
 | 功能范围变大 | 先完成核心闭环，其他放二期 |
 | AI 接口不可用 | 默认 Mock Provider |
-| 文件存储复杂 | 第一版本地文件，后续 MinIO |
+| 文件存储复杂 | Docker 默认 RustFS，测试保留本地文件，MinIO/S3 通过同一抽象可替换 |
 | 前端页面过多 | 优先设备详情、首页、列表页 |
 | 定时任务难测试 | 提供手动扫描接口 |
 | 权限遗漏 | 所有业务接口统一校验 familyId |
@@ -1084,17 +1184,17 @@ MVP 完成需要满足：
 - README 已完成。
 - AGENTS 规范已完成。
 - docs 开发资料已完成第一版。
-- 后端 P0-P7 已完成：脚手架、认证与家庭空间、设备分类与设备档案、保修记录与本地附件、耗材与维修、提醒与看板、AI 辅助、后端工程化。
+- 后端 P0-P7 已完成：脚手架、认证与家庭空间、设备分类与设备档案、保修记录与附件、耗材与维修、提醒与看板、AI 辅助、后端工程化。
 - 前端 MVP 页面已完成：登录注册、主布局、首页看板、设备档案、设备详情、保修管理、耗材管理、维修记录、维修详情、提醒中心、附件库、AI 助手和家庭设置。
-- 后端完整 Maven 测试已通过，当前共 69 个测试用例，失败 0、错误 0。
+- 后端完整 Maven 测试已通过，当前共 72 个测试用例，失败 0、错误 0。
 - 前端 `npm run build` 已通过，Vue 类型检查和 Vite 构建均成功。
-- Docker Compose 已支持一键启动前端、后端、MySQL 和 Redis，前端通过 Nginx 代理后端 API。
+- Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS，前端通过 Nginx 代理后端 API。
 - P8 产品化体验重构已启动：首页升级为“我的家”，导航从后台模块转向家庭场景入口。
 - 已完成一次项目注释审查：补充后端核心类/公开方法 Javadoc，以及前端 API、Store、路由和字典工具注释。
-- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐已完成，后续按代码质量、测试补强、安全边界、演示材料和产品体验升级推进。
+- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐、P9.7.1 RustFS 文件存储接入、P9.8 Skills 文档规范对齐已完成，后续按代码质量、测试补强、安全边界、演示材料和产品体验升级推进。
 
 下一步建议：
 
 ```text
-进入 P9.2 代码质量治理：扫描异常、日志、分层、事务、分页、注释和敏感信息，形成问题清单并逐项修复。
+进入 P9.2 代码质量治理：扫描异常、日志、分层、事务、分页、注释和敏感信息，并按 P9.8 的 `Acceptance / Verify / Files` 模板形成问题清单后逐项修复。
 ```

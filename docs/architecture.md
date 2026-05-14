@@ -10,8 +10,21 @@ FixLedger 采用前后端分离架构，目标是用相对标准的 Java Web 技
 - 模块边界清晰：设备、保修、耗材、维修、提醒、附件、AI 分离。
 - 核心业务稳定：AI、通知、文件存储等外部能力不能影响核心数据保存。
 - 适合简历展示：覆盖 Spring Boot、MyBatis Plus、MySQL、Redis、Vue3、定时任务、文件上传、AI 辅助。
-- 适合逐步实现：先完成 MVP，再扩展 Redis、MinIO、AI、通知等能力。
+- 适合逐步实现：先完成 MVP，再系统性完善 Redis、对象存储、AI、通知、测试和安全能力。
 
+
+## 1.1 架构文档与 ADR 关系
+
+本文件描述当前总体架构和模块设计；项目级规格见 `docs/spec.md`，关键架构取舍见 `docs/decisions/`。
+
+当前已记录的 ADR：
+
+- `docs/decisions/0001-core-stack-and-layering.md`：核心技术栈与分层架构。
+- `docs/decisions/0002-rustfs-file-storage.md`：Docker 默认 RustFS 与 `FileStorageService` 抽象。
+- `docs/decisions/0003-ai-as-auxiliary-capability.md`：AI 只作为可关闭的辅助能力。
+- `docs/decisions/0004-household-scene-first-ui.md`：UI 以家庭场景优先，避免泛后台表达。
+
+以后修改技术栈、文件存储、AI、部署、安全边界或模块职责时，必须同步更新 ADR。
 ## 2. 总体架构
 
 ```mermaid
@@ -42,7 +55,7 @@ flowchart LR
     AiModule --> MySQL
 
     Gateway --> Redis[("Redis")]
-    File --> Storage["本地文件 / MinIO"]
+    File --> Storage["RustFS / 本地文件兜底"]
     AiModule --> LLM["大模型 API / Mock Provider"]
     Scheduler["Spring Scheduler"] --> Reminder
     Reminder --> Notify["站内通知 / 邮件扩展"]
@@ -66,7 +79,7 @@ flowchart LR
 | Spring Validation | - | 参数校验 |
 | MapStruct | - | DTO / Entity 转换 |
 | SpringDoc OpenAPI | 2.6.x | 接口文档，访问 `/swagger-ui.html` 和 `/v3/api-docs` |
-| 本地文件存储 / MinIO 预留 | - | 当前使用本地文件存储，后续可切换对象存储 |
+| RustFS / 本地文件存储 | - | 当前接入 RustFS 作为 S3 兼容对象存储，本地存储保留为测试和兜底 |
 | 自定义 AI Client | - | Mock Provider 与 OpenAI-compatible Client，AI 默认可关闭 |
 | Maven | 3.9+ | 构建工具 |
 
@@ -549,18 +562,17 @@ FileController
 FileResourceService
   ↓
 FileStorageService
-  ├── LocalFileStorageService（当前实现）
-  └── MinioFileStorageService（二期预留）
+  ├── LocalFileStorageService（测试和兜底）
+  └── S3FileStorageService（当前用于 RustFS，可兼容 MinIO 等 S3 服务）
 ```
 
-文件元数据存 MySQL，文件内容存本地文件系统或 MinIO。
+文件元数据存 MySQL，文件内容默认存 RustFS；本地文件系统保留为测试和兜底方案。
 
 文件访问流程：
 
 - 前端请求下载。
 - 后端校验用户和家庭空间权限。
-- 后端读取文件或生成临时访问 URL。
-- 返回文件流或安全 URL。
+- 后端读取文件流返回；对象存储临时访问 URL 仍是后续可选增强。
 
 ## 13. 部署架构
 
@@ -571,7 +583,7 @@ FileStorageService
 本机 Node.js / npm
 Docker MySQL
 Docker Redis
-本地文件存储
+Docker RustFS 或本地文件存储
 AI Mock
 ```
 
@@ -582,7 +594,7 @@ Nginx + Vue 前端
 Spring Boot 后端
 MySQL
 Redis
-MinIO（可选）
+RustFS
 ```
 
 ## 14. 关键设计取舍
@@ -595,9 +607,9 @@ MinIO（可选）
 
 项目核心价值是设备生命周期管理。AI 只负责降低录入和整理成本。如果 AI 不可用，系统仍能完成设备、保修、耗材、维修和提醒管理。
 
-### 14.3 为什么第一版使用本地文件存储
+### 14.3 为什么文件存储先抽象再接入 RustFS
 
-本地文件存储实现简单，便于快速完成 MVP。通过 `FileStorageService` 抽象后，后续可以平滑切换到 MinIO。
+第一版先用本地文件存储快速完成上传、下载和鉴权闭环。现在 Docker 演示环境接入 RustFS，文件内容进入对象存储，测试环境继续使用本地文件。通过 `FileStorageService` 抽象后，RustFS、MinIO 或其他 S3 兼容服务可以在不改业务接口的情况下替换。
 
 ### 14.4 为什么使用 Redis
 
@@ -622,6 +634,7 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - 附件上传。
 - 操作日志。
 - Docker Compose。
+- RustFS/S3 兼容对象存储。
 
 ### 阶段 3：AI 辅助
 
@@ -634,16 +647,61 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - 移动端适配。
 - 二维码标签。
 - PDF 说明书搜索。
-- 资产清单导出。
-## 16. P9.1 当前工程实现对齐
+- 家庭设备清单导出。
+
+## 16. P9.7.1 当前工程实现对齐
 
 当前代码实现与架构文档的对齐结论：
 
 - 后端实际版本为 Spring Boot `3.3.6`、JDK `21`、MyBatis Plus `3.5.9`、SpringDoc `2.6.0`。
 - 前端实际版本为 Vue `3.5.x`、TypeScript `5.6.x`、Vite `6.0.x`、Element Plus `2.8.x`。
-- Docker Compose 默认编排 `mysql`、`redis`、`backend`、`frontend` 四个服务，前端 Nginx 代理 `/api` 到后端。
+- Docker Compose 默认编排 `mysql`、`redis`、`rustfs`、`backend`、`frontend` 五个服务，前端 Nginx 代理 `/api` 到后端。
 - 数据库初始化脚本位于 `backend/src/main/resources/db/schema.sql`，演示数据位于 `backend/src/main/resources/db/demo-data.sql`。
 - Prompt 模板位于 `backend/src/main/resources/prompts/`，当前包含票据提取、故障排查和维修总结三个模板。
 - 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
-- 当前文件存储实现为 `LocalFileStorageService`，对象存储通过 `FileStorageService` 抽象预留。
+- 当前文件存储新增 `S3FileStorageService`，Docker 默认对接 RustFS；`LocalFileStorageService` 保留为测试和兜底。
 - 当前登录退出未实现 Redis Token 黑名单，后续安全阶段再评估 Refresh Token 和黑名单机制。
+
+## 17. RustFS 文件存储接入设计
+
+RustFS 兼容 S3 API，因此后端不直接依赖 RustFS 私有协议，而是使用 AWS S3 SDK 访问对象存储。Docker 环境默认启用 `storage-type=rustfs`，测试环境继续使用 `local`。
+
+```text
+FileResourceController
+  ↓
+FileResourceService
+  ↓
+FileStorageService
+  ├── S3FileStorageService（RustFS / MinIO / S3 兼容服务）
+  └── LocalFileStorageService（测试和兜底）
+```
+
+对象 Key 规则：
+
+```text
+families/{familyId}/{bizType}/{yyyy}/{MM}/{uuid}.{extension}
+```
+
+配置项：
+
+```yaml
+fixledger:
+  file:
+    storage-type: rustfs
+    local-root: ./uploads
+    s3:
+      endpoint: http://rustfs:9000
+      access-key: fixledger
+      secret-key: fixledger123
+      bucket: fixledger-files
+      region: us-east-1
+      path-style-access: true
+      create-bucket: true
+```
+
+说明：
+
+- `storage-type=rustfs`、`s3` 或 `minio` 时启用 `S3FileStorageService`，当前 Docker 默认使用 RustFS。
+- `path-style-access=true` 适配本地 RustFS、MinIO 这类 S3 兼容对象存储。
+- `create-bucket=true` 时后端启动后首次上传前自动创建 Bucket。
+- `fl_file_resource.storage_path` 保存对象 Key，不保存真实访问 URL，下载时仍由后端鉴权后读取对象流返回。
