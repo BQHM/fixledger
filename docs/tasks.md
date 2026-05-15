@@ -72,6 +72,7 @@
 | P9 系统性完善阶段 | P9.1 文档与实现对齐 | 核对 docs、README 与当前代码实现一致 | 已完成 |
 | P9 系统性完善阶段 | P9.2 代码质量治理 | 治理异常、日志、分层、事务、分页和注释 | 进行中 |
 | P9 系统性完善阶段 | P9.2.1 代码质量基线扫描与首批修复 | 扫描异常、返回值、事务、日志和敏感信息，完成首批异常契约修复 | 已完成 |
+| P9 系统性完善阶段 | P9.2.2 提醒扫描事务边界治理 | 拆清 Redis 去重、扫描查询、提醒和通知写库的事务边界 | 已完成 |
 | P9 系统性完善阶段 | P9.3 测试体系补强 | 补强 Service、Controller、核心规则和边界测试 | 计划中 |
 | P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 计划中 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 计划中 |
@@ -1035,6 +1036,52 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 - 当前工作区仍有 RustFS 相关未提交代码，本小版本不修改这些未提交文件，避免把“文件存储增强”和“代码质量治理”混成一个不可审查的大改动。
 - 本小版本只完成首轮代码质量基线和异常契约修复，后续 P9.2.2 继续处理事务边界、提醒去重和注释质量。
 
+#### P9.2.2 提醒扫描事务边界治理
+
+目标：
+
+- 将提醒扫描从“大事务包住扫描、Redis 去重和写库”调整为“扫描和 Redis 去重不占用数据库事务，只在创建提醒和站内通知时开启最小事务”。
+
+为什么做这一步：
+
+- 提醒扫描属于定时/批处理逻辑，可能一次扫描多个保修和耗材记录，如果整个扫描过程都放在事务中，会长时间占用数据库连接。
+- Redis 去重是外部基础设施能力，作用是降低重复扫描和并发插入风险，不应该被数据库事务包住。
+- 真正需要原子性的部分是同一条提醒和对应站内通知的数据库写入，因此事务应该缩小到这两个写库动作。
+
+任务拆分：
+
+- [x] Task: 拆分提醒扫描事务边界
+  - Acceptance: `scanFamily(...)` 不再整体加 `@Transactional`；Redis 去重发生在创建提醒事务之前。
+  - Verify: 阅读 `ReminderServiceImpl` 调用链，确认 `RedisService.setIfAbsent` 不在扫描大事务中执行。
+  - Files: `backend/src/main/java/com/fixledger/modules/reminder/service/ReminderServiceImpl.java`。
+- [x] Task: 保留提醒和通知写库原子性
+  - Acceptance: 创建提醒任务和站内通知仍在同一个数据库事务内，避免只写提醒不写通知。
+  - Verify: 使用测试覆盖数据库写入失败时 Redis 去重键会释放，避免失败后长时间误判重复。
+  - Files: `backend/src/main/java/com/fixledger/modules/reminder/service/ReminderCreationService.java`、`backend/src/test/java/com/fixledger/modules/reminder/ReminderServiceTransactionBoundaryTest.java`。
+- [x] Task: 回归提醒核心测试
+  - Acceptance: 原有提醒扫描、去重、未读、已读、忽略等行为保持不变。
+  - Verify: 执行提醒相关测试和后端完整测试。
+  - Files: `backend/src/test/java/com/fixledger/modules/reminder`。
+
+验收标准：
+
+- Redis 去重不在提醒扫描大事务中执行。
+- 提醒任务和站内通知写库仍保持同事务提交或回滚。
+- Redis 去重键在数据库写入失败时释放，允许后续扫描重试。
+- 原有提醒测试通过，后端完整测试通过。
+
+验证记录：
+
+- 已移除 `ReminderServiceImpl.scanFamily(...)` 上的大事务，扫描查询和 Redis 去重不再整体占用数据库事务。
+- 已新增 `ReminderCreationService.createReminderIfAbsent(...)`，只把提醒任务和站内通知写入放入同一个数据库事务。
+- 已新增 `ReminderServiceTransactionBoundaryTest`，覆盖扫描入口无大事务、写库失败释放 Redis 去重键、Redis 命中去重时不进入写库事务。
+- 已执行 `mvn -q -Dtest=ReminderServiceTransactionBoundaryTest test`。
+- 已执行 `mvn -q '-Dtest=ReminderServiceTest,ReminderServiceTransactionBoundaryTest' test`。
+- 已执行 `mvn test -q`，后端测试共 76 个，失败 0，错误 0，跳过 0。
+
+面试口径：
+
+- 可以说明“事务不是越大越安全”，事务应该只包住必须保证原子性的数据库写入；Redis、AI、文件存储、通知渠道等外部能力要和核心数据库事务解耦。
 ### P9.3 测试体系补强
 
 - [ ] 补强认证、家庭空间、设备、保修、耗材、维修、提醒和 AI 的 Service 测试。
@@ -1250,15 +1297,15 @@ MVP 完成需要满足：
 - docs 开发资料已完成第一版。
 - 后端 P0-P7 已完成：脚手架、认证与家庭空间、设备分类与设备档案、保修记录与附件、耗材与维修、提醒与看板、AI 辅助、后端工程化。
 - 前端 MVP 页面已完成：登录注册、主布局、首页看板、设备档案、设备详情、保修管理、耗材管理、维修记录、维修详情、提醒中心、附件库、AI 助手和家庭设置。
-- 后端完整 Maven 测试已通过，当前共 72 个测试用例，失败 0、错误 0。
+- 后端完整 Maven 测试已通过，当前共 76 个测试用例，失败 0、错误 0、跳过 0。
 - 前端 `npm run build` 已通过，Vue 类型检查和 Vite 构建均成功。
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS，前端通过 Nginx 代理后端 API。
 - P8 产品化体验重构已启动：首页升级为“我的家”，导航从后台模块转向家庭场景入口。
 - 已完成一次项目注释审查：补充后端核心类/公开方法 Javadoc，以及前端 API、Store、路由和字典工具注释。
-- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐、P9.7.1 RustFS 文件存储接入、P9.8 Skills 文档规范对齐已完成，后续按代码质量、测试补强、安全边界、演示材料和产品体验升级推进。
+- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐、P9.2.1 异常契约修复、P9.2.2 提醒扫描事务边界治理、P9.7.1 RustFS 文件存储接入、P9.8 Skills 文档规范对齐已完成，后续按代码质量、测试补强、安全边界、演示材料和产品体验升级推进。
 
 下一步建议：
 
 ```text
-进入 P9.2 代码质量治理：扫描异常、日志、分层、事务、分页、注释和敏感信息，并按 P9.8 的 `Acceptance / Verify / Files` 模板形成问题清单后逐项修复。
+继续 P9.2 代码质量治理：下一步进入 P9.2.3 日志与敏感信息治理，重点检查异常日志、Token/API Key 脱敏、定时任务日志和文件访问审计。
 ```

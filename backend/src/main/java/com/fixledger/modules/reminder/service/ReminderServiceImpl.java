@@ -13,13 +13,9 @@ import com.fixledger.modules.consumable.entity.ConsumableItemEntity;
 import com.fixledger.modules.consumable.mapper.ConsumableItemMapper;
 import com.fixledger.modules.family.service.FamilyService;
 import com.fixledger.modules.file.enums.FileBizType;
-import com.fixledger.modules.reminder.entity.NotificationRecordEntity;
 import com.fixledger.modules.reminder.entity.ReminderTaskEntity;
-import com.fixledger.modules.reminder.enums.NotificationChannel;
-import com.fixledger.modules.reminder.enums.NotificationStatus;
 import com.fixledger.modules.reminder.enums.ReminderStatus;
 import com.fixledger.modules.reminder.enums.ReminderType;
-import com.fixledger.modules.reminder.mapper.NotificationRecordMapper;
 import com.fixledger.modules.reminder.mapper.ReminderTaskMapper;
 import com.fixledger.modules.reminder.query.ReminderPageQuery;
 import com.fixledger.modules.reminder.response.ReminderResponse;
@@ -48,29 +44,29 @@ public class ReminderServiceImpl implements ReminderService {
   private static final Duration DEDUPE_TTL = Duration.ofDays(2);
 
   private final ReminderTaskMapper reminderTaskMapper;
-  private final NotificationRecordMapper notificationRecordMapper;
   private final WarrantyRecordMapper warrantyRecordMapper;
   private final ConsumableItemMapper consumableItemMapper;
   private final DeviceAssetMapper deviceAssetMapper;
   private final FamilyService familyService;
   private final RedisService redisService;
+  private final ReminderCreationService reminderCreationService;
 
   public ReminderServiceImpl(
       ReminderTaskMapper reminderTaskMapper,
-      NotificationRecordMapper notificationRecordMapper,
       WarrantyRecordMapper warrantyRecordMapper,
       ConsumableItemMapper consumableItemMapper,
       DeviceAssetMapper deviceAssetMapper,
       FamilyService familyService,
-      RedisService redisService
+      RedisService redisService,
+      ReminderCreationService reminderCreationService
   ) {
     this.reminderTaskMapper = reminderTaskMapper;
-    this.notificationRecordMapper = notificationRecordMapper;
     this.warrantyRecordMapper = warrantyRecordMapper;
     this.consumableItemMapper = consumableItemMapper;
     this.deviceAssetMapper = deviceAssetMapper;
     this.familyService = familyService;
     this.redisService = redisService;
+    this.reminderCreationService = reminderCreationService;
   }
 
   /**
@@ -169,7 +165,6 @@ public class ReminderServiceImpl implements ReminderService {
    * @return 业务响应数据
    */
   @Override
-  @Transactional
   public ReminderScanResponse scanFamily(Long userId, Long familyId) {
     familyService.checkFamilyMember(userId, familyId);
     return doScanFamily(familyId, LocalDate.now());
@@ -185,7 +180,6 @@ public class ReminderServiceImpl implements ReminderService {
    * @return 业务响应数据
    */
   @Override
-  @Transactional
   public ReminderScanResponse scanFamily(Long familyId, LocalDate today) {
     return doScanFamily(familyId, today);
   }
@@ -279,55 +273,22 @@ public class ReminderServiceImpl implements ReminderService {
     if (!redisService.setIfAbsent(key, "1", DEDUPE_TTL)) {
       return false;
     }
-    // 数据库再做一次同日同业务去重，保证 Redis 失效后仍不会重复生成。
-    if (existsReminder(familyId, reminderType, bizType, bizId, remindDate)) {
-      return false;
+    try {
+      // Redis 已在事务外完成去重，数据库事务只包住提醒和站内通知写入。
+      return reminderCreationService.createReminderIfAbsent(
+          familyId,
+          reminderType,
+          bizType,
+          bizId,
+          title,
+          content,
+          remindAt
+      );
+    } catch (RuntimeException e) {
+      // 写库失败时释放去重键，让下一次扫描可以重试，而不是被 Redis TTL 误拦截。
+      redisService.delete(key);
+      throw e;
     }
-    ReminderTaskEntity reminder = new ReminderTaskEntity();
-    reminder.setFamilyId(familyId);
-    reminder.setReminderType(reminderType.getCode());
-    reminder.setBizType(bizType);
-    reminder.setBizId(bizId);
-    reminder.setTitle(title);
-    reminder.setContent(content);
-    reminder.setRemindAt(remindAt);
-    reminder.setStatus(ReminderStatus.PENDING.getCode());
-    reminderTaskMapper.insert(reminder);
-    createInAppNotification(reminder);
-    return true;
-  }
-
-  private boolean existsReminder(
-      Long familyId,
-      ReminderType reminderType,
-      String bizType,
-      Long bizId,
-      LocalDate remindDate
-  ) {
-    LocalDateTime start = remindDate.atStartOfDay();
-    LocalDateTime end = remindDate.plusDays(1).atStartOfDay();
-    Long count = reminderTaskMapper.selectCount(new LambdaQueryWrapper<ReminderTaskEntity>()
-        .eq(ReminderTaskEntity::getFamilyId, familyId)
-        .eq(ReminderTaskEntity::getReminderType, reminderType.getCode())
-        .eq(ReminderTaskEntity::getBizType, bizType)
-        .eq(ReminderTaskEntity::getBizId, bizId)
-        .ge(ReminderTaskEntity::getRemindAt, start)
-        .lt(ReminderTaskEntity::getRemindAt, end));
-    return count > 0;
-  }
-
-  private void createInAppNotification(ReminderTaskEntity reminder) {
-    // 当前阶段只落站内通知记录，邮件和 Webhook 可在通知基础设施中扩展。
-    NotificationRecordEntity notification = new NotificationRecordEntity();
-    notification.setFamilyId(reminder.getFamilyId());
-    notification.setUserId(reminder.getUserId());
-    notification.setReminderId(reminder.getId());
-    notification.setChannel(NotificationChannel.IN_APP.getCode());
-    notification.setTitle(reminder.getTitle());
-    notification.setContent(reminder.getContent());
-    notification.setStatus(NotificationStatus.SENT.getCode());
-    notification.setSentAt(LocalDateTime.now());
-    notificationRecordMapper.insert(notification);
   }
 
   private LambdaQueryWrapper<ReminderTaskEntity> buildPageWrapper(
