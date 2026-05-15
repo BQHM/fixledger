@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -16,12 +17,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * <p>
- * 文件功能说明：文件存储实现，封装外部依赖和技术细节。
+ * 文件功能说明：本地文件存储实现，主要用于测试环境和对象存储不可用时的兜底。
  * </p>
  *
  * @Author FixLedger
  */
 @Service
+@ConditionalOnProperty(
+    prefix = "fixledger.file",
+    name = "storage-type",
+    havingValue = "local",
+    matchIfMissing = true
+)
 public class LocalFileStorageService implements FileStorageService {
 
   private final FileStorageProperties properties;

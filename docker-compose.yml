@@ -54,7 +54,38 @@ services:
       retries: 10
 
   # =========================================
-  # 3. 后端应用服务
+  # 3. RustFS 对象存储服务
+  # -----------------------------------------
+  # 作用：
+  #   - 存储发票、保修卡、说明书、维修单等附件内容。
+  #   - 兼容 S3 API，后端通过 AWS S3 SDK 访问。
+  # =========================================
+  rustfs:
+    image: ${RUSTFS_IMAGE:-rustfs/rustfs:latest}
+    container_name: fixledger-rustfs
+    restart: unless-stopped
+    environment:
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_ACCESS_KEY: ${FILE_S3_ACCESS_KEY:-fixledger}
+      RUSTFS_SECRET_KEY: ${FILE_S3_SECRET_KEY:-fixledger123}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "${RUSTFS_API_PORT:-9000}:9000"
+      - "${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs_data:/data
+    command:
+      - --address
+      - :9000
+      - --console-enable
+      - --access-key
+      - ${FILE_S3_ACCESS_KEY:-fixledger}
+      - --secret-key
+      - ${FILE_S3_SECRET_KEY:-fixledger123}
+      - /data
+
+  # =========================================
+  # 4. 后端应用服务
   # -----------------------------------------
   # 作用：
   #   - 提供认证、设备档案、保修、耗材、维修、提醒、看板和 AI 辅助接口。
@@ -74,6 +105,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rustfs:
+        condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SERVER_PORT: 8080
@@ -88,7 +121,15 @@ services:
       REDIS_DATABASE: ${REDIS_DATABASE:-0}
       JWT_SECRET: ${JWT_SECRET:-fixledger-docker-dev-secret-change-me-32-bytes}
       JWT_ACCESS_TOKEN_TTL_SECONDS: ${JWT_ACCESS_TOKEN_TTL_SECONDS:-86400}
+      FILE_STORAGE_TYPE: ${FILE_STORAGE_TYPE:-rustfs}
       FILE_STORAGE_ROOT: /app/uploads
+      FILE_S3_ENDPOINT: ${FILE_S3_ENDPOINT:-http://rustfs:9000}
+      FILE_S3_ACCESS_KEY: ${FILE_S3_ACCESS_KEY:-fixledger}
+      FILE_S3_SECRET_KEY: ${FILE_S3_SECRET_KEY:-fixledger123}
+      FILE_S3_BUCKET: ${FILE_S3_BUCKET:-fixledger-files}
+      FILE_S3_REGION: ${FILE_S3_REGION:-us-east-1}
+      FILE_S3_PATH_STYLE_ACCESS: ${FILE_S3_PATH_STYLE_ACCESS:-true}
+      FILE_S3_CREATE_BUCKET: ${FILE_S3_CREATE_BUCKET:-true}
       FILE_MAX_SIZE: ${FILE_MAX_SIZE:-20MB}
       FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-25MB}
       AI_ENABLED: ${AI_ENABLED:-false}
@@ -105,7 +146,7 @@ services:
       - backend_uploads:/app/uploads
 
   # =========================================
-  # 4. 前端 Web 服务
+  # 5. 前端 Web 服务
   # -----------------------------------------
   # 作用：
   #   - 构建 Vue3 静态页面并通过 Nginx 提供访问。
@@ -133,4 +174,5 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  rustfs_data:
   backend_uploads:

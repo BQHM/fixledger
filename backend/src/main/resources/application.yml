@@ -43,8 +43,16 @@ fixledger:
     secret: ${JWT_SECRET:fixledger-local-dev-secret-must-be-replaced}
     access-token-ttl-seconds: ${JWT_ACCESS_TOKEN_TTL_SECONDS:86400}
   file:
-    storage-type: local
+    storage-type: ${FILE_STORAGE_TYPE:local}
     local-root: ${FILE_STORAGE_ROOT:./uploads}
+    s3:
+      endpoint: ${FILE_S3_ENDPOINT:http://localhost:9000}
+      access-key: ${FILE_S3_ACCESS_KEY:fixledger}
+      secret-key: ${FILE_S3_SECRET_KEY:fixledger123}
+      bucket: ${FILE_S3_BUCKET:fixledger-files}
+      region: ${FILE_S3_REGION:us-east-1}
+      path-style-access: ${FILE_S3_PATH_STYLE_ACCESS:true}
+      create-bucket: ${FILE_S3_CREATE_BUCKET:true}
   ai:
     enabled: ${AI_ENABLED:false}
     provider: ${AI_PROVIDER:mock}
@@ -53,7 +61,3 @@ fixledger:
     model: ${AI_MODEL:}
   reminder:
     scan-cron: ${REMINDER_SCAN_CRON:0 0 8 * * *}
-
-
-
-

@@ -4,7 +4,11 @@ import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 文件存储抽象，屏蔽本地文件系统和后续 MinIO 实现差异。
+ * <p>
+ * 文件功能说明：文件存储抽象，屏蔽本地文件系统和 S3 兼容对象存储实现差异。
+ * </p>
+ *
+ * @Author FixLedger
  */
 public interface FileStorageService {
 
@@ -21,7 +25,7 @@ public interface FileStorageService {
   /**
    * 按存储路径读取文件资源。
    *
-   * @param storagePath 数据库中保存的相对存储路径
+   * @param storagePath 数据库中保存的相对存储路径或对象 Key
    * @return 可下载资源
    */
   Resource loadAsResource(String storagePath);

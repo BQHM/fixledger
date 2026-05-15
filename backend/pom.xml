@@ -24,6 +24,7 @@
     <mapstruct.version>1.6.3</mapstruct.version>
     <mybatis-plus.version>3.5.9</mybatis-plus.version>
     <springdoc.version>2.6.0</springdoc.version>
+    <aws-sdk.version>2.29.39</aws-sdk.version>
   </properties>
 
   <dependencies>
@@ -66,6 +67,11 @@
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
       <version>${springdoc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+      <version>${aws-sdk.version}</version>
     </dependency>
     <dependency>
       <groupId>org.mapstruct</groupId>
@@ -153,4 +159,3 @@
     </plugins>
   </build>
 </project>
-
