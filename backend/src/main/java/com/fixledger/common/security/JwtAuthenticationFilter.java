@@ -17,7 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * <p>
- * 文件功能说明：认证安全过滤器，负责请求进入业务层前的安全处理。
+ * 文件功能说明：JWT 认证过滤器，在请求进入业务层前解析令牌并拦截已退出令牌。
  * </p>
  *
  * @Author FixLedger
@@ -25,12 +25,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private static final String BEARER_PREFIX = "Bearer ";
+  public static final String BEARER_PREFIX = "Bearer ";
 
   private final JwtTokenProvider jwtTokenProvider;
+  private final JwtBlacklistService jwtBlacklistService;
 
-  public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+  public JwtAuthenticationFilter(
+      JwtTokenProvider jwtTokenProvider,
+      JwtBlacklistService jwtBlacklistService
+  ) {
     this.jwtTokenProvider = jwtTokenProvider;
+    this.jwtBlacklistService = jwtBlacklistService;
   }
 
   @Override
@@ -49,6 +54,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private void authenticate(String token) {
     try {
       CurrentUser currentUser = jwtTokenProvider.parseToken(token);
+      if (jwtBlacklistService.isBlacklisted(currentUser.tokenId())) {
+        SecurityContextHolder.clearContext();
+        return;
+      }
       UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
           currentUser,
           null,

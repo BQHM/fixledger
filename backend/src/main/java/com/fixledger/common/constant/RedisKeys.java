@@ -13,6 +13,10 @@ public final class RedisKeys {
     return PREFIX + "reminder:dedupe:" + type + ":" + bizId + ":" + date;
   }
 
+  public static String authBlacklist(String tokenId) {
+    return PREFIX + "auth:blacklist:" + tokenId;
+  }
+
   public static String dashboardSummary(Long familyId) {
     return PREFIX + "dashboard:summary:" + familyId;
   }

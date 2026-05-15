@@ -28,11 +28,12 @@ public interface AuthService {
   LoginResponse login(LoginRequest request);
 
   /**
-   * 退出当前登录会话，后续接入 JWT 黑名单时在此扩展。
+   * 退出当前登录会话，并让本次访问令牌立即失效。
    *
+   * @param token 当前请求携带的 JWT 令牌
    * @return 是否处理成功
    */
-  boolean logout();
+  boolean logout(String token);
 
   /**
    * 根据安全上下文读取当前登录用户资料。

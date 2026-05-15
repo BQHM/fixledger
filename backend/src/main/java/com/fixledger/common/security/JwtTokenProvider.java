@@ -4,14 +4,16 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
 /**
  * <p>
- * 文件功能说明：认证安全组件，为各业务模块提供可复用能力。
+ * 文件功能说明：JWT 令牌组件，负责签发、解析令牌并计算令牌剩余有效期。
  * </p>
  *
  * @Author FixLedger
@@ -30,18 +32,17 @@ public class JwtTokenProvider {
   }
 
   /**
-   * @Author FixLedger
-   * <p>
-   * 功能说明：完成生成 JWT 令牌安全处理。
-   * </p>
+   * 生成带唯一 jti 的访问令牌，便于退出登录时将本次令牌加入黑名单。
+   *
    * @param userId 当前用户 ID
    * @param username 用户名
-   * @return 令牌或解析结果
+   * @return JWT 访问令牌
    */
   public String generateToken(Long userId, String username) {
     Instant now = Instant.now();
     Instant expiresAt = now.plusSeconds(jwtProperties.accessTokenTtlSeconds());
     return Jwts.builder()
+        .id(UUID.randomUUID().toString())
         .subject(String.valueOf(userId))
         .claim(USERNAME_CLAIM, username)
         .issuedAt(Date.from(now))
@@ -51,32 +52,44 @@ public class JwtTokenProvider {
   }
 
   /**
-   * @Author FixLedger
-   * <p>
-   * 功能说明：完成解析数据安全处理。
-   * </p>
+   * 解析 JWT 并提取当前用户身份和令牌唯一标识。
+   *
    * @param token JWT 令牌
-   * @return 令牌或解析结果
+   * @return 当前用户上下文
    */
   public CurrentUser parseToken(String token) {
-    Claims claims = Jwts.parser()
+    Claims claims = parseClaims(token);
+    Long userId = Long.valueOf(claims.getSubject());
+    String username = claims.get(USERNAME_CLAIM, String.class);
+    return new CurrentUser(userId, username, claims.getId());
+  }
+
+  /**
+   * 计算令牌剩余有效期，用于黑名单 TTL，避免 Redis 长期保存已过期令牌。
+   *
+   * @param token JWT 令牌
+   * @return 剩余有效期；已过期时返回 0 秒
+   */
+  public Duration getRemainingTtl(String token) {
+    Date expiration = parseClaims(token).getExpiration();
+    long remainingMillis = expiration.getTime() - System.currentTimeMillis();
+    return remainingMillis <= 0 ? Duration.ZERO : Duration.ofMillis(remainingMillis);
+  }
+
+  /**
+   * 查询访问令牌默认有效期，供登录响应展示。
+   *
+   * @return 访问令牌默认有效秒数
+   */
+  public long getAccessTokenTtlSeconds() {
+    return jwtProperties.accessTokenTtlSeconds();
+  }
+
+  private Claims parseClaims(String token) {
+    return Jwts.parser()
         .verifyWith(secretKey)
         .build()
         .parseSignedClaims(token)
         .getPayload();
-    Long userId = Long.valueOf(claims.getSubject());
-    String username = claims.get(USERNAME_CLAIM, String.class);
-    return new CurrentUser(userId, username);
-  }
-
-  /**
-   * @Author FixLedger
-   * <p>
-   * 功能说明：完成查询安全处理。
-   * </p>
-   * @return 查询结果
-   */
-  public long getAccessTokenTtlSeconds() {
-    return jwtProperties.accessTokenTtlSeconds();
   }
 }

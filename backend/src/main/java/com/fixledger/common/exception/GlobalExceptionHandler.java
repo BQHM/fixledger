@@ -84,7 +84,7 @@ public class GlobalExceptionHandler {
   })
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   public Result<Void> handleBadRequest(Exception e) {
-    return Result.error(ErrorCode.BAD_REQUEST, e.getMessage());
+    return Result.error(ErrorCode.BAD_REQUEST, "请求参数格式不正确");
   }
 
   /**

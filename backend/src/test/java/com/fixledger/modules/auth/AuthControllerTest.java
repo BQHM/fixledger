@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fixledger.infrastructure.redis.TestRedisConfig;
 import com.fixledger.modules.auth.request.LoginRequest;
 import com.fixledger.modules.auth.request.RegisterRequest;
 import com.fixledger.modules.auth.response.LoginResponse;
@@ -17,6 +18,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(TestRedisConfig.class)
 @Transactional
 class AuthControllerTest {
 
@@ -55,6 +58,34 @@ class AuthControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value(0))
         .andExpect(jsonPath("$.data.username").value("tokenuser"));
+  }
+
+  @Test
+  @DisplayName("退出登录后旧 Token 立即失效")
+  void logoutInvalidatesCurrentToken() throws Exception {
+    authService.register(new RegisterRequest("logoutuser", null, "123456", "退出用户"));
+    LoginResponse login = authService.login(new LoginRequest("logoutuser", "123456"));
+    String authorization = "Bearer " + login.accessToken();
+
+    mockMvc.perform(post("/api/auth/logout")
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.code").value(0))
+        .andExpect(jsonPath("$.data").value(true));
+
+    mockMvc.perform(get("/api/auth/me")
+            .header(HttpHeaders.AUTHORIZATION, authorization))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(1002));
+  }
+
+  @Test
+  @DisplayName("无效 Token 不能访问受保护接口")
+  void invalidTokenReturnsUnauthorized() throws Exception {
+    mockMvc.perform(get("/api/auth/me")
+            .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.code").value(1002));
   }
 
   @Test

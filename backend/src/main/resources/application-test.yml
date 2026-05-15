@@ -16,7 +16,7 @@ spring:
 
 logging:
   level:
-    com.fixledger: debug
+    com.fixledger: info
 fixledger:
   file:
     storage-type: local

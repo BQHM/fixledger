@@ -190,6 +190,21 @@ class FileResourceServiceTest {
   }
 
   @Test
+  @DisplayName("拒绝包含路径穿越字符的文件名")
+  void rejectPathTraversalFileName() {
+    TestFixture fixture = createFixture("filepath");
+
+    assertThatThrownBy(() -> fileResourceService.uploadFile(
+        fixture.userId(),
+        fixture.familyId(),
+        FileBizType.DEVICE.getCode(),
+        fixture.deviceId(),
+        mockFile("../invoice.jpg", "image/jpeg", "bad")
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FILE_TYPE_NOT_ALLOWED));
+  }
+
+  @Test
   @DisplayName("非家庭成员不能下载附件")
   void nonFamilyMemberCannotDownloadFile() {
     TestFixture owner = createFixture("fileowner");

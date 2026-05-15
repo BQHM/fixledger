@@ -286,7 +286,14 @@ public class FileResourceServiceImpl implements FileResourceService {
   }
 
   private String cleanOriginalName(String originalName) {
-    return StringUtils.hasText(originalName) ? StringUtils.cleanPath(originalName) : "";
+    if (!StringUtils.hasText(originalName)) {
+      return "";
+    }
+    String cleaned = StringUtils.cleanPath(originalName);
+    if (cleaned.contains("..") || cleaned.contains("/") || cleaned.contains("\\")) {
+      throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "文件名不允许包含路径字符");
+    }
+    return cleaned;
   }
 
   private String resolveExtension(String originalName) {

@@ -70,16 +70,19 @@
 | P8 产品化体验重构 | P8.3 设备护照 | 设备卡片墙、设备护照摘要和生命周期时间线 | 计划中 |
 | P8 产品化体验重构 | P8.4 凭证盒 | 附件分类、凭证完整度和家庭凭证收纳体验 | 计划中 |
 | P9 系统性完善阶段 | P9.1 文档与实现对齐 | 核对 docs、README 与当前代码实现一致 | 已完成 |
-| P9 系统性完善阶段 | P9.2 代码质量治理 | 治理异常、日志、分层、事务、分页和注释 | 进行中 |
+| P9 系统性完善阶段 | P9.2 代码质量治理 | 治理异常、日志、分层、事务、分页和注释 | 已完成 |
 | P9 系统性完善阶段 | P9.2.1 代码质量基线扫描与首批修复 | 扫描异常、返回值、事务、日志和敏感信息，完成首批异常契约修复 | 已完成 |
 | P9 系统性完善阶段 | P9.2.2 提醒扫描事务边界治理 | 拆清 Redis 去重、扫描查询、提醒和通知写库的事务边界 | 已完成 |
+| P9 系统性完善阶段 | P9.2.3 日志、敏感信息与认证退出治理 | 收敛开发日志、JWT 退出黑名单、异常信息脱敏和文件名安全 | 已完成 |
 | P9 系统性完善阶段 | P9.3 测试体系补强 | 补强 Service、Controller、核心规则和边界测试 | 计划中 |
 | P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 计划中 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 计划中 |
 | P9 系统性完善阶段 | P9.6 产品体验继续打磨 | 继续推进设备护照、家庭日历、凭证盒和智能助手 | 计划中 |
 | P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 进行中，RustFS 已接入 |
 | P9 系统性完善阶段 | P9.7.1 RustFS 文件存储接入 | 将上传文件从本地存储切换为 RustFS/S3 兼容对象存储 | 已完成 |
+| P9 系统性完善阶段 | P9.7.2 CI 与可选增强评估 | 增加质量门禁并明确真实 AI、通知、预览等增强边界 | 计划中 |
 | P9 系统性完善阶段 | P9.8 Skills 文档规范对齐 | 按 skills 规范补齐规格、ADR、任务模板、边界和验证口径 | 已完成 |
+| P9 系统性完善阶段 | P9.9 P9 全量验收收尾 | 汇总 P9 验收、验证命令、面试口径和后续 P10 方向 | 计划中 |
 | P10 文档对齐 | P10.1 需求文档复核 | 深度复核 `requirements.md` 与当前产品边界 | 计划中 |
 | P10 文档对齐 | P10.2 架构文档复核 | 深度复核 `architecture.md` 与当前工程实现 | 计划中 |
 | P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 计划中 |
@@ -1082,39 +1085,122 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 面试口径：
 
 - 可以说明“事务不是越大越安全”，事务应该只包住必须保证原子性的数据库写入；Redis、AI、文件存储、通知渠道等外部能力要和核心数据库事务解耦。
+
+#### P9.2.3 日志、敏感信息与认证退出治理
+
+目标：
+
+- 把 P9.2 的质量治理继续往安全和可运维方向收口，重点处理开发日志过细、退出登录未使 Token 失效、请求错误信息过度暴露、上传文件名安全等问题。
+
+为什么做这一步：
+
+- 面试时“登录退出是否真的退出”“日志会不会打出密码或 Token”“异常是否会暴露内部实现”都是高频追问。
+- JWT 是无状态令牌，单纯前端删除 Token 只是不再携带令牌，并不能让已经签发的 Token 立即失效；需要后端黑名单兜底。
+- 开发日志过细会把 SQL 参数、密码哈希、AI 分析内容等写入日志，不利于安全和演示。
+
+任务拆分：
+
+- [x] Task: 收敛开发与测试日志级别
+  - Acceptance: 默认 dev/test 不再输出 MyBatis SQL 参数级 debug 日志，避免密码哈希、AI 内容和业务参数长期落日志。
+  - Verify: 检查 `application-dev.yml`、`application-test.yml` 的日志级别；执行后端测试确认不影响功能。
+  - Files: `backend/src/main/resources/application-dev.yml`、`backend/src/main/resources/application-test.yml`。
+- [x] Task: 实现 JWT 退出黑名单
+  - Acceptance: 调用退出登录后，同一个 JWT 再访问受保护接口返回未认证；黑名单 Key 使用 `fixledger:` 前缀并设置 TTL。
+  - Verify: 补充 Controller 测试覆盖登录、退出、旧 Token 失效。
+  - Files: `backend/src/main/java/com/fixledger/common/security`、`backend/src/main/java/com/fixledger/modules/auth`、`backend/src/test/java/com/fixledger/modules/auth`。
+- [x] Task: 请求错误和文件名安全收口
+  - Acceptance: JSON 解析、参数类型错误等响应不暴露底层异常细节；上传文件名拒绝路径穿越字符。
+  - Verify: 补充异常处理和文件上传安全测试。
+  - Files: `backend/src/main/java/com/fixledger/common/exception/GlobalExceptionHandler.java`、`backend/src/main/java/com/fixledger/modules/file/service/FileResourceServiceImpl.java`。
+
+验收标准：
+
+- 退出登录后的 Token 不可继续访问接口。
+- Redis 黑名单 Key 集中定义，TTL 不超过 Token 剩余有效期。
+- 日志不输出密码、Token、API Key、完整请求体或过细 SQL 参数。
+- 错误响应对前端友好，但不暴露后端内部异常堆栈或解析细节。
+
+面试口径：
+
+- 可以说明“JWT 天然无状态，退出登录如果只靠前端删除 Token，旧 Token 在过期前仍可用；因此后端用 Redis 黑名单保存 Token 指纹，并按剩余有效期设置 TTL”。
+
+验证记录：
+
+- 已将 dev/test 日志级别从 `debug` 收敛到 `info`，避免 SQL 参数和业务内容在本地默认日志中过度输出。
+- 已新增 JWT `jti`，并通过 `JwtBlacklistService` 将退出登录后的 Token ID 写入 Redis 黑名单，TTL 使用令牌剩余有效期。
+- 已将请求解析异常统一返回“请求参数格式不正确”，避免把 JSON 解析细节或类型转换细节暴露给前端。
+- 已在附件上传中拒绝包含 `..`、`/`、`\` 的文件名，降低路径穿越风险。
+- 已执行 `mvn -q '-Dtest=AuthControllerTest,FileResourceServiceTest,GlobalExceptionHandlerTest' test`，目标测试通过。
+- 已执行 `mvn test -q`，后端测试共 80 个，失败 0，错误 0，跳过 0。
 ### P9.3 测试体系补强
 
-- [ ] 补强认证、家庭空间、设备、保修、耗材、维修、提醒和 AI 的 Service 测试。
-- [ ] 补强 Controller 参数校验、认证拦截和家庭空间越权测试。
-- [ ] 补强提醒去重、耗材下次提醒日期、维修状态流转等核心规则测试。
-- [ ] 固化后端 `mvn test`、前端 `npm run build` 的本地验证流程。
-- [ ] 增加 Docker 一键启动后的基础冒烟检查说明。
+目标：
+
+- 不是追求测试数量，而是补齐最能证明项目质量的风险测试：认证退出、家庭空间越权、附件安全、提醒去重、状态流转和异常契约。
+
+任务拆分：
+
+- [ ] Task: 认证与安全测试补强
+  - Acceptance: 覆盖未登录、登录成功、退出后旧 Token 失效、无效 Token 不能访问受保护接口。
+  - Verify: `mvn -q -Dtest=AuthControllerTest test`。
+  - Files: `backend/src/test/java/com/fixledger/modules/auth/AuthControllerTest.java`。
+- [ ] Task: 附件与文件安全测试补强
+  - Acceptance: 覆盖非法扩展名、非法 MIME、路径穿越文件名、非家庭成员下载附件。
+  - Verify: `mvn -q -Dtest=FileResourceServiceTest test`。
+  - Files: `backend/src/test/java/com/fixledger/modules/file/FileResourceServiceTest.java`。
+- [ ] Task: 全量质量门禁固化
+  - Acceptance: 后端完整测试、前端构建和 Docker Compose 配置校验有固定命令，并在 P9 收尾记录结果。
+  - Verify: `mvn test`、`npm run build`、`docker compose config --quiet`。
+  - Files: `docs/tasks.md`、`README.md`。
 
 验收标准：
 
 - 核心业务规则有测试证明。
-- 面试时可以说明测试覆盖了哪些关键风险。
+- 面试时可以说明测试覆盖了哪些关键风险：认证、权限、文件、安全、提醒和状态流转。
 
 ### P9.4 安全与数据隔离
 
-- [ ] 审查所有业务接口是否校验家庭空间归属。
-- [ ] 审查附件上传、下载、删除是否有家庭空间权限校验。
-- [ ] 审查 JWT 过期、退出登录、黑名单和刷新 Token 的当前实现与后续计划。
-- [ ] 审查前后端是否避免展示或记录敏感字段。
-- [ ] 审查文件大小、文件类型、分页上限和请求参数边界。
+目标：
+
+- 将 P9.2 与 P9.3 已发现和已覆盖的风险收敛为安全审查结论，保证项目能讲清“认证、授权、数据隔离、文件安全、日志脱敏”。
+
+任务拆分：
+
+- [ ] Task: 家庭空间权限审查
+  - Acceptance: 设备、保修、耗材、维修、提醒、附件、AI 和看板接口均通过 `familyId` 校验当前用户是否为家庭成员。
+  - Verify: 使用 `rg` 和人工复核 Service 调用链；关键越权路径已有测试覆盖。
+  - Files: `backend/src/main/java/com/fixledger/modules`。
+- [ ] Task: 文件上传与下载安全审查
+  - Acceptance: 文件大小、扩展名、MIME、业务对象归属、附件下载权限和逻辑删除均有约束。
+  - Verify: 文件服务测试通过；接口仍由后端鉴权后转发下载。
+  - Files: `backend/src/main/java/com/fixledger/modules/file`。
+- [ ] Task: JWT 与敏感信息审查
+  - Acceptance: 密码只存哈希；登录响应不返回密码哈希；退出登录进入 Redis 黑名单；日志不打印 Token/API Key。
+  - Verify: 认证测试通过；敏感关键词扫描无真实密钥。
+  - Files: `backend/src/main/java/com/fixledger/common/security`、`backend/src/main/java/com/fixledger/modules/auth`。
 
 验收标准：
 
 - 不同家庭用户不能越权访问设备、保修、耗材、维修、提醒和附件。
 - 敏感信息不进入接口响应和日志。
+- 安全边界能形成可复述的面试答案。
 
 ### P9.5 演示体验与面试材料
 
-- [ ] 整理稳定的演示数据，覆盖用户、家庭、设备、保修、耗材、维修、提醒、附件和 AI。
-- [ ] 在 `README.md` 中明确演示账号、访问地址和 Docker 一键启动命令。
-- [ ] 整理一条 5-10 分钟项目演示路径。
-- [ ] 整理面试讲解要点：项目背景、技术栈、架构、数据库、核心业务、难点和后续优化。
-- [ ] 准备常见面试问题答案，例如数据隔离、事务边界、提醒去重、AI Mock 和文件存储方案。
+目标：
+
+- 把项目整理成“能运行、能演示、能解释”的面试项目，而不是只有代码的仓库。
+
+任务拆分：
+
+- [ ] Task: 面试讲解文档
+  - Acceptance: 新增面试指南，覆盖项目背景、技术栈、架构分层、数据库设计、接口设计、Docker、AI、文件、Redis、完成情况和后续计划。
+  - Verify: 人工检查能按 5-10 分钟顺序讲完整。
+  - Files: `docs/interview-guide.md`、`README.md`。
+- [ ] Task: 演示路径整理
+  - Acceptance: README 明确演示账号、访问地址、Docker 命令和推荐演示路线。
+  - Verify: `docker compose config --quiet`；手工按路线检查页面入口。
+  - Files: `README.md`、`docs/tasks.md`。
 
 验收标准：
 
@@ -1123,11 +1209,24 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 ### P9.6 产品体验继续打磨
 
-- [ ] 将设备列表进一步改造成按房间或场景组织的设备卡片墙。
-- [ ] 将设备详情升级为“设备护照”，聚合保修、耗材、维修和附件生命周期。
-- [ ] 将提醒日历强化为家庭日历，用真实图钉风格标记关键日期。
-- [ ] 将附件库升级为“凭证盒”，按发票、保修卡、说明书、维修单组织。
-- [ ] 将 AI 能力表达为“智能助手”，强调辅助录入、辅助分析和辅助总结。
+目标：
+
+- 在不大改接口的前提下，把前端表达继续从“后台 CRUD”收口到“家庭设备管家”。
+
+任务拆分：
+
+- [ ] Task: 设备护照入口场景化
+  - Acceptance: 设备列表优先按房间/场景展示设备卡片墙，同时保留筛选、分页和编辑入口。
+  - Verify: `npm run build`；浏览器检查 `/devices` 移动端和桌面端布局。
+  - Files: `frontend/src/views/devices/DeviceListView.vue`、`docs/ui.md`。
+- [ ] Task: 演示登录体验收口
+  - Acceptance: 登录页不默认填入密码，改为显式“填入演示账号”动作，避免把演示密码误认为真实密钥。
+  - Verify: `npm run build`。
+  - Files: `frontend/src/views/auth/LoginView.vue`。
+- [ ] Task: 已完成体验确认
+  - Acceptance: 设备详情已是设备护照，家庭日历已有真实图钉风格，附件库已按凭证盒表达，AI 已表达为智能助手。
+  - Verify: 人工检查页面和文档描述一致。
+  - Files: `docs/ui.md`、`docs/tasks.md`。
 
 验收标准：
 
@@ -1211,16 +1310,51 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 ### P9.7 可选增强能力
 
-- [x] 评估本地文件、MinIO 和 RustFS 的使用边界，当前优先接入 RustFS 对象存储。
-- [ ] 在保留 Mock 的前提下接入真实 OpenAI-compatible Provider。
-- [ ] 扩展站内通知、邮件、Webhook 等通知渠道。
-- [ ] 增加 GitHub Actions 或其他 CI 流程，自动运行后端测试和前端构建。
-- [ ] 评估数据导入导出、操作日志、附件预览和二维码等增强能力。
+目标：
+
+- 只补强对面试展示和工程质量最有价值的可选能力，真实 AI、邮件/Webhook、文件预览等高复杂度能力先保留为 P10 计划。
+
+任务拆分：
+
+- [x] Task: RustFS 对象存储接入
+  - Acceptance: Docker 默认使用 RustFS，业务层仍通过 `FileStorageService`。
+  - Verify: `docker compose config --quiet`、后端测试。
+  - Files: `docker-compose.yml`、`backend/src/main/java/com/fixledger/infrastructure/file`。
+- [ ] Task: CI 质量门禁
+  - Acceptance: GitHub Actions 自动执行后端测试、前端构建和 Docker Compose 配置校验。
+  - Verify: 本地执行同等命令；工作流文件语法可读。
+  - Files: `.github/workflows/ci.yml`、`README.md`。
+- [ ] Task: 可选增强边界说明
+  - Acceptance: 明确真实 AI、邮件/Webhook、文件预览、OCR、Refresh Token 进入后续 P10，不阻塞 P9 验收。
+  - Verify: 文档中能清晰说明为什么先不做。
+  - Files: `docs/tasks.md`、`docs/interview-guide.md`。
 
 验收标准：
 
-- 增强能力不阻塞核心业务闭环。
-- AI、文件存储和通知能力都可以关闭或替换。
+- 增强能力不影响核心 MVP 使用。
+- 可选能力有清晰开关、配置和失败兜底。
+
+### P9.9 P9 全量验收收尾
+
+目标：
+
+- 汇总 P9 的文档、代码、测试、安全、演示和体验结果，正式关闭系统性完善阶段。
+
+任务拆分：
+
+- [ ] Task: 全量验证
+  - Acceptance: 后端测试、前端构建、Docker Compose 配置校验全部通过。
+  - Verify: `mvn test`、`npm run build`、`docker compose config --quiet`。
+  - Files: `docs/tasks.md`。
+- [ ] Task: P9 完成状态归档
+  - Acceptance: `docs/tasks.md` 当前状态、验证记录和下一阶段建议更新为 P10。
+  - Verify: 人工检查 P9 小版本状态和最终验证记录一致。
+  - Files: `docs/tasks.md`。
+
+验收标准：
+
+- P9 各小版本均有明确完成或延期说明。
+- 项目进入 P10 时边界清晰，不把可选增强误认为 MVP 缺口。
 
 ## 13. MVP 验收清单
 
@@ -1307,5 +1441,5 @@ MVP 完成需要满足：
 下一步建议：
 
 ```text
-继续 P9.2 代码质量治理：下一步进入 P9.2.3 日志与敏感信息治理，重点检查异常日志、Token/API Key 脱敏、定时任务日志和文件访问审计。
+进入 P9.3 测试体系补强：继续围绕认证、附件、家庭空间越权、提醒去重和状态流转补齐关键风险测试，并固化后端测试、前端构建和 Docker 配置校验。
 ```

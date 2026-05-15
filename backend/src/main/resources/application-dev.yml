@@ -19,5 +19,5 @@ spring:
 
 logging:
   level:
-    com.fixledger: debug
+    com.fixledger: info
     org.springframework.security: info

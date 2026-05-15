@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.security.CurrentUserContext;
+import com.fixledger.common.security.JwtBlacklistService;
 import com.fixledger.common.security.JwtTokenProvider;
 import com.fixledger.modules.auth.request.LoginRequest;
 import com.fixledger.modules.auth.request.RegisterRequest;
@@ -14,6 +15,7 @@ import com.fixledger.modules.family.service.FamilyService;
 import com.fixledger.modules.user.entity.UserEntity;
 import com.fixledger.modules.user.enums.UserStatus;
 import com.fixledger.modules.user.mapper.UserMapper;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,17 +36,20 @@ public class AuthServiceImpl implements AuthService {
   private final FamilyService familyService;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
+  private final JwtBlacklistService jwtBlacklistService;
 
   public AuthServiceImpl(
       UserMapper userMapper,
       FamilyService familyService,
       PasswordEncoder passwordEncoder,
-      JwtTokenProvider jwtTokenProvider
+      JwtTokenProvider jwtTokenProvider,
+      JwtBlacklistService jwtBlacklistService
   ) {
     this.userMapper = userMapper;
     this.familyService = familyService;
     this.passwordEncoder = passwordEncoder;
     this.jwtTokenProvider = jwtTokenProvider;
+    this.jwtBlacklistService = jwtBlacklistService;
   }
 
   /**
@@ -114,14 +119,20 @@ public class AuthServiceImpl implements AuthService {
   }
 
   /**
-   * @Author FixLedger
-   * <p>
-   * 功能说明：实现认证退出登录业务逻辑。
-   * </p>
+   * 将当前 JWT 加入 Redis 黑名单，使退出登录后的旧令牌立即失效。
+   *
+   * @param token 当前请求携带的 JWT 令牌
    * @return 是否处理成功
    */
   @Override
-  public boolean logout() {
+  public boolean logout(String token) {
+    if (!StringUtils.hasText(token)) {
+      return true;
+    }
+    CurrentUserContext.getCurrentUser();
+    String tokenId = jwtTokenProvider.parseToken(token).tokenId();
+    Duration remainingTtl = jwtTokenProvider.getRemainingTtl(token);
+    jwtBlacklistService.blacklist(tokenId, remainingTtl);
     return true;
   }
 
