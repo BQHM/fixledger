@@ -43,7 +43,27 @@
 }
 ```
 
-### 2.3 分页响应
+### 2.3 错误响应的 HTTP 状态
+
+失败响应体仍统一使用 `Result<Void>`，但 HTTP 状态需要按错误类别返回，避免所有业务异常都变成 `400`。
+
+| HTTP 状态 | 适用场景 | 示例错误码 |
+| --- | --- | --- |
+| 400 | 请求参数错误、业务输入不合法 | `BAD_REQUEST`、日期无效、状态无效 |
+| 401 | 未登录、Token 无效或登录状态失效 | `UNAUTHORIZED`、`TOKEN_INVALID` |
+| 403 | 已登录但无访问权限 | `FORBIDDEN` |
+| 404 | 资源不存在 | `DEVICE_NOT_FOUND`、`WARRANTY_NOT_FOUND`、`CONSUMABLE_NOT_FOUND` |
+| 405 | 请求方法不支持 | `METHOD_NOT_ALLOWED` |
+| 503 | 外部辅助服务暂不可用 | `AI_SERVICE_UNAVAILABLE` |
+| 500 | 未预期系统异常 | `SYSTEM_ERROR` |
+
+说明：
+
+- `code` 是业务错误码，方便前端和后端定位具体业务问题。
+- HTTP 状态是协议层错误分类，方便浏览器、网关、监控和第三方客户端理解错误类型。
+- 文件下载接口成功时返回二进制流 `ResponseEntity<Resource>`，不包 `Result<T>`；下载失败时仍由全局异常处理器返回统一错误结构。
+
+### 2.4 分页响应
 
 ```json
 {

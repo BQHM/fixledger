@@ -70,7 +70,8 @@
 | P8 产品化体验重构 | P8.3 设备护照 | 设备卡片墙、设备护照摘要和生命周期时间线 | 计划中 |
 | P8 产品化体验重构 | P8.4 凭证盒 | 附件分类、凭证完整度和家庭凭证收纳体验 | 计划中 |
 | P9 系统性完善阶段 | P9.1 文档与实现对齐 | 核对 docs、README 与当前代码实现一致 | 已完成 |
-| P9 系统性完善阶段 | P9.2 代码质量治理 | 治理异常、日志、分层、事务、分页和注释 | 计划中 |
+| P9 系统性完善阶段 | P9.2 代码质量治理 | 治理异常、日志、分层、事务、分页和注释 | 进行中 |
+| P9 系统性完善阶段 | P9.2.1 代码质量基线扫描与首批修复 | 扫描异常、返回值、事务、日志和敏感信息，完成首批异常契约修复 | 已完成 |
 | P9 系统性完善阶段 | P9.3 测试体系补强 | 补强 Service、Controller、核心规则和边界测试 | 计划中 |
 | P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 计划中 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 计划中 |
@@ -970,6 +971,69 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 - 代码符合 `AGENTS.md` 分层、异常、事务、日志和命名规范。
 - 关键业务方法有必要注释，但不堆砌无意义注释。
+
+
+#### P9.2.1 代码质量基线扫描与首批修复
+
+目标：
+
+- 先建立代码质量治理基线，找出最容易影响面试评价和后续维护的问题，并优先修复风险明确、改动范围小的问题。
+
+为什么先做这一步：
+
+- MVP 完成后，项目已经从“能跑”进入“能讲清、能维护、能证明”的阶段。
+- 面试官常问的不是“有没有增删改查”，而是异常怎么统一、事务放在哪里、权限怎么兜底、日志会不会泄露敏感信息。
+- 先做小范围基线扫描，可以避免后续继续在不规范代码上叠功能。
+
+任务拆分：
+
+- [x] Task: 扫描异常和返回值规范
+  - Acceptance: 找出 `RuntimeException`、裸 `Map` 返回、Controller 直接返回 Entity 或绕过 `Result<T>` 的位置，并形成处理结论。
+  - Verify: 使用 `rg` 扫描关键模式；人工复核 Controller 和异常处理路径。
+  - Files: `backend/src/main/java`。
+- [x] Task: 扫描事务和外部调用边界
+  - Acceptance: 找出 `@Transactional` 是否只放在 Service 层，事务内是否存在 AI、文件存储、通知等外部调用风险。
+  - Verify: 使用 `rg` 扫描 `@Transactional`、`FileStorageService`、`AiClient`、`Notification` 调用点；人工复核调用链。
+  - Files: `backend/src/main/java`。
+- [x] Task: 扫描日志和敏感信息风险
+  - Acceptance: 找出 `printStackTrace`、`System.out`、日志直接输出密码/Token/API Key 或丢失堆栈的问题。
+  - Verify: 使用 `rg` 扫描日志和敏感关键词；人工确认是否为真实风险。
+  - Files: `backend/src/main/java`、`frontend/src`。
+- [x] Task: 修复首批低风险高价值问题
+  - Acceptance: 只修复边界明确、不会扩大范围的问题；不混入 RustFS 未提交实现和新功能。
+  - Verify: 后端执行 `mvn test`，如涉及前端再执行 `npm run build`。
+  - Files: `backend/src/main/java/com/fixledger/common/exception/GlobalExceptionHandler.java`、`backend/src/test/java/com/fixledger/common/exception/GlobalExceptionHandlerTest.java`、`docs/api.md`、`docs/tasks.md`。
+
+扫描结论：
+
+- 异常规范：未发现业务代码直接 `throw new RuntimeException(...)`；`BusinessException extends RuntimeException` 属于 Spring 事务回滚所需的受控业务异常基类。
+- 返回值规范：Controller 基本统一返回 `Result<T>`；`FileResourceController.downloadFile()` 使用 `ResponseEntity<Resource>` 是合理例外，因为文件下载成功响应是二进制流，不能再包一层 JSON。
+- 事务边界：`@Transactional` 当前集中在 Service 层；AI 调用未放入事务；附件上传方法未加事务，避免在数据库事务中调用 RustFS/S3 这类外部存储。
+- 后续风险：`ReminderServiceImpl.scanFamily(...)` 在事务内使用 Redis 去重，当前可接受，但后续 P9.2.2 应评估是否把 Redis 去重与数据库写入边界拆得更清晰。
+- 日志与敏感信息：未发现 `System.out`、`System.err`、`printStackTrace` 或明显输出密码、Token、API Key 的日志；`ReminderScheduler` 捕获 `Exception` 后记录完整堆栈是为了单个家庭扫描失败不影响其他家庭。
+
+首批修复：
+
+- 将 `GlobalExceptionHandler` 中 `BusinessException` 的 HTTP 状态从固定 `400` 调整为按 `ErrorCode` 语义映射。
+- 新增 `GlobalExceptionHandlerTest`，验证 `BAD_REQUEST -> 400`、`FORBIDDEN -> 403`、`DEVICE_NOT_FOUND -> 404`、`AI_SERVICE_UNAVAILABLE -> 503`。
+- 在 `docs/api.md` 补充错误响应契约，明确业务错误码和 HTTP 状态是两层含义。
+
+验收标准：
+
+- P9.2.1 至少输出一份代码质量问题清单和处理结论。
+- 首批修复后项目测试通过，且没有引入新的业务功能。
+- 能形成面试口径：为什么统一异常、为什么事务只放 Service、为什么外部服务不能放事务里、为什么日志不能输出敏感信息。
+
+验证记录：
+
+- 已执行关键模式扫描：`RuntimeException`、`throw new Exception`、`catch (Exception)`、`printStackTrace`、`System.out`、`ResponseEntity`、`Map`、`@Transactional`、`FileStorageService`、`AiClient`、`Notification`、敏感关键词。
+- 已执行 `mvn -q -Dtest=GlobalExceptionHandlerTest test`。
+- 已执行 `mvn test -q`，后端测试共 73 个，失败 0，错误 0，跳过 0。
+
+调整说明：
+
+- 当前工作区仍有 RustFS 相关未提交代码，本小版本不修改这些未提交文件，避免把“文件存储增强”和“代码质量治理”混成一个不可审查的大改动。
+- 本小版本只完成首轮代码质量基线和异常契约修复，后续 P9.2.2 继续处理事务边界、提醒去重和注释质量。
 
 ### P9.3 测试体系补强
 
