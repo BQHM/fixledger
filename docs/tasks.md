@@ -74,8 +74,8 @@
 | P9 系统性完善阶段 | P9.2.1 代码质量基线扫描与首批修复 | 扫描异常、返回值、事务、日志和敏感信息，完成首批异常契约修复 | 已完成 |
 | P9 系统性完善阶段 | P9.2.2 提醒扫描事务边界治理 | 拆清 Redis 去重、扫描查询、提醒和通知写库的事务边界 | 已完成 |
 | P9 系统性完善阶段 | P9.2.3 日志、敏感信息与认证退出治理 | 收敛开发日志、JWT 退出黑名单、异常信息脱敏和文件名安全 | 已完成 |
-| P9 系统性完善阶段 | P9.3 测试体系补强 | 补强 Service、Controller、核心规则和边界测试 | 计划中 |
-| P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 计划中 |
+| P9 系统性完善阶段 | P9.3 测试体系补强 | 补强 Service、Controller、核心规则和边界测试 | 已完成 |
+| P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 已完成 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 计划中 |
 | P9 系统性完善阶段 | P9.6 产品体验继续打磨 | 继续推进设备护照、家庭日历、凭证盒和智能助手 | 计划中 |
 | P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 进行中，RustFS 已接入 |
@@ -1140,15 +1140,15 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 任务拆分：
 
-- [ ] Task: 认证与安全测试补强
+- [x] Task: 认证与安全测试补强
   - Acceptance: 覆盖未登录、登录成功、退出后旧 Token 失效、无效 Token 不能访问受保护接口。
   - Verify: `mvn -q -Dtest=AuthControllerTest test`。
   - Files: `backend/src/test/java/com/fixledger/modules/auth/AuthControllerTest.java`。
-- [ ] Task: 附件与文件安全测试补强
+- [x] Task: 附件与文件安全测试补强
   - Acceptance: 覆盖非法扩展名、非法 MIME、路径穿越文件名、非家庭成员下载附件。
   - Verify: `mvn -q -Dtest=FileResourceServiceTest test`。
   - Files: `backend/src/test/java/com/fixledger/modules/file/FileResourceServiceTest.java`。
-- [ ] Task: 全量质量门禁固化
+- [x] Task: 全量质量门禁固化
   - Acceptance: 后端完整测试、前端构建和 Docker Compose 配置校验有固定命令，并在 P9 收尾记录结果。
   - Verify: `mvn test`、`npm run build`、`docker compose config --quiet`。
   - Files: `docs/tasks.md`、`README.md`。
@@ -1158,6 +1158,19 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 - 核心业务规则有测试证明。
 - 面试时可以说明测试覆盖了哪些关键风险：认证、权限、文件、安全、提醒和状态流转。
 
+验证记录：
+
+- 已补充并回归认证安全测试：未登录、登录成功、退出后旧 Token 失效、无效 Token 拦截。
+- 已补充并回归附件安全测试：非法扩展名、非法 MIME、路径穿越文件名、非家庭成员下载附件。
+- 已确认现有测试覆盖家庭空间越权、提醒 Redis 去重、提醒事务边界、设备状态流转、维修状态流转和费用统计排除取消记录。
+- 已新增 `docs/security-test-review.md`，汇总测试覆盖点、安全审查结论和后续延期项。
+- 已执行 `mvn -q '-Dtest=AuthControllerTest,FileResourceServiceTest,GlobalExceptionHandlerTest' test`，目标测试通过。
+- 已执行 `mvn test -q`，Surefire 报告汇总 80 个测试，失败 0，错误 0，跳过 0。
+
+面试口径：
+
+- 可以说明“测试不是为了凑数量，而是证明认证、权限、文件上传、提醒去重和状态流转这些高风险规则不会回归”。
+
 ### P9.4 安全与数据隔离
 
 目标：
@@ -1166,15 +1179,15 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 任务拆分：
 
-- [ ] Task: 家庭空间权限审查
+- [x] Task: 家庭空间权限审查
   - Acceptance: 设备、保修、耗材、维修、提醒、附件、AI 和看板接口均通过 `familyId` 校验当前用户是否为家庭成员。
   - Verify: 使用 `rg` 和人工复核 Service 调用链；关键越权路径已有测试覆盖。
   - Files: `backend/src/main/java/com/fixledger/modules`。
-- [ ] Task: 文件上传与下载安全审查
+- [x] Task: 文件上传与下载安全审查
   - Acceptance: 文件大小、扩展名、MIME、业务对象归属、附件下载权限和逻辑删除均有约束。
   - Verify: 文件服务测试通过；接口仍由后端鉴权后转发下载。
   - Files: `backend/src/main/java/com/fixledger/modules/file`。
-- [ ] Task: JWT 与敏感信息审查
+- [x] Task: JWT 与敏感信息审查
   - Acceptance: 密码只存哈希；登录响应不返回密码哈希；退出登录进入 Redis 黑名单；日志不打印 Token/API Key。
   - Verify: 认证测试通过；敏感关键词扫描无真实密钥。
   - Files: `backend/src/main/java/com/fixledger/common/security`、`backend/src/main/java/com/fixledger/modules/auth`。
@@ -1184,6 +1197,18 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 - 不同家庭用户不能越权访问设备、保修、耗材、维修、提醒和附件。
 - 敏感信息不进入接口响应和日志。
 - 安全边界能形成可复述的面试答案。
+
+验证记录：
+
+- 已使用 Service 实现扫描确认：除账号级认证模块外，`asset`、`warranty`、`consumable`、`maintenance`、`reminder`、`dashboard`、`file`、`ai` 等模块均执行家庭成员校验或 family_id 归属查询。
+- 已复核附件服务：上传前校验家庭成员、业务类型、业务对象归属、文件大小、扩展名、MIME 和路径字符；下载前再次按 `familyId + fileId` 查询。
+- 已复核认证链路：JWT 使用 jti，退出登录写入 Redis 黑名单，过滤器识别黑名单后清空安全上下文。
+- 已执行敏感关键词扫描，未发现日志直接输出密码、Token、API Key；`.env.example` 与 README 中仅存在示例值。
+- 已将完整结论整理到 `docs/security-test-review.md`。
+
+面试口径：
+
+- 可以说明“权限不是靠前端控制，而是在后端 Service 层统一校验家庭成员，并且详情查询同时带上业务 ID 和 family_id，防止猜 ID 越权”。
 
 ### P9.5 演示体验与面试材料
 
@@ -1436,10 +1461,10 @@ MVP 完成需要满足：
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS，前端通过 Nginx 代理后端 API。
 - P8 产品化体验重构已启动：首页升级为“我的家”，导航从后台模块转向家庭场景入口。
 - 已完成一次项目注释审查：补充后端核心类/公开方法 Javadoc，以及前端 API、Store、路由和字典工具注释。
-- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐、P9.2.1 异常契约修复、P9.2.2 提醒扫描事务边界治理、P9.7.1 RustFS 文件存储接入、P9.8 Skills 文档规范对齐已完成，后续按代码质量、测试补强、安全边界、演示材料和产品体验升级推进。
+- P9 系统性完善阶段已正式启动：P9.1 文档与实现对齐、P9.2 代码质量治理、P9.3 测试体系补强、P9.4 安全与数据隔离、P9.7.1 RustFS 文件存储接入、P9.8 Skills 文档规范对齐已完成，后续按演示材料、产品体验、CI 门禁和全量验收推进。
 
 下一步建议：
 
 ```text
-进入 P9.3 测试体系补强：继续围绕认证、附件、家庭空间越权、提醒去重和状态流转补齐关键风险测试，并固化后端测试、前端构建和 Docker 配置校验。
+进入 P9.5 演示体验与面试材料：整理面试讲解文档、README 演示路径，并继续推进 P9.6 前端产品体验打磨。
 ```
