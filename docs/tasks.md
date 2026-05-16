@@ -78,9 +78,9 @@
 | P9 系统性完善阶段 | P9.4 安全与数据隔离 | 审查家庭空间隔离、附件鉴权、JWT 和敏感信息 | 已完成 |
 | P9 系统性完善阶段 | P9.5 演示体验与面试材料 | 准备演示数据、README、演示路径和讲解稿 | 已完成 |
 | P9 系统性完善阶段 | P9.6 产品体验继续打磨 | 继续推进设备护照、家庭日历、凭证盒和智能助手 | 已完成 |
-| P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 进行中，RustFS 已接入 |
+| P9 系统性完善阶段 | P9.7 可选增强能力 | 评估对象存储、真实 AI、通知渠道、CI/CD 等增强项 | 已完成 |
 | P9 系统性完善阶段 | P9.7.1 RustFS 文件存储接入 | 将上传文件从本地存储切换为 RustFS/S3 兼容对象存储 | 已完成 |
-| P9 系统性完善阶段 | P9.7.2 CI 与可选增强评估 | 增加质量门禁并明确真实 AI、通知、预览等增强边界 | 计划中 |
+| P9 系统性完善阶段 | P9.7.2 CI 与可选增强评估 | 增加质量门禁并明确真实 AI、通知、预览等增强边界 | 已完成 |
 | P9 系统性完善阶段 | P9.8 Skills 文档规范对齐 | 按 skills 规范补齐规格、ADR、任务模板、边界和验证口径 | 已完成 |
 | P9 系统性完善阶段 | P9.9 P9 全量验收收尾 | 汇总 P9 验收、验证命令、面试口径和后续 P10 方向 | 计划中 |
 | P10 文档对齐 | P10.1 需求文档复核 | 深度复核 `requirements.md` 与当前产品边界 | 计划中 |
@@ -1369,11 +1369,11 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
   - Acceptance: Docker 默认使用 RustFS，业务层仍通过 `FileStorageService`。
   - Verify: `docker compose config --quiet`、后端测试。
   - Files: `docker-compose.yml`、`backend/src/main/java/com/fixledger/infrastructure/file`。
-- [ ] Task: CI 质量门禁
+- [x] Task: CI 质量门禁
   - Acceptance: GitHub Actions 自动执行后端测试、前端构建和 Docker Compose 配置校验。
   - Verify: 本地执行同等命令；工作流文件语法可读。
   - Files: `.github/workflows/ci.yml`、`README.md`。
-- [ ] Task: 可选增强边界说明
+- [x] Task: 可选增强边界说明
   - Acceptance: 明确真实 AI、邮件/Webhook、文件预览、OCR、Refresh Token 进入后续 P10，不阻塞 P9 验收。
   - Verify: 文档中能清晰说明为什么先不做。
   - Files: `docs/tasks.md`、`docs/interview-guide.md`。
@@ -1382,6 +1382,22 @@ P9 是项目完成 MVP 之后的系统性打磨阶段，目标是让 FixLedger �
 
 - 增强能力不影响核心 MVP 使用。
 - 可选能力有清晰开关、配置和失败兜底。
+
+验证记录：
+
+- 已新增 `.github/workflows/ci.yml`，在 `push main` 和面向 `main` 的 Pull Request 上自动执行后端测试、前端构建和 Docker Compose 配置校验。
+- 已在 README 补充 CI 质量门禁说明，明确本地验证与仓库自动验证的关系。
+- 已在 `docs/interview-guide.md` 补充可选增强取舍：真实 AI、OCR、邮件/Webhook、附件在线预览和 Refresh Token 进入 P10+ / P15，不阻塞 P9 验收。
+- 已执行 `docker compose config --quiet`，Compose 配置校验通过。
+
+调整说明：
+
+- P9.7 已完成 RustFS 和 CI 两类高价值增强；真实 AI Provider、邮件/Webhook、OCR、附件预览和 Refresh Token 暂不做，是为了避免引入外部服务、密钥、回调和更复杂安全策略后拖慢 MVP 收口。
+
+面试口径：
+
+- 可以说明“P9.7 不是把所有能想到的增强都做完，而是选择最能证明工程质量的 RustFS 和 CI；其他增强先留到后续阶段，体现范围控制能力”。
+- 可以说明“CI 让后端测试、前端构建和 Docker 配置校验每次提交自动执行，避免项目只在本机可用”。
 
 ### P9.9 P9 全量验收收尾
 

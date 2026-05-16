@@ -228,7 +228,7 @@ flowchart LR
 ### 设备管理
 
 - 我的家首页：家庭健康分、本周事项、家庭日历、设备总数、即将过保、耗材到期和维修中设备。
-- 设备护照：当前支持按分类、状态、品牌筛选设备，后续升级为按房间组织的卡片墙。
+- 设备护照：默认按房间组织设备卡片墙，保留筛选、分页、编辑和高级清单视图。
 - 设备详情：集中展示基础信息、保修凭证、耗材周期、维修历史和附件。
 
 ### 保修与耗材
@@ -496,6 +496,17 @@ docker compose up -d --build
 | 后端本地启动 | `cd backend; mvn spring-boot:run` |
 | 前端开发启动 | `cd frontend; npm run dev` |
 | 前端类型检查和构建 | `cd frontend; npm run build` |
+
+## CI 质量门禁
+
+仓库已增加 GitHub Actions 工作流 `.github/workflows/ci.yml`，在推送到 `main` 或创建面向 `main` 的 Pull Request 时自动执行：
+
+- 后端质量门禁：JDK 21 + Maven 缓存 + `cd backend && mvn -q test`。
+- 前端质量门禁：Node.js 22 + npm 缓存 + `cd frontend && npm ci && npm run build`。
+- 部署配置门禁：`docker compose config --quiet`，提前发现 Compose 配置错误。
+
+面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。真实部署、邮件/Webhook、OCR、真实 AI Provider、附件在线预览和 Refresh Token 属于后续增强，不阻塞当前 MVP 和 P9 验收。
+
 ## Docker 快速部署
 
 Docker Compose 现在默认编排前端、后端、MySQL、Redis 和 RustFS，适合面试演示时一条命令拉起完整系统。前端容器通过 Nginx 代理 `/api` 到后端容器，浏览器只需要访问前端地址。
