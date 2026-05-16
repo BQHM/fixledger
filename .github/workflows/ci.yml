@@ -67,6 +67,9 @@ jobs:
       - name: Run frontend type check and build
         run: npm run build
 
+      - name: Run frontend smoke check
+        run: npm run smoke
+
   compose:
     name: Docker Compose Config
     runs-on: ubuntu-latest
@@ -76,3 +79,7 @@ jobs:
 
       - name: Validate Docker Compose config
         run: docker compose config --quiet
+
+      - name: Run Docker health check dry run
+        shell: pwsh
+        run: ./scripts/check-docker-health.ps1 -DryRun

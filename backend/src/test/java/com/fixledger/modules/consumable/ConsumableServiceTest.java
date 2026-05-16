@@ -76,6 +76,17 @@ class ConsumableServiceTest {
   }
 
   @Test
+  @DisplayName("未设置上次更换日期时不生成下次提醒日期")
+  void createConsumableWithoutLastReplacedDateHasNoNextRemindDate() {
+    TestFixture fixture = createFixture("consumablenodate");
+
+    ConsumableResponse created = createConsumable(fixture, null, 180);
+
+    assertThat(created.nextRemindDate()).isNull();
+    assertThat(created.status()).isEqualTo(ConsumableStatus.NORMAL.getCode());
+  }
+
+  @Test
   @DisplayName("记录耗材更换后刷新上次更换和下次提醒日期")
   void replaceRecordRefreshesNextRemindDate() {
     TestFixture fixture = createFixture("consumablereplace");
@@ -107,6 +118,40 @@ class ConsumableServiceTest {
     assertThat(records).hasSize(1);
     assertThat(refreshed.lastReplacedDate()).isEqualTo(replacedDate);
     assertThat(refreshed.nextRemindDate()).isEqualTo(replacedDate.plusDays(90));
+  }
+
+  @Test
+  @DisplayName("停用耗材不能记录更换")
+  void disabledConsumableCannotCreateReplaceRecord() {
+    TestFixture fixture = createFixture("consumabledisabled");
+    ConsumableResponse consumable = createConsumable(
+        fixture,
+        LocalDate.now().minusDays(60),
+        90
+    );
+    consumableService.updateConsumable(
+        fixture.userId(),
+        fixture.familyId(),
+        consumable.id(),
+        new UpdateConsumableRequest(
+            "PP 棉滤芯",
+            "小米",
+            "PPC-001",
+            90,
+            LocalDate.now().minusDays(60),
+            7,
+            false,
+            "暂停使用"
+        )
+    );
+
+    assertThatThrownBy(() -> consumableService.createReplaceRecord(
+        fixture.userId(),
+        fixture.familyId(),
+        consumable.id(),
+        new CreateReplaceRecordRequest(LocalDate.now(), BigDecimal.valueOf(89), "停用后更换")
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.REPLACE_DATE_INVALID));
   }
 
   @Test

@@ -198,6 +198,53 @@ class ReminderServiceTest {
         .isEqualTo(ReminderType.WARRANTY_EXPIRE_SOON.getCode());
   }
 
+  @Test
+  @DisplayName("逾期保修和逾期耗材生成对应提醒类型")
+  void scanExpiredWarrantyAndOverdueConsumableTypes() {
+    TestFixture fixture = createFixture("reminderoverdue");
+    LocalDate today = LocalDate.now();
+    warrantyService.createWarranty(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId(),
+        new CreateWarrantyRequest(
+            WarrantyType.OFFICIAL.getCode(),
+            today.minusYears(1),
+            today.minusDays(1),
+            7,
+            null,
+            null,
+            "已经过保"
+        )
+    );
+    consumableService.createConsumable(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId(),
+        new CreateConsumableRequest(
+            "反渗透滤芯",
+            "小米",
+            "RO-001",
+            90,
+            today.minusDays(91),
+            7,
+            "已经逾期"
+        )
+    );
+
+    ReminderScanResponse scan = reminderService.scanFamily(fixture.userId(), fixture.familyId());
+    ReminderPageQuery query = new ReminderPageQuery();
+    var page = reminderService.pageReminders(fixture.userId(), fixture.familyId(), query);
+
+    assertThat(scan.warrantyCreated()).isEqualTo(1);
+    assertThat(scan.consumableCreated()).isEqualTo(1);
+    assertThat(page.records()).extracting(ReminderResponse::reminderType)
+        .containsExactlyInAnyOrder(
+            ReminderType.WARRANTY_EXPIRED.getCode(),
+            ReminderType.CONSUMABLE_OVERDUE.getCode()
+        );
+  }
+
   private TestFixture createFixture(String username) {
     RegisterResponse user = authService.register(new RegisterRequest(
         username,

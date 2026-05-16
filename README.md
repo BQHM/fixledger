@@ -492,18 +492,20 @@ docker compose up -d --build
 | 查看前端日志 | `docker compose logs -f frontend` |
 | 停止并保留数据卷 | `docker compose down` |
 | 校验 Docker Compose 配置 | `docker compose config --quiet` |
+| Docker 健康检查 dry-run | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-docker-health.ps1 -DryRun` |
 | 后端测试 | `cd backend; mvn test` |
 | 后端本地启动 | `cd backend; mvn spring-boot:run` |
 | 前端开发启动 | `cd frontend; npm run dev` |
 | 前端类型检查和构建 | `cd frontend; npm run build` |
+| 前端静态冒烟检查 | `cd frontend; npm run smoke` |
 
 ## CI 质量门禁
 
 仓库已增加 GitHub Actions 工作流 `.github/workflows/ci.yml`，在推送到 `main` 或创建面向 `main` 的 Pull Request 时自动执行：
 
 - 后端质量门禁：JDK 21 + Maven 缓存 + `cd backend && mvn -q test`。
-- 前端质量门禁：Node.js 22 + npm 缓存 + `cd frontend && npm ci && npm run build`。
-- 部署配置门禁：`docker compose config --quiet`，提前发现 Compose 配置错误。
+- 前端质量门禁：Node.js 22 + npm 缓存 + `cd frontend && npm ci && npm run build && npm run smoke`。
+- 部署配置门禁：`docker compose config --quiet` 与 Docker 健康检查 dry-run，提前发现 Compose 配置和脚本错误。
 
 面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。真实部署、邮件/Webhook、OCR、真实 AI Provider、附件在线预览和 Refresh Token 属于后续增强，不阻塞当前 MVP 和 P10 文档验收。
 

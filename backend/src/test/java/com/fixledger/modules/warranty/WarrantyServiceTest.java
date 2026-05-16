@@ -76,6 +76,54 @@ class WarrantyServiceTest {
   }
 
   @Test
+  @DisplayName("未指定保修类型和提醒天数时使用默认值")
+  void createWarrantyUsesDefaultsWhenOptionalFieldsMissing() {
+    LocalDate purchaseDate = LocalDate.now().minusMonths(1);
+    TestFixture fixture = createFixture("warrantydefault", purchaseDate);
+
+    WarrantyResponse created = warrantyService.createWarranty(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId(),
+        new CreateWarrantyRequest(
+            null,
+            purchaseDate,
+            purchaseDate.plusYears(1),
+            null,
+            null,
+            null,
+            "默认保修配置"
+        )
+    );
+
+    assertThat(created.warrantyType()).isEqualTo(WarrantyType.OFFICIAL.getCode());
+    assertThat(created.remindDaysBefore()).isEqualTo(30);
+  }
+
+  @Test
+  @DisplayName("提前提醒天数不能为负数")
+  void rejectNegativeRemindDaysBefore() {
+    LocalDate purchaseDate = LocalDate.now().minusMonths(1);
+    TestFixture fixture = createFixture("warrantynegative", purchaseDate);
+
+    assertThatThrownBy(() -> warrantyService.createWarranty(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId(),
+        new CreateWarrantyRequest(
+            WarrantyType.OFFICIAL.getCode(),
+            purchaseDate,
+            purchaseDate.plusYears(1),
+            -1,
+            null,
+            null,
+            "负数提醒天数"
+        )
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST));
+  }
+
+  @Test
   @DisplayName("可以修改并删除保修记录")
   void updateAndDeleteWarranty() {
     LocalDate purchaseDate = LocalDate.now().minusMonths(1);

@@ -101,6 +101,55 @@ class WarrantyControllerTest {
         .andExpect(jsonPath("$.data[0].warrantyType").value(WarrantyType.OFFICIAL.getCode()));
   }
 
+  @Test
+  @DisplayName("创建保修请求体无效时返回参数错误")
+  void createWarrantyWithInvalidBodyReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("warrantyinvalid");
+    LoginResponse login = authService.login(new LoginRequest("warrantyinvalid", "123456"));
+    CreateWarrantyRequest request = new CreateWarrantyRequest(
+        WarrantyType.OFFICIAL.getCode(),
+        null,
+        fixture.purchaseDate().plusYears(1),
+        30,
+        null,
+        null,
+        "缺少开始日期"
+    );
+
+    mockMvc.perform(post(
+            "/api/families/{familyId}/devices/{deviceId}/warranties",
+            fixture.familyId(),
+            fixture.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
+  @Test
+  @DisplayName("非家庭成员访问保修记录返回无权限")
+  void listWarrantiesByNonFamilyMemberReturnsForbidden() throws Exception {
+    TestFixture owner = createFixture("warrantyownerapi");
+    authService.register(new RegisterRequest(
+        "warrantyotherapi",
+        null,
+        "123456",
+        "warrantyotherapi"
+    ));
+    LoginResponse otherLogin = authService.login(new LoginRequest("warrantyotherapi", "123456"));
+
+    mockMvc.perform(get(
+            "/api/families/{familyId}/devices/{deviceId}/warranties",
+            owner.familyId(),
+            owner.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherLogin.accessToken()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(1003));
+  }
+
   private TestFixture createFixture(String username) {
     LocalDate purchaseDate = LocalDate.now().minusMonths(1);
     RegisterResponse user = authService.register(new RegisterRequest(

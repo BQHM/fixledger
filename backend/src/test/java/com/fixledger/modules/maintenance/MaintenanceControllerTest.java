@@ -149,6 +149,52 @@ class MaintenanceControllerTest {
         .andExpect(jsonPath("$.data.recordCount").value(1));
   }
 
+  @Test
+  @DisplayName("创建维修请求体无效时返回参数错误")
+  void createMaintenanceWithInvalidBodyReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("maintenanceinvalid");
+    LoginResponse login = authService.login(new LoginRequest("maintenanceinvalid", "123456"));
+    CreateMaintenanceRequest request = new CreateMaintenanceRequest(
+        "",
+        "",
+        LocalDateTime.now().plusHours(1),
+        "官方售后",
+        "400-000-0000"
+    );
+
+    mockMvc.perform(post(
+            "/api/families/{familyId}/devices/{deviceId}/maintenance-records",
+            fixture.familyId(),
+            fixture.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
+  @Test
+  @DisplayName("非家庭成员访问维修列表返回无权限")
+  void pageMaintenanceByNonFamilyMemberReturnsForbidden() throws Exception {
+    TestFixture owner = createFixture("maintenanceownerapi");
+    authService.register(new RegisterRequest(
+        "maintenanceotherapi",
+        null,
+        "123456",
+        "maintenanceotherapi"
+    ));
+    LoginResponse otherLogin = authService.login(new LoginRequest(
+        "maintenanceotherapi",
+        "123456"
+    ));
+
+    mockMvc.perform(get("/api/families/{familyId}/maintenance-records", owner.familyId())
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherLogin.accessToken()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(1003));
+  }
+
   private void updateStatus(
       String token,
       Long familyId,

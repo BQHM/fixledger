@@ -91,10 +91,10 @@
 | P11 代码质量治理 | P11.2 前端规范扫描 | 扫描 API 封装、类型、路由守卫和页面职责 | 已完成 |
 | P11 代码质量治理 | P11.3 注释与命名复核 | 复核类注释、方法注释、命名和无效注释 | 已完成 |
 | P11 代码质量治理 | P11.4 构建与静态检查 | 固化后端测试、前端构建和格式检查流程 | 已完成 |
-| P12 测试体系补强 | P12.1 Service 核心业务测试 | 补强保修、耗材、维修、提醒和 AI 业务规则 | 计划中 |
-| P12 测试体系补强 | P12.2 Controller 与权限测试 | 补强参数校验、认证拦截和越权访问测试 | 计划中 |
-| P12 测试体系补强 | P12.3 前端构建与冒烟测试 | 固化前端构建、关键页面和接口联调检查 | 计划中 |
-| P12 测试体系补强 | P12.4 Docker 启动验证 | 固化一键启动后的健康检查和排障说明 | 计划中 |
+| P12 测试体系补强 | P12.1 Service 核心业务测试 | 补强保修、耗材、维修、提醒和 AI 业务规则 | 已完成 |
+| P12 测试体系补强 | P12.2 Controller 与权限测试 | 补强参数校验、认证拦截和越权访问测试 | 已完成 |
+| P12 测试体系补强 | P12.3 前端构建与冒烟测试 | 固化前端构建、关键页面和接口联调检查 | 已完成 |
+| P12 测试体系补强 | P12.4 Docker 启动验证 | 固化一键启动后的健康检查和排障说明 | 已完成 |
 | P13 安全与数据隔离 | P13.1 家庭空间隔离审计 | 审查设备、保修、耗材、维修、提醒和附件归属校验 | 计划中 |
 | P13 安全与数据隔离 | P13.2 附件安全审计 | 审查文件类型、大小、访问鉴权和删除策略 | 计划中 |
 | P13 安全与数据隔离 | P13.3 认证与敏感信息审计 | 审查 JWT、密码、Token、日志和响应脱敏 | 计划中 |
@@ -1763,7 +1763,144 @@ P11 总结：
 
 - 进入 P12 测试体系补强：优先补 Service 核心业务测试、Controller 权限与参数测试、文件/RustFS 测试边界和前端关键页面构建验证。
 
-## 15. MVP 验收清单
+## 15. P12 测试体系补强
+
+P12 的目标不是继续新增业务功能，而是把核心业务闭环变成“可证明”的工程质量：通过 Service 测试证明业务规则，通过 Controller 测试证明认证、参数校验和越权拦截，通过前端冒烟检查证明关键页面和 API 封装没有断，通过 Docker 验证脚本证明一键启动后知道如何检查健康状态。
+
+### P12.1 Service 核心业务测试
+
+目标：
+
+- 补强保修、耗材、维修、提醒和 AI 相关 Service 测试，覆盖 P9/P11 后仍容易被追问的边界规则。
+
+范围：
+
+- 保修：默认保修类型、默认提前提醒天数、负数提醒天数拒绝。
+- 耗材：停用耗材不能记录更换、未设置上次更换日期时不生成下次提醒日期。
+- 维修：终态维修记录不能修改、报废设备不能被维修流程恢复。
+- 提醒：逾期保修和逾期耗材生成对应提醒类型。
+- AI：保留 Mock Provider 测试，不依赖真实外部 API。
+
+验收标准：
+
+- 新增测试使用 `@DisplayName` 中文说明测试意图。
+- 测试验证业务结果和错误码，不只验证方法调用。
+- 目标 Service 测试和后端全量测试通过。
+
+验证记录：
+
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dtest=WarrantyServiceTest,ConsumableServiceTest,MaintenanceServiceTest,ReminderServiceTest" test`：通过；目标 Service 测试 28 个用例，失败 0、错误 0、跳过 0。
+
+完成结论：
+
+- P12.1 已完成。保修默认值与负数提醒天数、耗材停用与空更换日期、维修终态和报废设备保护、逾期提醒类型均有测试覆盖。
+
+### P12.2 Controller 与权限测试
+
+目标：
+
+- 补强接口层参数校验、认证拦截和越权访问测试，证明权限不是只靠前端控制。
+
+范围：
+
+- 设备、保修、耗材、维修等关键 Controller 增加无效请求体测试。
+- 增加跨家庭空间访问测试，确认非家庭成员访问返回 403 和统一错误码。
+- 保持文件下载 `ResponseEntity<Resource>` 作为合理例外，不强行 JSON 包装。
+
+验收标准：
+
+- Controller 测试覆盖 401、400、403 和正常成功路径。
+- 越权测试通过真实登录 Token 和真实业务数据构造，不只 Mock Service。
+- 目标 Controller 测试通过。
+
+验证记录：
+
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dtest=DeviceAssetControllerTest,WarrantyControllerTest,ConsumableControllerTest,MaintenanceControllerTest" test`：通过；目标 Controller 测试 16 个用例，失败 0、错误 0、跳过 0。
+
+完成结论：
+
+- P12.2 已完成。设备、保修、耗材和维修 Controller 均覆盖未登录 401、参数错误 400、跨家庭访问 403 和正常成功路径。
+
+### P12.3 前端构建与冒烟测试
+
+目标：
+
+- 固化前端关键页面、路由入口和 API 模块的静态冒烟检查，避免页面重构时漏掉核心入口。
+
+范围：
+
+- 增加前端 smoke 脚本，检查关键路由和核心 API 模块入口仍存在。
+- 保留 `npm run build` 作为 Vue 类型检查和生产构建门禁。
+- 不引入大型 E2E 框架，避免 P12 偏离“轻量质量门禁”的目标。
+
+验收标准：
+
+- `npm run build` 通过。
+- `npm run smoke` 通过。
+- smoke 脚本只检查项目内文件，不依赖真实后端或浏览器。
+
+验证记录：
+
+- `cd frontend; npm run build`：通过；仍有 Vite 大 chunk 和第三方 PURE 注释警告，不阻塞构建。
+- `cd frontend; npm run smoke`：通过；静态检查关键路由、页面文件、API 模块入口、Token 请求头和分页参数保护。
+
+完成结论：
+
+- P12.3 已完成。新增 `frontend/scripts/smoke.mjs` 与 `npm run smoke`，并已加入 CI 前端质量门禁。
+
+### P12.4 Docker 启动验证
+
+目标：
+
+- 固化 Docker 一键启动后的健康检查方式，让面试和自测时能快速判断 MySQL、Redis、RustFS、后端和前端是否正常。
+
+范围：
+
+- 增加项目内 PowerShell 健康检查脚本，检查 Docker Compose 服务状态、前端首页和后端 Actuator 健康端点。
+- 校验 `docker-compose.yml` 语法和服务依赖关系。
+- 文档说明如果本机镜像或网络不可用，先执行配置校验和脚本 dry-run，不把外部镜像下载失败误判成代码失败。
+
+验收标准：
+
+- `docker compose config --quiet` 通过。
+- Docker 健康检查脚本可在项目目录内执行。
+- P12 完成记录写入 `docs/tasks.md`，并提交推送。
+
+验证记录：
+
+- `docker compose config --quiet`：通过。
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-docker-health.ps1 -DryRun`：通过；dry-run 校验 Compose 配置并列出会检查的服务、前端地址和后端健康地址。
+
+完成结论：
+
+- P12.4 已完成。新增 `scripts/check-docker-health.ps1`，实际容器启动后可检查 mysql、redis、rustfs、backend、frontend 运行状态，以及前端首页和后端 Actuator 健康端点。
+
+### P12 总结
+
+完成范围：
+
+- P12.1 Service 核心业务测试：新增 7 个 Service 边界测试，后端总测试数从 80 提升到 95。
+- P12.2 Controller 与权限测试：新增 8 个 Controller 参数和越权测试，证明关键业务接口不依赖前端做权限控制。
+- P12.3 前端构建与冒烟测试：新增 `npm run smoke`，检查关键页面、路由和 API 入口。
+- P12.4 Docker 启动验证：新增 Docker 健康检查脚本，支持 dry-run 和实际容器健康检查。
+
+验证记录：
+
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" test`：通过；95 个测试，失败 0、错误 0、跳过 0。
+- `cd frontend; npm run build`：通过；仅有已知构建告警。
+- `cd frontend; npm run smoke`：通过。
+- `docker compose config --quiet`：通过。
+- `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check-docker-health.ps1 -DryRun`：通过。
+
+面试口径：
+
+- 可以说明“P12 的重点不是继续堆功能，而是把已有核心闭环变成可证明：业务规则有 Service 测试、接口边界有 Controller 测试、前端入口有 smoke 检查、Docker 演示有健康检查脚本”。
+
+下一步建议：
+
+- 进入 P13 安全与数据隔离：继续围绕家庭空间隔离、附件鉴权、JWT 敏感信息和边界参数做专项审计。
+
+## 16. MVP 验收清单
 
 MVP 完成需要满足：
 
@@ -1785,7 +1922,7 @@ MVP 完成需要满足：
 - [x] AI Mock 功能可用。
 - [x] README 可指导本地启动。
 
-## 16. 推荐开发顺序
+## 17. 推荐开发顺序
 
 ```text
 1. 后端脚手架
@@ -1806,7 +1943,7 @@ MVP 完成需要满足：
 16. Docker 和测试
 ```
 
-## 17. 面试展示优先级
+## 18. 面试展示优先级
 
 优先打磨这些能力：
 
@@ -1818,7 +1955,7 @@ MVP 完成需要满足：
 6. 我的家场景首页。
 7. 设备护照和凭证盒。
 
-## 18. 风险与控制
+## 19. 风险与控制
 
 | 风险 | 控制方式 |
 | --- | --- |
@@ -1829,7 +1966,7 @@ MVP 完成需要满足：
 | 定时任务难测试 | 提供手动扫描接口 |
 | 权限遗漏 | 所有业务接口统一校验 familyId |
 
-## 19. 当前状态
+## 20. 当前状态
 
 截至当前文档版本：
 
@@ -1838,16 +1975,17 @@ MVP 完成需要满足：
 - docs 开发资料已完成第一版。
 - 后端 P0-P7 已完成：脚手架、认证与家庭空间、设备分类与设备档案、保修记录与附件、耗材与维修、提醒与看板、AI 辅助、后端工程化。
 - 前端 MVP 页面已完成：登录注册、主布局、首页看板、设备档案、设备详情、保修管理、耗材管理、维修记录、维修详情、提醒中心、附件库、AI 助手和家庭设置。
-- 后端完整 Maven 测试已通过，当前共 80 个测试用例，失败 0、错误 0、跳过 0。
+- 后端完整 Maven 测试已通过，当前共 95 个测试用例，失败 0、错误 0、跳过 0。
 - 前端 `npm run build` 已通过，Vue 类型检查和 Vite 构建均成功。
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS，前端通过 Nginx 代理后端 API。
 - P8 产品化体验重构已启动：首页升级为“我的家”，导航从后台模块转向家庭场景入口。
 - 已完成一次项目注释审查：补充后端核心类/公开方法 Javadoc，以及前端 API、Store、路由和字典工具注释。
 - P9 系统性完善阶段已完成：文档对齐、代码质量、安全测试、RustFS、Skills 文档规范、面试材料、产品体验、CI 门禁和全量验收均已收口。
 - P10 文档深度对齐已完成：需求、架构、接口、数据库、UI、README 与当前实现和演示体验保持一致。
+- P12 测试体系补强已完成：Service 边界、Controller 参数与越权、前端 smoke 和 Docker 健康检查脚本均已收口。
 
 下一步建议：
 
 ```text
-P11 代码质量治理已完成，下一步进入 P12 测试体系补强。
+P13 安全与数据隔离建议启动，优先审查家庭空间隔离、附件鉴权、JWT 敏感信息和边界参数。
 ```

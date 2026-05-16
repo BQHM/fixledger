@@ -8,6 +8,8 @@ import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.page.PageResponse;
 import com.fixledger.modules.asset.request.CreateDeviceCategoryRequest;
 import com.fixledger.modules.asset.request.CreateDeviceRequest;
+import com.fixledger.modules.asset.request.UpdateDeviceStatusRequest;
+import com.fixledger.modules.asset.enums.DeviceStatus;
 import com.fixledger.modules.asset.response.CreateDeviceResponse;
 import com.fixledger.modules.asset.response.DeviceCategoryResponse;
 import com.fixledger.modules.asset.response.DeviceDetailResponse;
@@ -20,6 +22,7 @@ import com.fixledger.modules.family.service.FamilyService;
 import com.fixledger.modules.maintenance.enums.MaintenanceStatus;
 import com.fixledger.modules.maintenance.query.MaintenancePageQuery;
 import com.fixledger.modules.maintenance.request.CreateMaintenanceRequest;
+import com.fixledger.modules.maintenance.request.UpdateMaintenanceRequest;
 import com.fixledger.modules.maintenance.request.UpdateMaintenanceStatusRequest;
 import com.fixledger.modules.maintenance.response.MaintenanceCostSummaryResponse;
 import com.fixledger.modules.maintenance.response.MaintenanceResponse;
@@ -138,6 +141,53 @@ class MaintenanceServiceTest {
 
     assertThat(completed.status()).isEqualTo(MaintenanceStatus.COMPLETED.getCode());
     assertThat(device.status()).isEqualTo("REPAIRED");
+  }
+
+  @Test
+  @DisplayName("终态维修记录不能修改")
+  void terminalMaintenanceCannotBeUpdated() {
+    TestFixture fixture = createFixture("maintenanceterminal");
+    MaintenanceResponse created = createMaintenance(fixture, "净水器出水变慢");
+    transitionToCompleted(fixture, created.id(), false);
+
+    assertThatThrownBy(() -> maintenanceService.updateMaintenance(
+        fixture.userId(),
+        fixture.familyId(),
+        created.id(),
+        new UpdateMaintenanceRequest(
+            "净水器恢复复查",
+            "完成后再次修改维修记录",
+            LocalDateTime.now().minusHours(1),
+            "官方售后",
+            "400-000-0000",
+            BigDecimal.valueOf(99),
+            "补充处理结果",
+            LocalDateTime.now()
+        )
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.MAINTENANCE_STATUS_INVALID));
+  }
+
+  @Test
+  @DisplayName("报废设备不能被维修流程恢复")
+  void scrappedDeviceCannotBeRestoredByMaintenanceFlow() {
+    TestFixture fixture = createFixture("maintenancescrapped");
+    deviceAssetService.updateDeviceStatus(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId(),
+        new UpdateDeviceStatusRequest(DeviceStatus.SCRAPPED.getCode(), "设备老化报废")
+    );
+    MaintenanceResponse created = createMaintenance(fixture, "报废后误建维修单");
+
+    transitionToCompleted(fixture, created.id(), true);
+    DeviceDetailResponse device = deviceAssetService.getDeviceDetail(
+        fixture.userId(),
+        fixture.familyId(),
+        fixture.deviceId()
+    );
+
+    assertThat(device.status()).isEqualTo(DeviceStatus.SCRAPPED.getCode());
   }
 
   @Test

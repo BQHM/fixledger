@@ -136,6 +136,55 @@ class ConsumableControllerTest {
         .andExpect(jsonPath("$.data.replacedDate").value(replacedDate.toString()));
   }
 
+  @Test
+  @DisplayName("创建耗材请求体无效时返回参数错误")
+  void createConsumableWithInvalidBodyReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("consumableinvalid");
+    LoginResponse login = authService.login(new LoginRequest("consumableinvalid", "123456"));
+    CreateConsumableRequest request = new CreateConsumableRequest(
+        "",
+        "小米",
+        "PPC-001",
+        0,
+        LocalDate.now(),
+        7,
+        "无效耗材"
+    );
+
+    mockMvc.perform(post(
+            "/api/families/{familyId}/devices/{deviceId}/consumables",
+            fixture.familyId(),
+            fixture.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
+  @Test
+  @DisplayName("非家庭成员访问耗材列表返回无权限")
+  void listConsumablesByNonFamilyMemberReturnsForbidden() throws Exception {
+    TestFixture owner = createFixture("consumableownerapi");
+    authService.register(new RegisterRequest(
+        "consumableotherapi",
+        null,
+        "123456",
+        "consumableotherapi"
+    ));
+    LoginResponse otherLogin = authService.login(new LoginRequest("consumableotherapi", "123456"));
+
+    mockMvc.perform(get(
+            "/api/families/{familyId}/devices/{deviceId}/consumables",
+            owner.familyId(),
+            owner.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherLogin.accessToken()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.code").value(1003));
+  }
+
   private TestFixture createFixture(String username) {
     RegisterResponse user = authService.register(new RegisterRequest(
         username,
