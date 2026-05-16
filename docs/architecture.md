@@ -74,7 +74,7 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 和基础 CRUD |
 | MySQL | 8.x | 业务数据库 |
-| Redis | 7.x | 提醒去重、首页统计缓存；验证码和 JWT 黑名单为后续增强 |
+| Redis | 7.x | 提醒去重、首页统计缓存、JWT 黑名单；验证码和用户缓存为后续增强 |
 | Spring Scheduler | - | 保修和耗材提醒定时任务 |
 | Spring Validation | - | 参数校验 |
 | MapStruct | - | DTO / Entity 转换 |
@@ -448,7 +448,7 @@ sequenceDiagram
 - 使用 Spring Security + JWT。
 - 登录成功后返回 Access Token。
 - 后端通过过滤器解析 Token 并设置用户上下文。
-- 当前退出登录为前端清理 Token；Redis JWT 黑名单和 Refresh Token 为后续增强。
+- 退出登录会将 JWT `jti` 写入 Redis 黑名单，使旧 Token 在过期前立即失效；Refresh Token 和多端会话为后续增强。
 
 ### 8.2 数据隔离
 
@@ -474,7 +474,7 @@ Redis 使用场景：
 | 场景 | Key | TTL |
 | --- | --- | --- |
 | 验证码（二期） | `fixledger:captcha:{uuid}` | 5 分钟 |
-| JWT 黑名单（二期） | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
+| JWT 黑名单 | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
 | 用户信息（二期） | `fixledger:user:profile:{userId}` | 30 分钟 |
 | 提醒去重 | `fixledger:reminder:dedupe:{type}:{bizId}:{date}` | 2 天 |
 | 首页统计 | `fixledger:dashboard:summary:{familyId}` | 5 分钟 |
@@ -660,7 +660,7 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - Prompt 模板位于 `backend/src/main/resources/prompts/`，当前包含票据提取、故障排查和维修总结三个模板。
 - 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
 - 当前文件存储新增 `S3FileStorageService`，Docker 默认对接 RustFS；`LocalFileStorageService` 保留为测试和兜底。
-- 当前登录退出未实现 Redis Token 黑名单，后续安全阶段再评估 Refresh Token 和黑名单机制。
+- 当前登录退出已实现 Redis Token 黑名单，Refresh Token 和多端会话机制保留为后续增强。
 
 ## 17. RustFS 文件存储接入设计
 

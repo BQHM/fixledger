@@ -175,6 +175,7 @@ POST /api/auth/login
 
 ```http
 POST /api/auth/logout
+Authorization: Bearer <accessToken>
 ```
 
 响应：
@@ -182,6 +183,12 @@ POST /api/auth/logout
 ```json
 true
 ```
+
+规则：
+
+- 后端会解析当前 JWT 的 `jti`，写入 Redis 黑名单。
+- 黑名单 TTL 使用 Token 剩余有效期，避免 Redis 长期保存已过期令牌。
+- 退出后的旧 Token 再访问受保护接口会返回未认证。
 
 ### 5.4 获取当前用户
 
@@ -1114,6 +1121,6 @@ familyId: 1
 - 系统操作日志、系统字典和管理员接口。
 - 邮件、Webhook 等外部通知接口。
 - 对象存储临时访问 URL（当前 RustFS 下载仍由后端鉴权后转发对象流）。
-- Refresh Token 和 Redis Token 黑名单接口。
+- Refresh Token 和多端会话管理接口。
 
 接口分页统一遵守 `pageNum >= 1`、`1 <= pageSize <= 100`，前端 Axios 请求拦截器也会对分页参数做兜底修正。

@@ -27,6 +27,8 @@
 | `docs/database.md` | 数据库设计：表结构、索引、枚举、演示数据和 RustFS 元数据存储方式 |
 | `docs/ui.md` | UI 设计：我的家、家庭日历、设备护照、凭证盒和智能助手 |
 | `docs/tasks.md` | 开发留痕：阶段计划、验收、验证记录和后续任务 |
+| `docs/security-test-review.md` | P9 测试与安全审查：认证、权限、文件、JWT、日志等风险控制证据 |
+| `docs/interview-guide.md` | 面试讲解指南：项目背景、技术栈、架构、数据库、Docker、AI、Redis 和演示路线 |
 | `docs/decisions/` | ADR：核心技术栈、RustFS、AI 辅助定位、家庭场景 UI 等关键决策 |
 
 `AGENTS.md` 是项目编码规范和边界约束；README 面向运行、展示和面试讲解。
@@ -98,7 +100,7 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 与基础 CRUD 能力 |
 | MySQL | 8.x | 业务数据存储 |
-| Redis | 7.x | 提醒去重、首页统计缓存；验证码和 Token 黑名单为后续增强 |
+| Redis | 7.x | 提醒去重、首页统计缓存、JWT 黑名单；验证码为后续增强 |
 | Spring Scheduler | - | 保修到期、耗材更换等定时提醒 |
 | Spring Validation | - | 参数校验 |
 | SpringDoc OpenAPI | 2.6.x | API 接口文档 |
@@ -112,7 +114,7 @@ flowchart LR
 
 1. 后端采用 JDK 21 + Spring Boot 3.x：JDK 21 是 LTS 版本，适合在简历项目中体现较新的 Java 实践；Spring Boot 3.x 生态更成熟，和 MyBatis Plus、Spring Security、Knife4j、Redis 等常用组件的兼容性更稳。
 2. 数据库选择 MySQL，是因为家庭设备、保修、维修、提醒等数据关系明确，适合关系型建模，也贴合常见 Java 项目开发环境。
-3. 当前引入 Redis 主要用于提醒任务去重和首页统计缓存；验证码、登录态辅助缓存和 Token 黑名单是后续安全增强方向。
+3. 当前引入 Redis 主要用于提醒任务去重、首页统计缓存和 JWT 退出黑名单；验证码、登录态辅助缓存是后续安全增强方向。
 4. 文件存储当前优先使用 RustFS 这类 S3 兼容对象存储，保留本地文件系统作为测试和兜底，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
 5. AI 模块采用可替换的 Client 设计，可以接入兼容 OpenAI 风格的 API，也可以在本地开发阶段使用 Mock 模式，避免 AI 接口影响核心业务。
 
@@ -464,6 +466,20 @@ docker compose up -d --build
 接口文档：http://localhost:8080/swagger-ui.html
 ```
 
+推荐演示路线：
+
+```text
+登录 demo / fixledger123
+  -> 我的家：看家庭健康分、本周事项和真实图钉风格家庭日历
+  -> 设备护照：按设备和房间理解家庭设备档案
+  -> 设备详情：查看保修、耗材、维修、附件和 AI 总结
+  -> 耗材管理：记录一次滤芯更换，说明下次提醒日期重新计算
+  -> 维修记录：说明维修状态流转和费用统计规则
+  -> 凭证盒：说明发票、保修卡、说明书、维修单存入 RustFS
+  -> 智能助手：演示 AI 故障建议，但强调 AI 只辅助不改核心数据
+```
+
+完整讲解稿见 `docs/interview-guide.md`。
 
 ## 常用命令
 
@@ -550,6 +566,10 @@ AI 只是辅助能力，不参与核心业务判断。它主要用于减少手�
 
 当前 Docker 演示环境使用 RustFS 保存发票、保修卡、说明书和维修单。本地测试环境仍可使用本地文件存储。文件模块通过 `FileStorageService` 抽象，后续也可以切换到 MinIO 或其他 S3 兼容对象存储。
 
+### Q: 退出登录后旧 Token 为什么会失效？
+
+JWT 是无状态令牌，单纯删除前端 Token 不足以让已签发 Token 立即失效。当前实现会给 JWT 写入 `jti`，退出登录时把 `jti` 放入 Redis 黑名单，并按 Token 剩余有效期设置 TTL，认证过滤器会拒绝黑名单中的旧 Token。
+
 ### Q: 这个项目如何体现 Java 后端能力？
 
 项目会覆盖 Spring Boot 分层开发、MyBatis Plus 数据访问、Spring Security + JWT 认证、Redis 缓存、定时任务、文件上传、状态流转、统计报表、统一异常处理、接口文档和 Docker 部署等内容，不是单纯的增删改查。
@@ -568,6 +588,7 @@ MIT License
 
 - 当前 MVP 已完成，后续进入系统性完善阶段。
 - 已新增 `docs/spec.md`，统一项目目标、命令、结构、风格、测试、边界和成功标准。
+- 已新增 `docs/interview-guide.md` 和 `docs/security-test-review.md`，沉淀面试讲解路线、测试证据和安全审查结论。
 - 已新增 `docs/decisions/`，记录核心技术栈、RustFS、AI 辅助定位和家庭场景 UI 的 ADR。
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS。
 - 文件存储当前已接入 RustFS；本地文件系统保留为测试和兜底。
