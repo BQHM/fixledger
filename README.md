@@ -84,7 +84,7 @@ flowchart LR
     AI --> LLM["大模型 API / Mock 模式"]
 
     Scheduler["Spring Scheduler"] --> Reminder
-    Reminder --> Notify["站内通知 / 邮件提醒"]
+    Reminder --> Notify["站内通知 / 邮件扩展"]
 ```
 
 ## 技术栈
@@ -100,7 +100,7 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 与基础 CRUD 能力 |
 | MySQL | 8.x | 业务数据存储 |
-| Redis | 7.x | 提醒去重、首页统计缓存、JWT 黑名单；验证码为后续增强 |
+| Redis | 7.x | 提醒去重、JWT 黑名单、首页刷新标记/缓存钩子；验证码为后续增强 |
 | Spring Scheduler | - | 保修到期、耗材更换等定时提醒 |
 | Spring Validation | - | 参数校验 |
 | SpringDoc OpenAPI | 2.6.x | API 接口文档 |
@@ -114,7 +114,7 @@ flowchart LR
 
 1. 后端采用 JDK 21 + Spring Boot 3.x：JDK 21 是 LTS 版本，适合在简历项目中体现较新的 Java 实践；Spring Boot 3.x 生态更成熟，和 MyBatis Plus、Spring Security、Knife4j、Redis 等常用组件的兼容性更稳。
 2. 数据库选择 MySQL，是因为家庭设备、保修、维修、提醒等数据关系明确，适合关系型建模，也贴合常见 Java 项目开发环境。
-3. 当前引入 Redis 主要用于提醒任务去重、首页统计缓存和 JWT 退出黑名单；验证码、登录态辅助缓存是后续安全增强方向。
+3. 当前引入 Redis 主要用于提醒任务去重、JWT 退出黑名单和首页刷新标记/缓存钩子；验证码、登录态辅助缓存和完整首页结果缓存是后续增强方向。
 4. 文件存储当前优先使用 RustFS 这类 S3 兼容对象存储，保留本地文件系统作为测试和兜底，适合保存发票图片、保修卡、说明书 PDF、维修单等附件。
 5. AI 模块采用可替换的 Client 设计，可以接入兼容 OpenAI 风格的 API，也可以在本地开发阶段使用 Mock 模式，避免 AI 接口影响核心业务。
 
@@ -125,7 +125,7 @@ flowchart LR
 | Vue | 3.x | 前端 UI 框架 |
 | TypeScript | 5.x | 前端开发语言 |
 | Vite | 6.x | 前端构建工具 |
-| Element Plus | 2.x | 后台管理组件库 |
+| Element Plus | 2.x | Vue 组件库，当前按家庭场景二次组织页面体验 |
 | Vue Router | 4.x | 路由管理 |
 | Pinia | 2.x | 状态管理 |
 | Axios | 1.x | HTTP 请求客户端 |
@@ -137,7 +137,7 @@ flowchart LR
 ### 家庭空间模块
 
 - **家庭空间管理**：支持创建家庭空间，将设备、提醒和维修记录按家庭维度聚合。
-- **家庭成员管理**：支持邀请家庭成员加入，后续可扩展成员角色和权限。
+- **家庭成员管理**：当前支持家庭成员关系查询和家庭空间权限校验；邀请、移除、角色调整是后续增强。
 - **数据隔离**：不同家庭空间之间的数据互相隔离，避免设备和凭证混杂。
 
 ### 设备档案模块
@@ -205,7 +205,7 @@ flowchart LR
 
 ### 增强阶段
 
-- [x] Redis 提醒去重和首页热点统计缓存。
+- [x] Redis 提醒去重、JWT 黑名单和首页刷新标记/缓存钩子。
 - [x] AI 票据信息提取、故障排查建议和维修总结。
 - [x] RustFS 文件存储适配。
 - [ ] 邮件或 Webhook 通知扩展。
@@ -233,7 +233,7 @@ flowchart LR
 
 ### 保修与耗材
 
-- 家庭日历：查看未来即将过保、耗材更换和维修跟进事项。
+- 家庭日历：查看未来即将过保和耗材更换事项；维修跟进提醒为后续增强。
 - 耗材提醒：查看即将更换和已超期的耗材。
 - 更换记录：记录滤芯、滤网、电池等耗材更换历史。
 
@@ -245,10 +245,10 @@ flowchart LR
 
 ## 项目结构
 
-计划目录结构如下：
+当前目录结构如下：
 
 ```text
-fix-ledger/
+fixledger/
 ├── backend/                           # Spring Boot 后端应用
 │   ├── src/main/java/com/fixledger/
 │   │   ├── FixLedgerApplication.java  # 后端启动类
@@ -326,7 +326,7 @@ fix-ledger/
 
 ```bash
 git clone <your-repository-url>
-cd fix-ledger
+cd fixledger
 ```
 
 ### 2. 配置环境变量
@@ -471,7 +471,7 @@ docker compose up -d --build
 ```text
 登录 demo / fixledger123
   -> 我的家：看家庭健康分、本周事项和真实图钉风格家庭日历
-  -> 设备护照：按设备和房间理解家庭设备档案
+  -> 设备护照：按房间卡片墙理解家庭设备档案，高级清单保留分页和编辑能力
   -> 设备详情：查看保修、耗材、维修、附件和 AI 总结
   -> 耗材管理：记录一次滤芯更换，说明下次提醒日期重新计算
   -> 维修记录：说明维修状态流转和费用统计规则
@@ -505,7 +505,7 @@ docker compose up -d --build
 - 前端质量门禁：Node.js 22 + npm 缓存 + `cd frontend && npm ci && npm run build`。
 - 部署配置门禁：`docker compose config --quiet`，提前发现 Compose 配置错误。
 
-面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。真实部署、邮件/Webhook、OCR、真实 AI Provider、附件在线预览和 Refresh Token 属于后续增强，不阻塞当前 MVP 和 P9 验收。
+面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。真实部署、邮件/Webhook、OCR、真实 AI Provider、附件在线预览和 Refresh Token 属于后续增强，不阻塞当前 MVP 和 P10 文档验收。
 
 ## Docker 快速部署
 
@@ -593,16 +593,18 @@ JWT 是无状态令牌，单纯删除前端 Token 不足以让已签发 Token �
 
 MIT License
 
-## P9.8 文档对齐状态
+## P10 文档对齐状态
 
-截至 P9.8，项目文档已经按当前实现和 skills 规范重新对齐：
+截至 P10，项目文档已经按当前实现、代码结构和 skills 规范完成深度对齐：
 
-- 当前 MVP 已完成，后续进入系统性完善阶段。
+- 当前 MVP 和 P9 系统性完善已完成，P10 完成需求、架构、接口、数据库、UI 和 README 的最终对齐。
 - 已新增 `docs/spec.md`，统一项目目标、命令、结构、风格、测试、边界和成功标准。
 - 已新增 `docs/interview-guide.md` 和 `docs/security-test-review.md`，沉淀面试讲解路线、测试证据和安全审查结论。
 - 已新增 `docs/decisions/`，记录核心技术栈、RustFS、AI 辅助定位和家庭场景 UI 的 ADR。
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS。
 - 文件存储当前已接入 RustFS；本地文件系统保留为测试和兜底。
 - AI 默认使用 Mock，可选接入 OpenAI-compatible Provider。
-- 首页产品表达已从“首页看板”升级为“我的家”。
+- 首页产品表达已从“首页看板”升级为“我的家”，设备护照入口已升级为按房间组织的卡片墙。
+- `docs/api.md` 已明确设备分页的当前筛选参数和预留字段，`docs/database.md` 已明确当前 `schema.sql` 已建表与二期规划表。
+- `docs/ui.md` 已明确设备护照卡片墙当前已实现，完整凭证盒和独立家庭日历仍是后续体验增强。
 - 系统管理、操作日志、家庭成员邀请、邮件/Webhook 通知仍是后续规划。
