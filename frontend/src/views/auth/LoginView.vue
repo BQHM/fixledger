@@ -13,14 +13,20 @@ const formRef = ref<FormInstance>();
 const loading = ref(false);
 
 const form = reactive({
-  account: 'demo',
-  password: 'fixledger123'
+  account: '',
+  password: ''
 });
 
 const rules: FormRules = {
   account: [{ required: true, message: '请输入用户名或邮箱', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 };
+
+function fillDemoAccount() {
+  form.account = 'demo';
+  form.password = 'fixledger123';
+  ElMessage.info('已填入本地演示账号，请确认后登录');
+}
 
 async function handleLogin() {
   await formRef.value?.validate();
@@ -42,10 +48,10 @@ async function handleLogin() {
       <h1>每台设备都有一份清晰的家庭档案</h1>
       <p>保修、发票、耗材、维修记录和提醒统一管理，面试演示时可以完整跑通家庭设备生命周期。</p>
       <div class="hero-cards">
-        <div>设备档案</div>
-        <div>保修提醒</div>
-        <div>耗材周期</div>
-        <div>AI 建议</div>
+        <div>设备护照</div>
+        <div>家庭日历</div>
+        <div>凭证盒</div>
+        <div>AI 辅助</div>
       </div>
     </section>
 
@@ -53,7 +59,7 @@ async function handleLogin() {
       <template #header>
         <div>
           <h2>登录 FixLedger</h2>
-          <span>演示账号已预填，可直接体验后端 P0-P7 能力。</span>
+          <span>表单默认留空；本地演示时可手动填入演示账号，避免把演示密码误认为生产密钥。</span>
         </div>
       </template>
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @keyup.enter="handleLogin">
@@ -70,6 +76,13 @@ async function handleLogin() {
             :prefix-icon="Lock"
           />
         </el-form-item>
+        <div class="demo-account-box">
+          <div>
+            <strong>本地演示账号</strong>
+            <span>仅用于 Docker 演示数据：demo / fixledger123</span>
+          </div>
+          <el-button plain @click="fillDemoAccount">填入演示账号</el-button>
+        </div>
         <el-button type="primary" size="large" :loading="loading" class="auth-submit" @click="handleLogin">
           登录并进入首页
         </el-button>
@@ -172,6 +185,34 @@ async function handleLogin() {
   color: var(--fl-muted);
 }
 
+.demo-account-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 6px 0 16px;
+  padding: 14px;
+  border: 1px dashed rgba(47, 125, 104, 0.32);
+  border-radius: 18px;
+  background: rgba(220, 238, 230, 0.5);
+}
+
+.demo-account-box strong,
+.demo-account-box span {
+  display: block;
+}
+
+.demo-account-box strong {
+  color: var(--fl-green-dark);
+  font-size: 14px;
+}
+
+.demo-account-box span {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .auth-submit {
   width: 100%;
   margin-top: 8px;
@@ -195,6 +236,26 @@ async function handleLogin() {
 
   .auth-hero {
     min-height: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .auth-page {
+    padding: 28px 16px;
+  }
+
+  .auth-hero {
+    padding: 32px;
+  }
+
+  .hero-cards,
+  .demo-account-box {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-account-box {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>
