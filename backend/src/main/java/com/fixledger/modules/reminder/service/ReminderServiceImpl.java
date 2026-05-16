@@ -33,7 +33,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * <p>
- * 文件功能说明：提醒通知服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * 文件功能说明：提醒通知服务实现，负责保修到期和耗材更换提醒的扫描、去重、查询和状态处理。
  * </p>
  *
  * @Author FixLedger
@@ -72,7 +72,7 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒分页查询业务逻辑。
+   * 功能说明：按状态和类型分页查询家庭提醒，查询条件始终带家庭空间隔离。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
@@ -98,11 +98,11 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒执行业务处理业务逻辑。
+   * 功能说明：统计待处理提醒数量，用于首页、侧边栏等入口展示待办徽标。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
-   * @return 业务响应数据
+   * @return 待处理提醒数量
    */
   @Override
   public UnreadCountResponse unreadCount(Long userId, Long familyId) {
@@ -116,12 +116,12 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒标记提醒业务逻辑。
+   * 功能说明：将提醒置为已读并记录读取时间，保留提醒生命周期记录。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
    * @param reminderId 提醒 ID
-   * @return 更新后的数据
+   * @return 已读状态的提醒数据
    */
   @Override
   @Transactional
@@ -137,12 +137,12 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒忽略提醒业务逻辑。
+   * 功能说明：忽略不需要处理的提醒，保留历史记录但不再计入待处理数量。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
    * @param reminderId 提醒 ID
-   * @return 更新后的数据
+   * @return 已忽略状态的提醒数据
    */
   @Override
   @Transactional
@@ -158,11 +158,11 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒扫描提醒业务逻辑。
+   * 功能说明：手动扫描当前家庭的保修和耗材提醒，用于前端按钮或演示环境即时验证。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
-   * @return 业务响应数据
+   * @return 本次生成和跳过数量
    */
   @Override
   public ReminderScanResponse scanFamily(Long userId, Long familyId) {
@@ -173,11 +173,11 @@ public class ReminderServiceImpl implements ReminderService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现提醒扫描提醒业务逻辑。
+   * 功能说明：定时任务按家庭和业务日期扫描保修、耗材提醒，不依赖前端触发。
    * </p>
    * @param familyId 家庭空间 ID
    * @param today 业务日期
-   * @return 业务响应数据
+   * @return 本次生成和跳过数量
    */
   @Override
   public ReminderScanResponse scanFamily(Long familyId, LocalDate today) {

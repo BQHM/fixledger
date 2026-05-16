@@ -28,7 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * <p>
- * 文件功能说明：附件资源服务实现，负责业务编排、事务边界、状态校验和持久化调用。
+ * 文件功能说明：附件资源服务实现，负责附件元数据、家庭空间鉴权、业务对象归属校验和存储服务调用。
  * </p>
  *
  * @Author FixLedger
@@ -73,14 +73,14 @@ public class FileResourceServiceImpl implements FileResourceService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现附件上传文件业务逻辑。
+   * 功能说明：校验家庭成员和业务对象归属后上传凭证文件，并写入附件元数据。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
    * @param bizType 业务类型
    * @param bizId 业务 ID
    * @param file 上传文件
-   * @return 业务响应数据
+   * @return 附件元数据
    */
   @Override
   public FileResourceResponse uploadFile(
@@ -114,7 +114,7 @@ public class FileResourceServiceImpl implements FileResourceService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现附件查询列表业务逻辑。
+   * 功能说明：查询指定设备、保修、维修或耗材下的附件列表。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
@@ -145,12 +145,12 @@ public class FileResourceServiceImpl implements FileResourceService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现附件下载文件业务逻辑。
+   * 功能说明：下载附件内容，读取存储前确认附件元数据属于当前家庭。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
    * @param fileId 文件 ID
-   * @return 处理结果
+   * @return 下载资源和响应头所需元数据
    */
   @Override
   public FileDownloadResource downloadFile(Long userId, Long familyId, Long fileId) {
@@ -168,12 +168,12 @@ public class FileResourceServiceImpl implements FileResourceService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：实现附件删除业务逻辑。
+   * 功能说明：逻辑删除附件元数据，物理文件等待后续清理任务处理。
    * </p>
    * @param userId 当前用户 ID
    * @param familyId 家庭空间 ID
    * @param fileId 文件 ID
-   * @return 是否处理成功
+   * @return 是否删除成功
    */
   @Override
   @Transactional

@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClientException;
 
 /**
  * <p>
- * 文件功能说明：AI 基础设施实现，封装外部依赖和技术细节。
+ * 文件功能说明：OpenAI 兼容协议客户端，统一封装 Prompt 渲染、HTTP 调用和 JSON 解析。
  * </p>
  *
  * @Author FixLedger
@@ -45,7 +45,7 @@ public class OpenAiCompatibleClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成解析数据基础设施操作。
+   * 功能说明：调用真实 AI Provider 解析发票或订单文本，只返回设备录入建议。
    * </p>
    * @param text 待解析文本
    * @return 统一响应结果
@@ -66,7 +66,7 @@ public class OpenAiCompatibleClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成生成建议基础设施操作。
+   * 功能说明：结合设备上下文生成故障排查建议，供用户参考确认。
    * </p>
    * @param context 设备上下文
    * @param faultDescription 故障描述
@@ -88,7 +88,7 @@ public class OpenAiCompatibleClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成生成总结基础设施操作。
+   * 功能说明：根据设备维修历史生成维护总结和保养建议，用于辅助复盘。
    * </p>
    * @param context 设备上下文
    * @param records 维修记录列表
@@ -113,7 +113,7 @@ public class OpenAiCompatibleClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成返回 AI Provider 名称基础设施操作。
+   * 功能说明：返回 Provider 名称写入 AI 分析记录，便于审计和排障。
    * </p>
    * @return 处理结果
    */
@@ -125,7 +125,7 @@ public class OpenAiCompatibleClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成返回 AI 模型名称基础设施操作。
+   * 功能说明：返回当前配置的模型名称写入 AI 分析记录。
    * </p>
    * @return 处理结果
    */

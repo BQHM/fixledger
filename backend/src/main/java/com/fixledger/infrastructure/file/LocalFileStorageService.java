@@ -40,12 +40,12 @@ public class LocalFileStorageService implements FileStorageService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成存储上传文件基础设施操作。
+   * 功能说明：将附件保存到本地磁盘测试目录，返回与对象存储一致的文件元数据。
    * </p>
    * @param familyId 家庭空间 ID
    * @param bizType 业务类型
    * @param file 上传文件
-   * @return 处理结果
+   * @return 存储后的文件元数据
    */
   @Override
   public StoredFile store(Long familyId, String bizType, MultipartFile file) {
@@ -85,10 +85,10 @@ public class LocalFileStorageService implements FileStorageService {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成读取文件资源基础设施操作。
+   * 功能说明：按相对路径读取本地附件，并限制在配置根目录内防止路径穿越。
    * </p>
    * @param storagePath 文件存储路径
-   * @return 处理结果
+   * @return 可下载资源
    */
   @Override
   public Resource loadAsResource(String storagePath) {

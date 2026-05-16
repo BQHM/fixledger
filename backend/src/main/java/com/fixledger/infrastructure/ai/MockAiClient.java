@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * <p>
- * 文件功能说明：AI 基础设施实现，封装外部依赖和技术细节。
+ * 文件功能说明：Mock AI 客户端，使用本地规则模拟 AI 能力，保证开发、测试和演示不依赖外部 API Key。
  * </p>
  *
  * @Author FixLedger
@@ -26,7 +26,7 @@ public class MockAiClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成解析数据基础设施操作。
+   * 功能说明：用正则规则从发票或订单文本中提取设备录入建议。
    * </p>
    * @param text 待解析文本
    * @return 统一响应结果
@@ -44,7 +44,7 @@ public class MockAiClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成生成建议基础设施操作。
+   * 功能说明：用关键词规则生成故障排查建议，模拟真实 AI 返回。
    * </p>
    * @param context 设备上下文
    * @param faultDescription 故障描述
@@ -64,7 +64,7 @@ public class MockAiClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成生成总结基础设施操作。
+   * 功能说明：根据维修记录数量生成维护总结，模拟真实 AI 辅助复盘。
    * </p>
    * @param context 设备上下文
    * @param records 维修记录列表
@@ -91,7 +91,7 @@ public class MockAiClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成返回 AI Provider 名称基础设施操作。
+   * 功能说明：返回 Mock Provider 名称，标识本次分析未调用外部模型。
    * </p>
    * @return 处理结果
    */
@@ -103,7 +103,7 @@ public class MockAiClient implements AiClient {
   /**
    * @Author FixLedger
    * <p>
-   * 功能说明：完成返回 AI 模型名称基础设施操作。
+   * 功能说明：返回 Mock 模型名称，便于分析记录和真实模型区分。
    * </p>
    * @return 处理结果
    */
