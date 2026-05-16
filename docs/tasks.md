@@ -84,7 +84,7 @@
 | P9 系统性完善阶段 | P9.8 Skills 文档规范对齐 | 按 skills 规范补齐规格、ADR、任务模板、边界和验证口径 | 已完成 |
 | P9 系统性完善阶段 | P9.9 P9 全量验收收尾 | 汇总 P9 验收、验证命令、面试口径和后续 P10 方向 | 已完成 |
 | P10 文档对齐 | P10.1 需求文档复核 | 深度复核 `requirements.md` 与当前产品边界 | 已完成 |
-| P10 文档对齐 | P10.2 架构文档复核 | 深度复核 `architecture.md` 与当前工程实现 | 计划中 |
+| P10 文档对齐 | P10.2 架构文档复核 | 深度复核 `architecture.md` 与当前工程实现 | 已完成 |
 | P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 计划中 |
 | P10 文档对齐 | P10.4 UI 与 README 复核 | 深度复核 `ui.md`、`README.md` 与演示体验 | 计划中 |
 | P11 代码质量治理 | P11.1 后端规范扫描 | 扫描异常、日志、事务、配置和 Entity 暴露风险 | 计划中 |
@@ -1494,10 +1494,27 @@ P10 的目标不是继续堆功能，而是把已经完成的系统能力、暂�
 
 - 复核 `docs/architecture.md`，让架构分层、Redis、定时任务、通知和文件存储描述与当前工程一致。
 
-计划范围：
+范围：
 
 - 区分当前已有基础设施和后续预留基础设施。
 - 修正单一提醒扫描 cron、站内通知当前落点和 Refresh Token 后续增强口径。
+- 修正 Redis 架构描述，明确首页当前是刷新标记/缓存钩子，不是完整统计结果缓存。
+- 修正通知架构描述，明确当前没有独立 `NotificationService`，站内通知由提醒模块写入。
+
+验收标准：
+
+- `architecture.md` 不再把 Refresh Token、独立 NotificationService、维修待跟进扫描或完整首页缓存描述为当前已实现。
+- 定时任务章节能对应 `ReminderScheduler`、`ReminderService` 和 `ReminderCreationService` 的实际职责。
+- 面试时可以用“当前实现 + 后续扩展点”解释架构取舍。
+
+验证记录：
+
+- `rg -n "NotificationService|SchedulerSupport|08:10|P9.7.1|首页统计缓存" docs/architecture.md`：用于检查旧架构口径。
+- `git diff --check`：P10.2 提交前执行。
+
+完成结论：
+
+- P10.2 已完成。架构文档现在能清楚说明当前系统的真实分层、定时任务、Redis 和通知边界。
 
 ### P10.3 接口与数据库文档复核
 

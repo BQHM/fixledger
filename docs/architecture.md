@@ -74,7 +74,7 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 和基础 CRUD |
 | MySQL | 8.x | 业务数据库 |
-| Redis | 7.x | 提醒去重、首页统计缓存、JWT 黑名单；验证码和用户缓存为后续增强 |
+| Redis | 7.x | 提醒去重、JWT 黑名单、首页刷新标记/缓存钩子；验证码、用户缓存和 AI 任务状态为后续增强 |
 | Spring Scheduler | - | 保修和耗材提醒定时任务 |
 | Spring Validation | - | 参数校验 |
 | MapStruct | - | DTO / Entity 转换 |
@@ -211,8 +211,8 @@ modules.system（规划中）
 - `RedisService`。
 - `FileStorageService`。
 - `AiClient`。
-- `NotificationService`。
-- `SchedulerSupport`。
+- `ReminderScheduler`。
+- 通知基础设施为后续扩展；当前站内通知由提醒模块的 `ReminderCreationService` 落库。
 
 ### 5.3 auth
 
@@ -221,8 +221,8 @@ modules.system（规划中）
 - 注册。
 - 登录。
 - 退出登录。
-- 刷新 Token。
 - 获取当前用户。
+- Refresh Token 和多端会话为后续增强。
 
 ### 5.4 user
 
@@ -395,10 +395,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Job as ReminderScheduler
-    participant S as ReminderGenerateService
+    participant S as ReminderService
     participant W as WarrantyRecordMapper
     participant R as RedisService
-    participant N as NotificationService
+    participant N as ReminderCreationService
     participant DB as MySQL
 
     Job->>S: scanWarrantyReminders()
@@ -406,9 +406,9 @@ sequenceDiagram
     W->>DB: 按日期范围查询
     S->>R: 检查提醒去重 Key
     alt 未提醒
-        S->>DB: 创建提醒任务
-        S->>N: 创建站内通知
         S->>R: 写入去重 Key
+        S->>N: 同事务创建提醒任务和站内通知
+        N->>DB: 写入提醒任务和站内通知
     else 已提醒
         S->>S: 跳过
     end
@@ -477,46 +477,40 @@ Redis 使用场景：
 | JWT 黑名单 | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
 | 用户信息（二期） | `fixledger:user:profile:{userId}` | 30 分钟 |
 | 提醒去重 | `fixledger:reminder:dedupe:{type}:{bizId}:{date}` | 2 天 |
-| 首页统计 | `fixledger:dashboard:summary:{familyId}` | 5 分钟 |
-| AI 任务状态 | `fixledger:ai:task:{taskId}` | 1 小时 |
+| 首页刷新标记 / 缓存钩子 | `fixledger:dashboard:summary:{familyId}` | 5 分钟 |
+| AI 任务状态（二期） | `fixledger:ai:task:{taskId}` | 1 小时 |
 
 缓存原则：
 
 - 重要业务以 MySQL 为准。
 - 缓存必须设置 TTL。
 - Redis Key 集中管理。
-- 更新设备、保修、耗材、维修数据后要清理相关首页缓存。
+- 当前首页写入刷新标记，为后续完整统计结果缓存预留 Key；更新设备、保修、耗材、维修数据后要考虑缓存失效。
 
 ## 10. 定时任务设计
 
-### 10.1 保修提醒扫描
+### 10.1 当前提醒扫描入口
 
-执行频率：每天 08:00。
+执行频率：通过 `fixledger.reminder.scan-cron` 配置，默认每天 08:00。
 
-逻辑：
+当前实现：
 
-- 查询即将在提醒窗口内到期的保修记录。
-- 检查 Redis 去重 Key。
-- 创建提醒任务和站内通知。
+- `ReminderScheduler` 每次扫描所有家庭空间。
+- `ReminderService` 在同一次扫描中处理保修提醒和耗材提醒。
+- 保修提醒覆盖即将过保和已过保。
+- 耗材提醒覆盖即将更换和已逾期。
+- Redis 先做短期去重，数据库再兜底校验同一业务对象同一天同一类型不重复。
+- 提醒任务和站内通知由 `ReminderCreationService` 在同一事务内写入。
 
-### 10.2 耗材提醒扫描
+### 10.2 维修待跟进扫描（二期）
 
-执行频率：每天 08:10。
+当前 `MAINTENANCE_FOLLOW_UP` 只作为提醒类型预留，尚未接入定时扫描。
 
-逻辑：
-
-- 查询即将到期或已逾期耗材。
-- 检查 Redis 去重 Key。
-- 创建提醒任务和站内通知。
-
-### 10.3 维修待跟进扫描（二期）
-
-执行频率：每天 09:00。
-
-逻辑：
+后续接入时的逻辑：
 
 - 查询长时间处于待处理、已报修、维修中的记录。
-- 创建待跟进提醒。
+- 结合家庭空间和维修状态生成待跟进提醒。
+- 复用 Redis 去重和 `ReminderCreationService` 写库流程。
 
 ## 11. AI 架构
 
@@ -613,7 +607,7 @@ RustFS
 
 ### 14.4 为什么使用 Redis
 
-Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名单。它能体现工程能力，但不影响 MVP 的核心数据模型。
+Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/缓存钩子；验证码、用户资料缓存和 AI 异步任务状态是后续增强。它能体现工程能力，但不影响 MVP 的核心数据模型。
 
 ## 15. 演进路线
 
@@ -649,7 +643,7 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - PDF 说明书搜索。
 - 家庭设备清单导出。
 
-## 16. P9.7.1 当前工程实现对齐
+## 16. P10.2 当前工程实现对齐
 
 当前代码实现与架构文档的对齐结论：
 
@@ -661,6 +655,9 @@ Redis 主要用于提醒去重、首页统计缓存、验证码和 Token 黑名�
 - 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
 - 当前文件存储新增 `S3FileStorageService`，Docker 默认对接 RustFS；`LocalFileStorageService` 保留为测试和兜底。
 - 当前登录退出已实现 Redis Token 黑名单，Refresh Token 和多端会话机制保留为后续增强。
+- 当前定时任务为 `ReminderScheduler` 单一 cron 入口，扫描所有家庭的保修和耗材提醒；维修待跟进扫描仍是后续增强。
+- 当前没有独立 `NotificationService` 基础设施，站内通知由 `ReminderCreationService` 与提醒任务同事务写入，邮件和 Webhook 通过后续通知基础设施扩展。
+- 当前首页 Redis Key 作为刷新标记和缓存钩子使用，尚未把完整首页统计结果缓存到 Redis。
 
 ## 17. RustFS 文件存储接入设计
 
