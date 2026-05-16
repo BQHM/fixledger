@@ -16,7 +16,7 @@ FixLedger 要做的是一个面向家庭场景的设备生命周期管理工具�
 | 层级 | 技术 | 当前约定 |
 | --- | --- | --- |
 | 后端 | JDK 21 / Spring Boot 3.3.x / Spring Security / MyBatis Plus 3.5.x | 单应用、模块化分包、REST API |
-| 数据 | MySQL 8 / Redis 7 | MySQL 保存业务事实，Redis 用于提醒去重和缓存 |
+| 数据 | MySQL 8 / Redis 7 | MySQL 保存业务事实，Redis 用于提醒去重、JWT 黑名单和首页刷新标记/缓存钩子 |
 | 文件 | RustFS / S3 兼容对象存储 / 本地文件兜底 | Docker 默认 RustFS，测试环境默认本地文件 |
 | AI | 自定义 AiClient / Mock / OpenAI-compatible | AI 可关闭、可 Mock、不能成为核心依赖 |
 | 前端 | Vue 3 / TypeScript / Vite / Element Plus / Pinia / Vue Router / Axios / ECharts | 场景化家庭应用，不做泛后台模板 |
@@ -57,7 +57,7 @@ mvn test
 FixLedger/
 ├── backend/                 # Spring Boot 后端单应用
 │   ├── src/main/java/com/fixledger/common/          # 统一响应、异常、安全、配置、工具
-│   ├── src/main/java/com/fixledger/infrastructure/  # Redis、文件、AI、通知、定时任务等技术封装
+│   ├── src/main/java/com/fixledger/infrastructure/  # Redis、文件、AI、定时任务等技术封装
 │   ├── src/main/java/com/fixledger/modules/         # auth/family/asset/warranty/consumable 等业务模块
 │   └── src/main/resources/                          # application、SQL、MyBatis XML、Prompt 模板
 ├── frontend/                # Vue3 + TypeScript 前端应用
@@ -121,7 +121,7 @@ class DeviceAssetController {
 - 新增第三方依赖、修改 Docker 基础镜像或引入真实外部服务。
 - 修改核心表结构、主键策略、逻辑删除策略或已有接口契约。
 - 从后端鉴权下载改为对象存储临时 URL 直连访问。
-- 引入真实 AI Provider、OCR、邮件、Webhook、CI/CD 或生产部署方案。
+- 引入真实 AI Provider、OCR、邮件、Webhook、部署流水线、E2E 门禁或生产部署方案。
 - 物理删除设备、附件、维修历史等生命周期数据。
 
 ### Never
@@ -149,4 +149,4 @@ class DeviceAssetController {
 - 附件是否需要支持在线预览、对象存储临时 URL 或说明书全文搜索。
 - 真实 AI Provider 是否选择 OpenAI-compatible、Spring AI，还是继续保持自定义 Client。
 - 前端是否优先深化设备护照和凭证盒，还是先补强测试、权限和安全审计。
-- 是否新增 CI/CD，让后端测试、前端构建和 Docker 配置校验自动执行。
+- 现有 GitHub Actions 是否需要继续增加部署流水线、E2E、分支保护或制品发布。
