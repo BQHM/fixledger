@@ -2,6 +2,8 @@ package com.fixledger.infrastructure.redis;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,10 +15,12 @@ import org.springframework.stereotype.Service;
  *
  * @Author FixLedger
  */
+@Slf4j
 @Service
 public class RedisServiceImpl implements RedisService {
 
   private final StringRedisTemplate stringRedisTemplate;
+  private final AtomicBoolean connectionFailureLogged = new AtomicBoolean();
 
   public RedisServiceImpl(StringRedisTemplate stringRedisTemplate) {
     this.stringRedisTemplate = stringRedisTemplate;
@@ -38,6 +42,7 @@ public class RedisServiceImpl implements RedisService {
       Boolean success = stringRedisTemplate.opsForValue().setIfAbsent(key, value, ttl);
       return Boolean.TRUE.equals(success);
     } catch (RedisConnectionFailureException e) {
+      logConnectionFailure("Redis set-if-absent failed; database dedupe guard will be used", e);
       return true;
     }
   }
@@ -56,7 +61,7 @@ public class RedisServiceImpl implements RedisService {
     try {
       stringRedisTemplate.opsForValue().set(key, value, ttl);
     } catch (RedisConnectionFailureException e) {
-      // Redis is an optimization for cache/dedupe; database remains the source of truth.
+      logConnectionFailure("Redis set failed; cache-style data was not written", e);
     }
   }
 
@@ -73,6 +78,7 @@ public class RedisServiceImpl implements RedisService {
     try {
       return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key));
     } catch (RedisConnectionFailureException e) {
+      logConnectionFailure("Redis get failed; treating cached value as absent", e);
       return Optional.empty();
     }
   }
@@ -89,7 +95,14 @@ public class RedisServiceImpl implements RedisService {
     try {
       stringRedisTemplate.delete(key);
     } catch (RedisConnectionFailureException e) {
-      // Cache deletion failure must not block core business data.
+      logConnectionFailure("Redis delete failed; cache-style data may expire by TTL", e);
     }
+  }
+
+  private void logConnectionFailure(String message, RedisConnectionFailureException e) {
+    if (connectionFailureLogged.compareAndSet(false, true)) {
+      log.warn("{}: {}", message, e.getMessage());
+    }
+    log.debug(message, e);
   }
 }
