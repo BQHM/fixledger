@@ -85,7 +85,7 @@
 | P9 系统性完善阶段 | P9.9 P9 全量验收收尾 | 汇总 P9 验收、验证命令、面试口径和后续 P10 方向 | 已完成 |
 | P10 文档对齐 | P10.1 需求文档复核 | 深度复核 `requirements.md` 与当前产品边界 | 已完成 |
 | P10 文档对齐 | P10.2 架构文档复核 | 深度复核 `architecture.md` 与当前工程实现 | 已完成 |
-| P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 计划中 |
+| P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 已完成 |
 | P10 文档对齐 | P10.4 UI 与 README 复核 | 深度复核 `ui.md`、`README.md` 与演示体验 | 计划中 |
 | P11 代码质量治理 | P11.1 后端规范扫描 | 扫描异常、日志、事务、配置和 Entity 暴露风险 | 计划中 |
 | P11 代码质量治理 | P11.2 前端规范扫描 | 扫描 API 封装、类型、路由守卫和页面职责 | 计划中 |
@@ -1522,9 +1522,28 @@ P10 的目标不是继续堆功能，而是把已经完成的系统能力、暂�
 
 - 复核 `docs/api.md`、`docs/database.md`，让接口示例和实际 Controller、表结构一致。
 
-计划范围：
+范围：
 
 - 修正设备分页字段、保修状态预留字段、当前接口清单和实际表结构说明。
+- 明确设备分页支持 `keyword`、`categoryId`、`status`、`brand`，不支持 `warrantyStatus` 查询参数。
+- 明确 `schema.sql` 是当前表结构准确信息来源，RBAC 和操作日志表仍是二期规划。
+- 明确 `MAINTENANCE_FOLLOW_UP` 是提醒类型预留，当前扫描只生成保修和耗材提醒。
+
+验收标准：
+
+- `api.md` 的接口示例不会把当前返回 `null` 的字段写成已聚合完成。
+- `database.md` 明确当前已建表和规划表边界。
+- 面试时可以说清楚“接口为什么保留扩展字段、数据库为什么先不做 RBAC 表”。
+
+验证记录：
+
+- `rg -n "warrantyStatus|VALID|P9.7.1|MAINTENANCE_FOLLOW_UP" docs/api.md docs/database.md`：用于检查旧接口和表结构口径。
+- `rg -n "@(RequestMapping|GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)" backend/src/main/java/com/fixledger/modules -g "*Controller.java"`：用于核对当前 Controller 接口范围。
+- `git diff --check`：P10.3 提交前执行。
+
+完成结论：
+
+- P10.3 已完成。接口文档和数据库文档现在能对应当前 Controller、分页规则、RustFS 下载方式和 `schema.sql` 实际建表范围。
 
 ### P10.4 UI 与 README 复核
 

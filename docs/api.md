@@ -347,7 +347,7 @@ DELETE /api/families/{familyId}/device-categories/{categoryId}
 ### 8.1 分页查询设备
 
 ```http
-GET /api/families/{familyId}/devices?pageNum=1&pageSize=10&keyword=净水器&categoryId=1&status=NORMAL
+GET /api/families/{familyId}/devices?pageNum=1&pageSize=10&keyword=净水器&categoryId=1&status=NORMAL&brand=小米
 ```
 
 响应：
@@ -369,12 +369,17 @@ GET /api/families/{familyId}/devices?pageNum=1&pageSize=10&keyword=净水器&cat
       "purchasePrice": 1999.00,
       "location": "厨房",
       "status": "NORMAL",
-      "warrantyStatus": "VALID",
-      "nextReminderDate": "2025-09-01"
+      "warrantyStatus": null,
+      "nextReminderDate": null
     }
   ]
 }
 ```
+
+说明：
+
+- 当前设备分页查询支持 `keyword`、`categoryId`、`status`、`brand`。
+- `warrantyStatus` 和 `nextReminderDate` 是列表响应预留字段，当前后端返回 `null`；保修状态和下次提醒可在后续做列表聚合优化。
 
 ### 8.2 创建设备
 
@@ -1099,9 +1104,9 @@ familyId: 1
 6. `POST /api/families/1/ai/troubleshooting` 演示 Mock AI 故障建议。
 
 演示数据只用于本地和面试展示，生产环境不要启用 `SQL_INIT_MODE=always`。
-## 20. P9.7.1 当前接口实现对齐说明
+## 20. P10.3 当前接口实现对齐说明
 
-截至 P9.7.1，当前后端 Controller 已实现的接口范围如下：
+截至 P10.3 接口复核，当前后端 Controller 已实现的接口范围如下：
 
 - `AuthController`：注册、登录、退出登录、当前用户。
 - `FamilyController`：家庭列表、创建家庭、修改家庭、家庭成员列表。
@@ -1124,3 +1129,9 @@ familyId: 1
 - Refresh Token 和多端会话管理接口。
 
 接口分页统一遵守 `pageNum >= 1`、`1 <= pageSize <= 100`，前端 Axios 请求拦截器也会对分页参数做兜底修正。
+
+P10.3 复核结论：
+
+- 当前设备分页接口没有 `warrantyStatus` 查询参数，列表中的 `warrantyStatus` 和 `nextReminderDate` 是后续聚合优化预留字段。
+- 当前提醒扫描接口只生成保修和耗材提醒，维修待跟进仅保留提醒类型。
+- 当前 RustFS 文件下载仍走后端鉴权转发，不暴露对象存储临时 URL。

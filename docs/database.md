@@ -112,7 +112,7 @@
 | WARRANTY_EXPIRED | 保修已到期 |
 | CONSUMABLE_REPLACE_SOON | 耗材即将更换 |
 | CONSUMABLE_OVERDUE | 耗材已逾期 |
-| MAINTENANCE_FOLLOW_UP | 维修待跟进 |
+| MAINTENANCE_FOLLOW_UP | 维修待跟进（当前类型预留，定时扫描暂未生成） |
 
 ### 3.8 提醒状态 `reminder_status`
 
@@ -673,9 +673,9 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 
 用于导出家庭设备清单和维修费用报表。
 
-## 12. P9.7.1 当前表结构对齐说明
+## 12. P10.3 当前表结构对齐说明
 
-截至 P9.7.1，当前实际初始化脚本位于 `backend/src/main/resources/db/schema.sql`，已建表如下：
+截至 P10.3 数据库复核，当前实际初始化脚本位于 `backend/src/main/resources/db/schema.sql`，该脚本是当前表结构的准确信息来源。已建表如下：
 
 - `sys_user`
 - `fl_family_space`
@@ -697,6 +697,8 @@ SQL_DATA_LOCATIONS=classpath:db/demo-data.sql
 - `sys_user_role`
 - `sys_operation_log`
 
-当前演示数据库查询结果显示，演示环境已经包含用户、家庭、设备分类、设备、保修、耗材、更换记录、维修记录、提醒、通知、附件和 AI 分析数据，能够支撑面试演示核心闭环。
+说明：这些表在文档中保留为二期 RBAC、操作审计和系统管理扩展，不属于当前 `schema.sql` 已创建表。
+
+当前 `demo-data.sql` 提供用户、家庭、设备分类、设备、保修、耗材、更换记录、维修记录、提醒、通知、附件和 AI 分析示例数据，能够支撑面试演示核心闭环；实际数据库内容以本地是否启用 `SQL_INIT_MODE=always` 为准。
 
 RustFS 接入后无需新增表字段，`fl_file_resource.storage_path` 保存对象 Key；下载仍由后端校验 `family_id` 后转发对象流。
