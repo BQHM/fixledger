@@ -46,7 +46,14 @@ export function deleteFile(familyId: number, fileId: number) {
   });
 }
 
+/**
+ * 功能说明：下载凭证盒附件并触发浏览器保存。
+ * @param familyId 家庭空间 ID
+ * @param file 附件元数据
+ * @returns 下载完成后的空结果
+ */
 export async function downloadFile(familyId: number, file: FileResource) {
+  // 附件下载返回二进制 Blob，不走 request<T> 的 JSON Result<T> 解包流程。
   const response = await axiosInstance.get(`/api/families/${familyId}/files/${file.id}/download`, {
     responseType: 'blob'
   });

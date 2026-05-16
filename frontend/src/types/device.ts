@@ -1,3 +1,5 @@
+import type { ConsumableItem, FileResource, MaintenanceRecord, WarrantyRecord } from '@/types/business';
+
 export interface DeviceCategory {
   id: number;
   name: string;
@@ -25,10 +27,10 @@ export interface DeviceDetail extends DeviceListItem {
   serialNumber?: string;
   purchaseChannel?: string;
   remark?: string;
-  warranties?: unknown[];
-  consumables?: unknown[];
-  maintenanceRecords?: unknown[];
-  files?: unknown[];
+  warranties?: WarrantyRecord[];
+  consumables?: ConsumableItem[];
+  maintenanceRecords?: MaintenanceRecord[];
+  files?: FileResource[];
 }
 
 export interface DeviceForm {

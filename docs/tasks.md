@@ -88,7 +88,7 @@
 | P10 文档对齐 | P10.3 接口与数据库文档复核 | 深度复核 `api.md`、`database.md` 与代码/数据库 | 已完成 |
 | P10 文档对齐 | P10.4 UI 与 README 复核 | 深度复核 `ui.md`、`README.md` 与演示体验 | 已完成 |
 | P11 代码质量治理 | P11.1 后端规范扫描 | 扫描异常、日志、事务、配置和 Entity 暴露风险 | 已完成 |
-| P11 代码质量治理 | P11.2 前端规范扫描 | 扫描 API 封装、类型、路由守卫和页面职责 | 计划中 |
+| P11 代码质量治理 | P11.2 前端规范扫描 | 扫描 API 封装、类型、路由守卫和页面职责 | 已完成 |
 | P11 代码质量治理 | P11.3 注释与命名复核 | 复核类注释、方法注释、命名和无效注释 | 计划中 |
 | P11 代码质量治理 | P11.4 构建与静态检查 | 固化后端测试、前端构建和格式检查流程 | 计划中 |
 | P12 测试体系补强 | P12.1 Service 核心业务测试 | 补强保修、耗材、维修、提醒和 AI 业务规则 | 计划中 |
@@ -1652,6 +1652,7 @@ P11 的目标是把 P10 文档对齐后的结论落到代码质量检查上。P1
 - 检查页面是否直接散落 Axios URL。
 - 检查是否存在无约束 `any`、调试 `console.log`、重复分页参数处理。
 - 检查路由守卫、Store 和 API 模块职责是否清晰。
+- 本轮计划把设备详情聚合字段从 `unknown[]` 收敛为明确业务类型，并补充附件 Blob 下载为什么绕过通用 JSON 响应封装的说明。
 
 验收标准：
 
@@ -1659,10 +1660,26 @@ P11 的目标是把 P10 文档对齐后的结论落到代码质量检查上。P1
 - 明确是否存在需要修复的类型或职责问题。
 - 前端构建通过。
 
+扫描结论：
+
+- 未发现页面直接调用 `axios` 或 `fetch`；业务页面通过 `src/api/` 中的函数访问后端接口。
+- 未发现 `console.log`、`console.error`、`debugger`、`TODO`、`FIXME` 或 `as any` 调试遗留。
+- `request.ts` 统一处理 Token、401 退出和分页参数边界，`pageSize` 会在前端请求层收敛到 `1..100`，避免再次触发后端分页上限错误。
+- `file.ts` 使用 `axiosInstance` 下载 Blob 属于合理例外，因为附件下载返回二进制内容，不符合通用 `Result<T>` JSON 解包流程。
+- `DeviceDetail` 中的保修、耗材、维修和附件聚合字段已从 `unknown[]` 收敛为明确业务类型，方便页面后续安全使用字段。
+- 多个页面监听 `family-changed` 当前能保持家庭空间切换后的数据刷新；后续如继续扩展页面，可抽成 composable 降低重复。
+- `downloadUrl()` 暂无调用，本轮先保留为后续预览/新窗口下载扩展点，不在代码质量扫描中静默删除。
+
 验证记录：
 
-- 待执行：前端规范 `rg` 扫描命令。
-- 待执行：`cd frontend; npm run build`。
+- `rg -n "axios\.|fetch\(|console\.log|console\.error|debugger|\bany\b|as any|TODO|FIXME|pageSize:\s*(10[1-9]|[2-9][0-9]{2,})|http://|/api/" frontend/src -g "*.ts" -g "*.vue"`：确认 API URL 集中在 `src/api/`，无调试语句和无约束 `any`。
+- `rg -n "getDevicePage\(|pageSize:\s*100|family-changed|axiosInstance|request<" frontend/src -g "*.ts" -g "*.vue"`：确认设备选择使用 `pageSize: 100` 未超过后端上限，家庭切换事件和 Blob 下载例外可解释。
+- `rg -n "downloadUrl\(" frontend/src`：确认当前仅定义未调用，本轮不删除。
+- `cd frontend; npm run build`：通过；仅存在 Vite 分包体积和第三方库 PURE 注释警告，不影响构建。
+
+完成结论：
+
+- P11.2 已完成。前端 API 边界、路由守卫、Store 职责和分页保护整体符合规范，本轮只做设备详情类型收敛和附件下载说明补强。
 
 ### P11.3 注释与命名复核
 
