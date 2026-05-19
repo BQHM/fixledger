@@ -44,9 +44,9 @@ async function handleLogin() {
 <template>
   <div class="auth-page">
     <section class="auth-hero">
-      <div class="hero-badge">FixLedger MVP</div>
-      <h1>每台设备都有一份清晰的家庭档案</h1>
-      <p>保修、发票、耗材、维修记录和提醒统一管理，面试演示时可以完整跑通家庭设备生命周期。</p>
+      <div class="hero-badge">FixLedger Home</div>
+      <h1>像管理智能家一样整理每台设备</h1>
+      <p>把保修、发票、耗材、维修和提醒收进一个温暖的家庭设备空间。</p>
       <div class="hero-cards">
         <div>设备护照</div>
         <div>家庭日历</div>
@@ -96,88 +96,135 @@ async function handleLogin() {
 
 <style scoped>
 .auth-page {
+  position: relative;
   display: grid;
   min-height: 100vh;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 40px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(390px, 0.78fr);
+  gap: clamp(28px, 5vw, 56px);
   align-items: center;
-  padding: 48px clamp(24px, 6vw, 84px);
+  padding: 48px clamp(22px, 6vw, 86px);
+}
+
+.auth-page::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 14% 14%, rgba(255, 188, 103, 0.34), transparent 30%),
+    radial-gradient(circle at 72% 74%, rgba(255, 255, 255, 0.9), transparent 34%),
+    linear-gradient(145deg, #f5f1e8 0%, #fbfaf5 58%, #ecefe8 100%);
+  content: '';
 }
 
 .auth-hero {
   position: relative;
   overflow: hidden;
-  min-height: 620px;
-  padding: 56px;
-  border-radius: 36px;
+  min-height: 640px;
+  padding: clamp(36px, 5vw, 64px);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 42px;
   background:
-    linear-gradient(145deg, rgba(47, 125, 104, 0.94), rgba(31, 93, 77, 0.92)),
-    radial-gradient(circle at 20% 20%, rgba(242, 166, 90, 0.48), transparent 32%);
-  color: #fff;
-  box-shadow: 0 28px 80px rgba(31, 93, 77, 0.35);
+    radial-gradient(circle at 18% 18%, rgba(255, 209, 135, 0.5), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.42), transparent 26%),
+    linear-gradient(145deg, #fffdf7 0%, #f6ead9 48%, #e9eee6 100%);
+  color: var(--fl-ink);
+  box-shadow: 0 34px 90px rgba(94, 78, 54, 0.14);
+}
+
+.auth-hero::before {
+  position: absolute;
+  right: 8%;
+  bottom: 10%;
+  width: 220px;
+  height: 220px;
+  border-radius: 48px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 238, 210, 0.8));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8), 0 26px 58px rgba(94, 78, 54, 0.12);
+  content: '';
+  transform: rotate(-8deg);
 }
 
 .auth-hero::after {
   position: absolute;
-  right: -80px;
-  bottom: -90px;
-  width: 280px;
-  height: 280px;
-  border: 34px solid rgba(255, 255, 255, 0.16);
+  right: -96px;
+  bottom: -110px;
+  width: 300px;
+  height: 300px;
+  border: 36px solid rgba(255, 138, 31, 0.14);
   border-radius: 999px;
   content: '';
 }
 
 .hero-badge {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
-  padding: 8px 14px;
+  padding: 9px 15px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  font-weight: 800;
+  background: rgba(255, 138, 31, 0.12);
+  color: var(--fl-mi-orange-dark);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.auth-hero h1,
+.auth-hero p,
+.hero-cards {
+  position: relative;
+  z-index: 1;
 }
 
 .auth-hero h1 {
-  max-width: 620px;
+  max-width: 650px;
   margin: 34px 0 20px;
-  font-size: clamp(42px, 6vw, 72px);
+  color: var(--fl-ink);
+  font-size: clamp(44px, 6vw, 78px);
   line-height: 0.96;
-  letter-spacing: -0.07em;
+  letter-spacing: -0.08em;
 }
 
 .auth-hero p {
-  max-width: 560px;
-  color: rgba(255, 255, 255, 0.82);
+  max-width: 540px;
+  color: var(--fl-muted);
   font-size: 18px;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 
 .hero-cards {
   display: grid;
-  max-width: 520px;
-  margin-top: 56px;
+  max-width: 540px;
+  margin-top: 58px;
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 
 .hero-cards div {
+  min-height: 94px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.12);
-  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 14px 32px rgba(88, 72, 49, 0.08);
+  color: var(--fl-ink);
+  font-weight: 900;
 }
 
 .auth-card {
-  border: none;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 24px 70px rgba(36, 49, 47, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 32px;
+  background: rgba(255, 253, 248, 0.86);
+  box-shadow: 0 26px 76px rgba(88, 72, 49, 0.14);
+  backdrop-filter: blur(18px);
 }
 
 .auth-card h2 {
   margin: 0 0 6px;
   color: var(--fl-ink);
-  font-size: 28px;
+  font-size: 30px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
 }
 
 .auth-card span,
@@ -191,10 +238,10 @@ async function handleLogin() {
   justify-content: space-between;
   gap: 14px;
   margin: 6px 0 16px;
-  padding: 14px;
-  border: 1px dashed rgba(47, 125, 104, 0.32);
-  border-radius: 18px;
-  background: rgba(220, 238, 230, 0.5);
+  padding: 15px;
+  border: 1px dashed rgba(255, 138, 31, 0.36);
+  border-radius: 20px;
+  background: rgba(255, 244, 229, 0.76);
 }
 
 .demo-account-box strong,
@@ -203,7 +250,7 @@ async function handleLogin() {
 }
 
 .demo-account-box strong {
-  color: var(--fl-green-dark);
+  color: var(--fl-mi-orange-dark);
   font-size: 14px;
 }
 
@@ -224,8 +271,8 @@ async function handleLogin() {
 }
 
 .auth-switch a {
-  color: var(--fl-green);
-  font-weight: 800;
+  color: var(--fl-mi-orange-dark);
+  font-weight: 900;
   text-decoration: none;
 }
 
@@ -245,7 +292,8 @@ async function handleLogin() {
   }
 
   .auth-hero {
-    padding: 32px;
+    padding: 30px;
+    border-radius: 30px;
   }
 
   .hero-cards,

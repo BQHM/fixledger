@@ -27,6 +27,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -198,6 +201,7 @@ public class ReminderServiceImpl implements ReminderService {
             .le(WarrantyRecordEntity::getEndDate, today.plusYears(1))
             .orderByAsc(WarrantyRecordEntity::getEndDate)
     );
+    Map<Long, String> deviceNames = listDeviceNames(familyId, warranties);
     ScanCounter counter = new ScanCounter();
     for (WarrantyRecordEntity warranty : warranties) {
       LocalDate remindDate = warranty.getEndDate().minusDays(warranty.getRemindDaysBefore());
@@ -208,8 +212,7 @@ public class ReminderServiceImpl implements ReminderService {
       ReminderType type = warranty.getEndDate().isBefore(today)
           ? ReminderType.WARRANTY_EXPIRED
           : ReminderType.WARRANTY_EXPIRE_SOON;
-      DeviceAssetEntity device = deviceAssetMapper.selectById(warranty.getDeviceId());
-      String deviceName = device == null ? "设备" : device.getName();
+      String deviceName = deviceNames.getOrDefault(warranty.getDeviceId(), "设备");
       boolean created = createReminderIfAbsent(
           familyId,
           type,
@@ -222,6 +225,25 @@ public class ReminderServiceImpl implements ReminderService {
       counter.addWarranty(created);
     }
     return counter.toResponse();
+  }
+
+  private Map<Long, String> listDeviceNames(Long familyId, List<WarrantyRecordEntity> warranties) {
+    Set<Long> deviceIds = warranties.stream()
+        .map(WarrantyRecordEntity::getDeviceId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (deviceIds.isEmpty()) {
+      return Map.of();
+    }
+    return deviceAssetMapper.selectList(new LambdaQueryWrapper<DeviceAssetEntity>()
+            .eq(DeviceAssetEntity::getFamilyId, familyId)
+            .in(DeviceAssetEntity::getId, deviceIds))
+        .stream()
+        .collect(Collectors.toMap(
+            DeviceAssetEntity::getId,
+            DeviceAssetEntity::getName,
+            (left, right) -> left
+        ));
   }
 
   private ReminderScanResponse scanConsumableReminders(Long familyId, LocalDate today) {

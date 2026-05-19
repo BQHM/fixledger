@@ -1,6 +1,7 @@
 package com.fixledger.modules.asset.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
@@ -39,6 +40,7 @@ public record CreateDeviceRequest(
     String purchaseChannel,
 
     @DecimalMin(value = "0.00", message = "购买价格不能小于 0")
+    @Digits(integer = 10, fraction = 2, message = "购买价格最多 10 位整数和 2 位小数")
     BigDecimal purchasePrice,
 
     @Size(max = 128, message = "存放位置最多 128 个字符")

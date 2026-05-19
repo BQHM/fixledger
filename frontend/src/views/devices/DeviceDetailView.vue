@@ -87,6 +87,30 @@ const timelineItems = computed(() => {
   return items.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
 });
 
+
+const deviceInitial = computed(() => (detail.value?.categoryName || detail.value?.name || '家').slice(0, 1));
+const deviceMeta = computed(() =>
+  [detail.value?.brand, detail.value?.model].filter(Boolean).join(' / ') || '品牌型号待补充'
+);
+const lifecycleStats = computed(() => [
+  { label: '保修记录', value: warranties.value.length, hint: warranties.value[0]?.endDate || '待补充' },
+  { label: '耗材项', value: consumables.value.length, hint: nextConsumableDate.value || '暂无提醒' },
+  { label: '维修记录', value: maintenance.value.length, hint: latestMaintenanceStatus.value || '暂无维修' },
+  { label: '附件凭证', value: files.value.length, hint: files.value.length > 0 ? '已归档' : '可上传' }
+]);
+const nextConsumableDate = computed(() => {
+  return consumables.value
+    .map((item) => item.nextRemindDate)
+    .filter(Boolean)
+    .sort()[0];
+});
+const latestMaintenanceStatus = computed(() => {
+  const latest = maintenance.value
+    .filter((item) => item.occurredAt)
+    .sort((a, b) => (b.occurredAt || '').localeCompare(a.occurredAt || ''))[0];
+  return latest ? labelOf(maintenanceStatusOptions, latest.status) : '';
+});
+
 async function loadData() {
   if (!familyId.value) return;
   loading.value = true;
@@ -142,27 +166,31 @@ onMounted(loadData);
 
 <template>
   <div v-loading="loading" class="page-shell">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{{ detail?.name || '设备详情' }}</h1>
-        <p class="page-subtitle">聚合展示设备基础资料、保修、耗材、维修、附件和 AI 总结。</p>
-      </div>
-      <div>
-        <el-button @click="router.push('/devices')">返回列表</el-button>
-        <el-button type="primary" @click="router.push(`/devices/${deviceId}/edit`)">编辑设备</el-button>
-      </div>
-    </div>
-
-    <div class="detail-hero">
-      <el-card class="glass-card" shadow="never">
-        <div class="device-title-row">
-          <div>
-            <div class="device-name">{{ detail?.name }}</div>
-            <div class="device-subtitle">{{ detail?.brand || '-' }} {{ detail?.model || '' }}</div>
-          </div>
+    <section class="device-cover">
+      <div class="cover-copy">
+        <button class="back-link" type="button" @click="router.push('/devices')">返回设备护照</button>
+        <div class="cover-kicker">设备护照 / {{ detail?.location || '未设置房间' }}</div>
+        <h1>{{ detail?.name || '设备详情' }}</h1>
+        <p>{{ deviceMeta }} · {{ detail?.purchaseDate || '购买日期待补充' }}</p>
+        <div class="cover-actions">
           <el-tag size="large" :type="statusType(detail?.status)">
             {{ labelOf(deviceStatusOptions, detail?.status) }}
           </el-tag>
+          <el-button type="primary" @click="router.push(`/devices/${deviceId}/edit`)">编辑设备</el-button>
+        </div>
+      </div>
+      <div class="device-orb" aria-hidden="true">
+        <span>{{ deviceInitial }}</span>
+      </div>
+    </section>
+
+    <div class="detail-hero">
+      <el-card class="glass-card device-profile-card" shadow="never">
+        <div class="device-title-row">
+          <div>
+            <div class="device-name">基础资料</div>
+            <div class="device-subtitle">购买、位置、序列号和备注集中归档。</div>
+          </div>
         </div>
         <el-descriptions :column="2" border>
           <el-descriptions-item label="分类">{{ detail?.categoryName || '-' }}</el-descriptions-item>
@@ -176,17 +204,10 @@ onMounted(loadData);
       </el-card>
 
       <div class="summary-stack">
-        <div class="mini-card">
-          <span>保修记录</span>
-          <strong>{{ warranties.length }}</strong>
-        </div>
-        <div class="mini-card">
-          <span>耗材项</span>
-          <strong>{{ consumables.length }}</strong>
-        </div>
-        <div class="mini-card">
-          <span>维修记录</span>
-          <strong>{{ maintenance.length }}</strong>
+        <div v-for="item in lifecycleStats" :key="item.label" class="mini-card">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small>{{ item.hint }}</small>
         </div>
       </div>
     </div>
@@ -297,10 +318,117 @@ onMounted(loadData);
 </template>
 
 <style scoped>
+.device-cover {
+  position: relative;
+  display: grid;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: center;
+  min-height: 300px;
+  padding: clamp(24px, 4vw, 42px);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 38px;
+  background:
+    radial-gradient(circle at 16% 14%, rgba(255, 196, 122, 0.34), transparent 30%),
+    radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.72), transparent 24%),
+    linear-gradient(135deg, #fffdf8 0%, #f7ecd9 52%, #edf2eb 100%);
+  box-shadow: var(--fl-shadow-md);
+}
+
+.device-cover::after {
+  position: absolute;
+  right: -88px;
+  bottom: -104px;
+  width: 280px;
+  height: 280px;
+  border: 36px solid rgba(255, 138, 31, 0.1);
+  border-radius: 999px;
+  content: '';
+}
+
+.cover-copy,
+.device-orb {
+  position: relative;
+  z-index: 1;
+}
+
+.back-link {
+  padding: 0;
+  border: none;
+  margin-bottom: 18px;
+  background: transparent;
+  color: var(--fl-mi-orange-dark);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.cover-kicker {
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 138, 31, 0.12);
+  color: var(--fl-mi-orange-dark);
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.device-cover h1 {
+  max-width: 760px;
+  margin: 18px 0 12px;
+  color: var(--fl-ink);
+  font-size: clamp(38px, 6vw, 72px);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.98;
+}
+
+.device-cover p {
+  margin: 0;
+  color: var(--fl-muted);
+  font-size: 16px;
+}
+
+.cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 22px;
+}
+
+.device-orb {
+  display: grid;
+  width: 220px;
+  height: 220px;
+  place-items: center;
+  justify-self: end;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 54px;
+  background:
+    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.82), transparent 30%),
+    linear-gradient(145deg, #ff9b2f, #ffd18a);
+  box-shadow: 0 28px 68px rgba(255, 138, 31, 0.24);
+  transform: rotate(-7deg);
+}
+
+.device-orb span {
+  color: #fff;
+  font-size: 78px;
+  font-weight: 950;
+  text-shadow: 0 8px 18px rgba(132, 72, 10, 0.2);
+  transform: rotate(7deg);
+}
+
 .detail-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 18px;
+}
+
+.device-profile-card {
+  overflow: hidden;
 }
 
 .device-title-row {
@@ -311,9 +439,10 @@ onMounted(loadData);
 }
 
 .device-name {
-  color: var(--fl-green-dark);
-  font-size: 26px;
-  font-weight: 900;
+  color: var(--fl-ink);
+  font-size: 25px;
+  font-weight: 950;
+  letter-spacing: -0.04em;
 }
 
 .device-subtitle {
@@ -327,22 +456,36 @@ onMounted(loadData);
 }
 
 .mini-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 22px;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 14px 34px rgba(36, 49, 47, 0.08);
+  display: grid;
+  gap: 4px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 32px rgba(88, 72, 49, 0.08);
 }
 
 .mini-card span {
   color: var(--fl-muted);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .mini-card strong {
-  color: var(--fl-green-dark);
-  font-size: 32px;
+  color: var(--fl-ink);
+  font-size: 36px;
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.mini-card small {
+  overflow: hidden;
+  color: var(--fl-mi-orange-dark);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ai-summary {
@@ -350,9 +493,44 @@ onMounted(loadData);
   white-space: pre-line;
 }
 
+:deep(.el-tabs__item) {
+  font-weight: 900;
+}
+
+:deep(.el-descriptions__label) {
+  color: var(--fl-muted);
+  font-weight: 800;
+}
+
+:deep(.el-descriptions__content) {
+  color: var(--fl-ink);
+  font-weight: 700;
+}
+
 @media (max-width: 1080px) {
+  .device-cover,
   .detail-hero {
     grid-template-columns: 1fr;
+  }
+
+  .device-orb {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .device-cover {
+    border-radius: 26px;
+  }
+
+  .device-orb {
+    width: 150px;
+    height: 150px;
+    border-radius: 38px;
+  }
+
+  .device-orb span {
+    font-size: 54px;
   }
 }
 </style>

@@ -17,6 +17,9 @@ import com.fixledger.modules.warranty.request.UpdateWarrantyRequest;
 import com.fixledger.modules.warranty.response.WarrantyResponse;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -64,13 +67,15 @@ public class WarrantyServiceImpl implements WarrantyService {
       Long deviceId
   ) {
     familyService.checkFamilyMember(userId, familyId);
-    getDevice(familyId, deviceId);
-    return warrantyRecordMapper.selectList(new LambdaQueryWrapper<WarrantyRecordEntity>()
+    DeviceAssetEntity device = getDevice(familyId, deviceId);
+    List<WarrantyRecordEntity> warranties = warrantyRecordMapper.selectList(
+        new LambdaQueryWrapper<WarrantyRecordEntity>()
             .eq(WarrantyRecordEntity::getFamilyId, familyId)
             .eq(WarrantyRecordEntity::getDeviceId, deviceId)
-            .orderByDesc(WarrantyRecordEntity::getEndDate))
-        .stream()
-        .map(this::toResponse)
+            .orderByDesc(WarrantyRecordEntity::getEndDate)
+    );
+    return warranties.stream()
+        .map(warranty -> toResponse(warranty, device.getName()))
         .toList();
   }
 
@@ -108,7 +113,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     warranty.setServiceAddress(request.serviceAddress());
     warranty.setServiceNote(request.serviceNote());
     warrantyRecordMapper.insert(warranty);
-    return toResponse(warranty);
+    return toResponse(warranty, device.getName());
   }
 
   /**
@@ -143,7 +148,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     warranty.setServiceAddress(request.serviceAddress());
     warranty.setServiceNote(request.serviceNote());
     warrantyRecordMapper.updateById(warranty);
-    return toResponse(warranty);
+    return toResponse(warranty, device.getName());
   }
 
   /**
@@ -192,7 +197,8 @@ public class WarrantyServiceImpl implements WarrantyService {
             .le(WarrantyRecordEntity::getEndDate, endDate)
             .orderByAsc(WarrantyRecordEntity::getEndDate)
     );
-    return PageResponse.from(page.convert(this::toResponse));
+    Map<Long, String> deviceNames = listDeviceNames(familyId, page.getRecords());
+    return PageResponse.from(page.convert(warranty -> toResponse(warranty, deviceNames)));
   }
 
   private void validateWarrantyDates(
@@ -254,12 +260,37 @@ public class WarrantyServiceImpl implements WarrantyService {
     return warranty;
   }
 
-  private WarrantyResponse toResponse(WarrantyRecordEntity warranty) {
-    DeviceAssetEntity device = deviceAssetMapper.selectById(warranty.getDeviceId());
+  private Map<Long, String> listDeviceNames(Long familyId, List<WarrantyRecordEntity> warranties) {
+    Set<Long> deviceIds = warranties.stream()
+        .map(WarrantyRecordEntity::getDeviceId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (deviceIds.isEmpty()) {
+      return Map.of();
+    }
+    return deviceAssetMapper.selectList(new LambdaQueryWrapper<DeviceAssetEntity>()
+            .eq(DeviceAssetEntity::getFamilyId, familyId)
+            .in(DeviceAssetEntity::getId, deviceIds))
+        .stream()
+        .collect(Collectors.toMap(
+            DeviceAssetEntity::getId,
+            DeviceAssetEntity::getName,
+            (left, right) -> left
+        ));
+  }
+
+  private WarrantyResponse toResponse(
+      WarrantyRecordEntity warranty,
+      Map<Long, String> deviceNames
+  ) {
+    return toResponse(warranty, deviceNames.get(warranty.getDeviceId()));
+  }
+
+  private WarrantyResponse toResponse(WarrantyRecordEntity warranty, String deviceName) {
     return new WarrantyResponse(
         warranty.getId(),
         warranty.getDeviceId(),
-        device == null ? null : device.getName(),
+        deviceName,
         warranty.getWarrantyType(),
         warranty.getStartDate(),
         warranty.getEndDate(),

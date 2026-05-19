@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -93,7 +94,7 @@ class ReminderServiceTransactionBoundaryTest {
     );
 
     when(warrantyRecordMapper.selectList(any())).thenReturn(List.of(warranty));
-    when(deviceAssetMapper.selectById(warranty.getDeviceId())).thenReturn(device);
+    when(deviceAssetMapper.selectList(any())).thenReturn(List.of(device));
     when(redisService.setIfAbsent(eq(dedupeKey), eq("1"), any(Duration.class))).thenReturn(true);
     when(creationService.createReminderIfAbsent(
         anyLong(),
@@ -121,6 +122,7 @@ class ReminderServiceTransactionBoundaryTest {
         eq(today.atTime(8, 0))
     );
     verify(redisService).delete(dedupeKey);
+    verify(deviceAssetMapper, never()).selectById(warranty.getDeviceId());
     verifyNoInteractions(consumableItemMapper);
   }
 
@@ -152,8 +154,7 @@ class ReminderServiceTransactionBoundaryTest {
     );
 
     when(warrantyRecordMapper.selectList(any())).thenReturn(List.of(warranty));
-    when(deviceAssetMapper.selectById(warranty.getDeviceId()))
-        .thenReturn(device(warranty.getDeviceId()));
+    when(deviceAssetMapper.selectList(any())).thenReturn(List.of(device(warranty.getDeviceId())));
     when(consumableItemMapper.selectList(any())).thenReturn(List.of());
     when(redisService.setIfAbsent(eq(dedupeKey), eq("1"), any(Duration.class))).thenReturn(false);
 
@@ -161,6 +162,7 @@ class ReminderServiceTransactionBoundaryTest {
 
     assertThat(response.warrantyCreated()).isZero();
     assertThat(response.skippedDuplicate()).isEqualTo(1);
+    verify(deviceAssetMapper, never()).selectById(warranty.getDeviceId());
     verifyNoInteractions(creationService);
   }
 

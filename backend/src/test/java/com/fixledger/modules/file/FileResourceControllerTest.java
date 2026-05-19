@@ -18,7 +18,6 @@ import com.fixledger.modules.auth.service.AuthService;
 import com.fixledger.modules.family.service.FamilyService;
 import com.fixledger.modules.file.enums.FileBizType;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,7 +55,7 @@ class FileResourceControllerTest {
   @DisplayName("未登录上传附件返回未认证")
   void uploadWithoutTokenReturnsUnauthorized() throws Exception {
     mockMvc.perform(multipart("/api/families/1/files")
-            .file(mockFile("invoice.jpg", "image/jpeg", "invoice"))
+            .file(mockJpeg("invoice.jpg"))
             .param("bizType", FileBizType.DEVICE.getCode())
             .param("bizId", "1"))
         .andExpect(status().isUnauthorized())
@@ -70,7 +69,7 @@ class FileResourceControllerTest {
     LoginResponse login = authService.login(new LoginRequest("fileapi", "123456"));
 
     mockMvc.perform(multipart("/api/families/{familyId}/files", fixture.familyId())
-            .file(mockFile("invoice.jpg", "image/jpeg", "invoice"))
+            .file(mockJpeg("invoice.jpg"))
             .param("bizType", FileBizType.DEVICE.getCode())
             .param("bizId", fixture.deviceId().toString())
             .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken()))
@@ -119,12 +118,12 @@ class FileResourceControllerTest {
     return new TestFixture(familyId, device.id());
   }
 
-  private MockMultipartFile mockFile(String originalName, String contentType, String content) {
+  private MockMultipartFile mockJpeg(String originalName) {
     return new MockMultipartFile(
         "file",
         originalName,
-        contentType,
-        content.getBytes(StandardCharsets.UTF_8)
+        "image/jpeg",
+        new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}
     );
   }
 

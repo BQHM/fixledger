@@ -153,19 +153,20 @@ async function handleLogout() {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 22px 18px;
-  border-right: 1px solid rgba(47, 125, 104, 0.12);
+  padding: 18px;
+  border-right: 1px solid rgba(39, 46, 42, 0.07);
   background:
-    radial-gradient(circle at 18% 4%, rgba(242, 166, 90, 0.24), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(230, 241, 235, 0.82));
-  backdrop-filter: blur(22px);
+    radial-gradient(circle at 20% 0%, rgba(255, 196, 122, 0.32), transparent 30%),
+    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(246, 241, 232, 0.84));
+  backdrop-filter: blur(26px);
 }
 
 .brand-block {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 8px 18px;
+  padding: 8px 8px 16px;
+  border-radius: 22px;
   cursor: pointer;
 }
 
@@ -175,17 +176,17 @@ async function handleLogout() {
   height: 48px;
   place-items: center;
   border-radius: 18px;
-  background: var(--fl-green);
+  background: linear-gradient(145deg, var(--fl-mi-orange), #ffbd63);
   color: #fff;
   font-size: 22px;
-  font-weight: 900;
-  box-shadow: 0 14px 30px rgba(47, 125, 104, 0.32);
+  box-shadow: 0 16px 34px rgba(255, 138, 31, 0.3);
 }
 
 .brand-title {
   color: var(--fl-ink);
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 950;
+  letter-spacing: -0.04em;
 }
 
 .brand-subtitle,
@@ -197,22 +198,26 @@ async function handleLogout() {
 .home-card {
   display: grid;
   gap: 5px;
-  margin: 0 4px 16px;
-  padding: 15px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 16px 32px rgba(36, 49, 47, 0.06);
+  margin: 0 2px 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 85% 16%, rgba(255, 211, 144, 0.42), transparent 36%),
+    rgba(255, 255, 255, 0.66);
+  box-shadow: 0 14px 32px rgba(88, 72, 49, 0.07);
 }
 
 .home-card-label {
   color: var(--fl-muted);
   font-size: 12px;
+  font-weight: 800;
 }
 
 .home-card strong {
-  color: var(--fl-green-dark);
-  font-size: 18px;
+  color: var(--fl-ink);
+  font-size: 19px;
+  letter-spacing: -0.03em;
 }
 
 .home-card small {
@@ -226,19 +231,23 @@ async function handleLogout() {
 }
 
 :deep(.el-menu-item) {
-  min-height: 52px;
+  min-height: 56px;
   height: auto;
   margin: 6px 0;
-  padding: 10px 12px !important;
-  border-radius: 16px;
-  color: var(--fl-ink);
+  padding: 11px 12px !important;
+  border-radius: 18px;
+  color: var(--fl-text);
   line-height: 1.2;
 }
 
+:deep(.el-menu-item:hover) {
+  background: rgba(255, 138, 31, 0.09);
+}
+
 :deep(.el-menu-item.is-active) {
-  background: var(--fl-green);
-  color: #fff;
-  box-shadow: 0 16px 28px rgba(47, 125, 104, 0.24);
+  background: linear-gradient(135deg, #fff2df, #fff9f0);
+  color: var(--fl-mi-orange-dark);
+  box-shadow: inset 0 0 0 1px rgba(255, 138, 31, 0.16), 0 12px 24px rgba(255, 138, 31, 0.1);
 }
 
 .scene-menu-item :deep(.el-icon) {
@@ -253,18 +262,19 @@ async function handleLogout() {
 
 .menu-copy strong {
   font-size: 15px;
+  font-weight: 900;
 }
 
 .menu-copy small {
   color: inherit;
   font-size: 11px;
-  opacity: 0.72;
+  opacity: 0.68;
 }
 
 .secondary-menu {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px dashed rgba(47, 125, 104, 0.18);
+  border-top: 1px dashed rgba(39, 46, 42, 0.12);
 }
 
 .side-note {
@@ -272,11 +282,15 @@ async function handleLogout() {
   gap: 10px;
   margin-top: auto;
   padding: 14px;
-  border-radius: 18px;
-  background: rgba(242, 166, 90, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 245, 230, 0.86);
   color: var(--fl-muted);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.side-note :deep(.el-icon) {
+  color: var(--fl-mi-orange);
 }
 
 .app-header {
@@ -285,14 +299,16 @@ async function handleLogout() {
   justify-content: space-between;
   height: 76px;
   padding: 0 28px;
-  background: rgba(247, 243, 234, 0.66);
-  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(39, 46, 42, 0.05);
+  background: rgba(250, 247, 239, 0.72);
+  backdrop-filter: blur(18px);
 }
 
 .header-title {
   margin-top: 4px;
   color: var(--fl-ink);
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: -0.02em;
 }
 
 .header-actions {
@@ -307,8 +323,8 @@ async function handleLogout() {
 
 .user-avatar {
   cursor: pointer;
-  background: var(--fl-orange);
-  color: var(--fl-ink);
+  background: linear-gradient(145deg, var(--fl-mi-orange), #ffbd63);
+  color: #fff;
   font-weight: 900;
 }
 
@@ -337,6 +353,10 @@ async function handleLogout() {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .app-main {
+    padding: 18px;
   }
 }
 </style>

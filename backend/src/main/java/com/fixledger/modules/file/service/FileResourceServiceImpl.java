@@ -18,6 +18,8 @@ import com.fixledger.modules.maintenance.entity.MaintenanceRecordEntity;
 import com.fixledger.modules.maintenance.mapper.MaintenanceRecordMapper;
 import com.fixledger.modules.warranty.entity.WarrantyRecordEntity;
 import com.fixledger.modules.warranty.mapper.WarrantyRecordMapper;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Set;
 import org.springframework.core.io.Resource;
@@ -37,6 +39,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileResourceServiceImpl implements FileResourceService {
 
   private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
+  private static final int MAGIC_BYTES_LENGTH = 8;
   private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "pdf");
   private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
       "image/jpeg",
@@ -107,7 +110,12 @@ public class FileResourceServiceImpl implements FileResourceService {
     entity.setContentType(storedFile.contentType());
     entity.setFileSize(storedFile.fileSize());
     entity.setExtension(storedFile.extension());
-    fileResourceMapper.insert(entity);
+    try {
+      fileResourceMapper.insert(entity);
+    } catch (RuntimeException e) {
+      cleanupStoredFile(storedFile.storagePath(), e);
+      throw e;
+    }
     return toResponse(entity);
   }
 
@@ -184,6 +192,14 @@ public class FileResourceServiceImpl implements FileResourceService {
     return fileResourceMapper.deleteById(entity.getId()) > 0;
   }
 
+  private void cleanupStoredFile(String storagePath, RuntimeException cause) {
+    try {
+      fileStorageService.delete(storagePath);
+    } catch (RuntimeException cleanupException) {
+      cause.addSuppressed(cleanupException);
+    }
+  }
+
   private String validateFile(MultipartFile file) {
     if (file == null || file.isEmpty()) {
       throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "上传文件不能为空");
@@ -200,7 +216,45 @@ public class FileResourceServiceImpl implements FileResourceService {
     if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
       throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "文件 MIME 类型不允许");
     }
+    validateFileSignature(file, extension);
     return originalName;
+  }
+
+  private void validateFileSignature(MultipartFile file, String extension) {
+    String contentType = file.getContentType();
+    byte[] header = readHeader(file);
+    boolean matched = switch (extension) {
+      case "jpg", "jpeg" -> "image/jpeg".equals(contentType)
+          && startsWith(header, 0xFF, 0xD8, 0xFF);
+      case "png" -> "image/png".equals(contentType)
+          && startsWith(header, 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A);
+      case "pdf" -> "application/pdf".equals(contentType)
+          && startsWith(header, 0x25, 0x50, 0x44, 0x46, 0x2D);
+      default -> false;
+    };
+    if (!matched) {
+      throw new BusinessException(ErrorCode.FILE_TYPE_NOT_ALLOWED, "文件内容与类型不匹配");
+    }
+  }
+
+  private byte[] readHeader(MultipartFile file) {
+    try (InputStream inputStream = file.getInputStream()) {
+      return inputStream.readNBytes(MAGIC_BYTES_LENGTH);
+    } catch (IOException e) {
+      throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文件读取失败", e);
+    }
+  }
+
+  private boolean startsWith(byte[] header, int... expected) {
+    if (header.length < expected.length) {
+      return false;
+    }
+    for (int i = 0; i < expected.length; i++) {
+      if ((header[i] & 0xFF) != expected[i]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private FileBizType validateBizType(String bizType) {

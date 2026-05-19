@@ -300,14 +300,14 @@ onUnmounted(() => {
       <div class="hero-copy">
         <p class="section-kicker">我的家</p>
         <h1>{{ familyName }}</h1>
-        <p>先看这个家本周有哪些设备小事，再决定要不要处理保修、耗材或维修。</p>
+        <p>像看米家首页一样，先知道哪些设备省心、哪些保修或耗材需要处理。</p>
         <div class="hero-actions">
           <el-button type="primary" :icon="Refresh" @click="loadData">刷新家庭状态</el-button>
           <el-button :icon="Files" @click="router.push('/files')">打开凭证盒</el-button>
         </div>
       </div>
       <div class="health-card">
-        <span>家庭设备健康分</span>
+        <span>设备安心指数</span>
         <strong>{{ healthScore }}</strong>
         <p>{{ healthTone }}</p>
       </div>
@@ -486,30 +486,52 @@ onUnmounted(() => {
 }
 
 .home-hero {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 22px;
-  padding: 28px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 30px;
+  overflow: hidden;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 38px;
   background:
-    radial-gradient(circle at 12% 18%, rgba(242, 166, 90, 0.26), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(225, 241, 234, 0.86));
-  box-shadow: 0 22px 52px rgba(36, 49, 47, 0.1);
+    radial-gradient(circle at 14% 16%, rgba(255, 196, 122, 0.34), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.72), transparent 24%),
+    linear-gradient(135deg, #fffdf8 0%, #f7ebd8 52%, #eef3ed 100%);
+  box-shadow: var(--fl-shadow-md);
+}
+
+.home-hero::after {
+  position: absolute;
+  right: -78px;
+  bottom: -90px;
+  width: 260px;
+  height: 260px;
+  border: 34px solid rgba(255, 138, 31, 0.11);
+  border-radius: 999px;
+  content: '';
+}
+
+.hero-copy,
+.health-card {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-copy h1 {
   margin: 0;
   color: var(--fl-ink);
-  font-size: 38px;
-  letter-spacing: -0.04em;
+  font-size: clamp(38px, 5vw, 64px);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 1;
 }
 
 .hero-copy p {
-  max-width: 640px;
+  max-width: 660px;
   color: var(--fl-muted);
   font-size: 16px;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 
 .hero-actions {
@@ -522,21 +544,28 @@ onUnmounted(() => {
 .health-card {
   display: grid;
   align-content: center;
-  padding: 24px;
-  border-radius: 26px;
-  background: var(--fl-green);
+  min-height: 220px;
+  padding: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.28), transparent 34%),
+    linear-gradient(145deg, #2f6f59, #4d8f73);
   color: #fff;
-  box-shadow: 0 20px 42px rgba(47, 125, 104, 0.28);
+  box-shadow: 0 22px 48px rgba(45, 104, 82, 0.26);
 }
 
 .health-card span {
   font-size: 13px;
+  font-weight: 800;
   opacity: 0.82;
 }
 
 .health-card strong {
-  margin-top: 6px;
-  font-size: 64px;
+  margin-top: 8px;
+  font-size: 72px;
+  font-weight: 950;
+  letter-spacing: -0.08em;
   line-height: 1;
 }
 
@@ -548,7 +577,7 @@ onUnmounted(() => {
 
 .home-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   gap: 18px;
 }
 
@@ -569,21 +598,22 @@ onUnmounted(() => {
   display: grid;
   align-items: center;
   gap: 14px;
-  padding: 14px;
-  border-radius: 18px;
+  padding: 15px;
+  border: 1px solid rgba(39, 46, 42, 0.05);
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.68);
 }
 
 .task-item {
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
 }
 
 .task-icon {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 15px;
+  border-radius: 17px;
   color: #fff;
 }
 
@@ -592,12 +622,13 @@ onUnmounted(() => {
 }
 
 .task-warning {
-  background: var(--fl-orange);
+  background: var(--fl-warning);
 }
 
 .task-item strong,
 .room-item strong {
   color: var(--fl-ink);
+  font-weight: 900;
 }
 
 .task-item p,
@@ -614,17 +645,18 @@ onUnmounted(() => {
 }
 
 .room-item span {
-  padding: 6px 10px;
+  padding: 7px 11px;
   border-radius: 999px;
-  background: rgba(47, 125, 104, 0.1);
-  color: var(--fl-green-dark);
-  font-weight: 800;
+  background: rgba(255, 138, 31, 0.1);
+  color: var(--fl-mi-orange-dark);
+  font-weight: 900;
 }
 
 .metric-value small {
   margin-left: 4px;
   color: var(--fl-muted);
   font-size: 14px;
+  letter-spacing: 0;
 }
 
 .calendar-card {
@@ -640,18 +672,20 @@ onUnmounted(() => {
 }
 
 .section-kicker {
-  margin: 0 0 6px;
-  color: var(--fl-muted);
+  margin: 0 0 7px;
+  color: var(--fl-mi-orange-dark);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-weight: 900;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .calendar-head h2 {
   margin: 0;
-  color: var(--fl-green-dark);
-  font-size: 28px;
+  color: var(--fl-ink);
+  font-size: 30px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
 }
 
 .calendar-summary {
@@ -664,10 +698,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
+  border: 1px solid rgba(39, 46, 42, 0.08);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.66);
-  color: var(--fl-green-dark);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--fl-ink);
 }
 
 .calendar-layout {
@@ -686,7 +720,7 @@ onUnmounted(() => {
   margin-bottom: 8px;
   color: var(--fl-muted);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
   text-align: center;
 }
 
@@ -698,9 +732,9 @@ onUnmounted(() => {
   position: relative;
   min-height: 112px;
   padding: 12px;
-  border: 1px solid rgba(47, 125, 104, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(39, 46, 42, 0.07);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.66);
   color: var(--fl-text);
   cursor: pointer;
   text-align: left;
@@ -708,46 +742,47 @@ onUnmounted(() => {
 }
 
 .calendar-cell:hover {
-  border-color: rgba(47, 125, 104, 0.28);
-  box-shadow: 0 14px 30px rgba(45, 74, 65, 0.08);
+  border-color: rgba(255, 138, 31, 0.26);
+  box-shadow: 0 14px 28px rgba(88, 72, 49, 0.08);
   transform: translateY(-2px);
 }
 
 .calendar-cell.is-muted {
-  color: rgba(45, 74, 65, 0.35);
-  background: rgba(255, 255, 255, 0.42);
+  color: rgba(45, 54, 50, 0.35);
+  background: rgba(255, 255, 255, 0.38);
 }
 
 .calendar-cell.is-today {
-  border-color: rgba(47, 125, 104, 0.36);
+  border-color: rgba(255, 138, 31, 0.42);
 }
 
 .calendar-cell.is-selected {
-  border-color: rgba(217, 83, 79, 0.55);
-  box-shadow: 0 16px 34px rgba(217, 83, 79, 0.12);
+  border-color: rgba(255, 138, 31, 0.58);
+  box-shadow: 0 16px 34px rgba(255, 138, 31, 0.14);
 }
 
 .calendar-cell.has-reminders {
-  background: linear-gradient(145deg, rgba(255, 249, 238, 0.95), rgba(255, 255, 255, 0.76));
+  background: linear-gradient(145deg, rgba(255, 248, 236, 0.95), rgba(255, 255, 255, 0.72));
 }
 
 .date-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 29px;
+  height: 29px;
   border-radius: 50%;
-  color: var(--fl-green-dark);
-  font-weight: 900;
+  color: var(--fl-ink);
+  font-weight: 950;
 }
 
 .is-today .date-number {
-  background: rgba(47, 125, 104, 0.12);
+  background: rgba(255, 138, 31, 0.14);
+  color: var(--fl-mi-orange-dark);
 }
 
 .pushpin {
-  --pin-color: #d9534f;
+  --pin-color: #df5b4f;
   --pin-dark: #a73935;
   --pin-light: #ffaaa6;
   position: absolute;
@@ -789,13 +824,13 @@ onUnmounted(() => {
 }
 
 .pushpin-warning {
-  --pin-color: #f2a65a;
+  --pin-color: #f0a83a;
   --pin-dark: #b86922;
   --pin-light: #ffd6a1;
 }
 
 .pushpin-danger {
-  --pin-color: #d9534f;
+  --pin-color: #df5b4f;
   --pin-dark: #9f2e2a;
   --pin-light: #ffaaa6;
 }
@@ -819,32 +854,33 @@ onUnmounted(() => {
 .cell-reminder-title,
 .more-reminders {
   overflow: hidden;
-  color: var(--fl-green-dark);
+  color: var(--fl-ink);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .more-reminders {
-  color: #d9534f;
+  color: var(--fl-danger);
 }
 
 .day-panel {
   min-height: 100%;
   padding: 20px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 28px;
   background:
-    radial-gradient(circle at top right, rgba(242, 166, 90, 0.2), transparent 32%),
-    rgba(255, 255, 255, 0.62);
+    radial-gradient(circle at top right, rgba(255, 196, 122, 0.2), transparent 32%),
+    rgba(255, 255, 255, 0.58);
 }
 
 .day-panel h3 {
   margin: 0 0 16px;
-  color: var(--fl-green-dark);
+  color: var(--fl-ink);
   font-size: 22px;
+  font-weight: 950;
 }
 
 .day-reminder-list {
@@ -856,9 +892,9 @@ onUnmounted(() => {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 12px 24px rgba(45, 74, 65, 0.06);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 12px 24px rgba(88, 72, 49, 0.06);
 }
 
 .day-reminder-title-row {
@@ -882,7 +918,7 @@ onUnmounted(() => {
   }
 
   .health-card strong {
-    font-size: 48px;
+    font-size: 52px;
   }
 
   .calendar-head {

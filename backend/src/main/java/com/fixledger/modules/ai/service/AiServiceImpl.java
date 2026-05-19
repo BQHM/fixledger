@@ -378,7 +378,7 @@ public class AiServiceImpl implements AiService {
         device.getName(),
         device.getBrand(),
         device.getModel(),
-        getCategoryName(device.getCategoryId()),
+        getCategoryName(device.getFamilyId(), device.getCategoryId()),
         device.getStatus(),
         device.getPurchaseDate(),
         device.getLocation()
@@ -393,11 +393,15 @@ public class AiServiceImpl implements AiService {
     return request.maintenanceId() == null ? device.getId() : request.maintenanceId();
   }
 
-  private String getCategoryName(Long categoryId) {
+  private String getCategoryName(Long familyId, Long categoryId) {
     if (categoryId == null) {
       return null;
     }
-    DeviceCategoryEntity category = deviceCategoryMapper.selectById(categoryId);
+    DeviceCategoryEntity category = deviceCategoryMapper.selectOne(
+        new LambdaQueryWrapper<DeviceCategoryEntity>()
+            .eq(DeviceCategoryEntity::getId, categoryId)
+            .eq(DeviceCategoryEntity::getFamilyId, familyId)
+    );
     return category == null ? null : category.getName();
   }
 

@@ -168,6 +168,63 @@ class DeviceAssetControllerTest {
         .andExpect(jsonPath("$.code").value(1003));
   }
 
+
+  @Test
+  @DisplayName("设备分页超过上限时返回参数错误")
+  void pageDevicesWithOversizedPageSizeReturnsBadRequest() throws Exception {
+    RegisterResponse user = authService.register(new RegisterRequest(
+        "devicepagesize",
+        null,
+        "123456",
+        "devicepagesize"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(user.userId());
+    LoginResponse login = authService.login(new LoginRequest("devicepagesize", "123456"));
+
+    mockMvc.perform(get("/api/families/{familyId}/devices", familyId)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .param("pageSize", "101"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
+  @Test
+  @DisplayName("设备购买金额精度超过数据库边界时返回参数错误")
+  void createDeviceWithInvalidPriceDigitsReturnsBadRequest() throws Exception {
+    RegisterResponse user = authService.register(new RegisterRequest(
+        "devicepricedigits",
+        null,
+        "123456",
+        "devicepricedigits"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(user.userId());
+    Long categoryId = deviceCategoryService.createCategory(
+        user.userId(),
+        familyId,
+        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+    ).id();
+    LoginResponse login = authService.login(new LoginRequest("devicepricedigits", "123456"));
+    CreateDeviceRequest request = new CreateDeviceRequest(
+        categoryId,
+        "小米净水器",
+        "小米",
+        "S1",
+        "SN-PRICE-DIGITS",
+        LocalDate.now(),
+        "京东",
+        new BigDecimal("12345678901.23"),
+        "厨房",
+        null
+    );
+
+    mockMvc.perform(post("/api/families/{familyId}/devices", familyId)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
   private Long createDevice(Long userId, Long familyId, Long categoryId, String serialNumber) {
     return deviceAssetService.createDevice(
         userId,

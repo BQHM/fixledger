@@ -83,6 +83,15 @@ public class RedisServiceImpl implements RedisService {
     }
   }
 
+  @Override
+  public void requireSet(String key, String value, Duration ttl) {
+    stringRedisTemplate.opsForValue().set(key, value, ttl);
+  }
+
+  @Override
+  public Optional<String> requireGet(String key) {
+    return Optional.ofNullable(stringRedisTemplate.opsForValue().get(key));
+  }
   /**
    * @Author FixLedger
    * <p>

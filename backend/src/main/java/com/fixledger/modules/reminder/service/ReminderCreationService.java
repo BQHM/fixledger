@@ -1,6 +1,8 @@
 package com.fixledger.modules.reminder.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fixledger.modules.family.entity.FamilyMemberEntity;
+import com.fixledger.modules.family.mapper.FamilyMemberMapper;
 import com.fixledger.modules.reminder.entity.NotificationRecordEntity;
 import com.fixledger.modules.reminder.entity.ReminderTaskEntity;
 import com.fixledger.modules.reminder.enums.NotificationChannel;
@@ -11,6 +13,7 @@ import com.fixledger.modules.reminder.mapper.NotificationRecordMapper;
 import com.fixledger.modules.reminder.mapper.ReminderTaskMapper;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,13 +29,16 @@ public class ReminderCreationService {
 
   private final ReminderTaskMapper reminderTaskMapper;
   private final NotificationRecordMapper notificationRecordMapper;
+  private final FamilyMemberMapper familyMemberMapper;
 
   public ReminderCreationService(
       ReminderTaskMapper reminderTaskMapper,
-      NotificationRecordMapper notificationRecordMapper
+      NotificationRecordMapper notificationRecordMapper,
+      FamilyMemberMapper familyMemberMapper
   ) {
     this.reminderTaskMapper = reminderTaskMapper;
     this.notificationRecordMapper = notificationRecordMapper;
+    this.familyMemberMapper = familyMemberMapper;
   }
 
   /**
@@ -71,7 +77,7 @@ public class ReminderCreationService {
     reminder.setRemindAt(remindAt);
     reminder.setStatus(ReminderStatus.PENDING.getCode());
     reminderTaskMapper.insert(reminder);
-    createInAppNotification(reminder);
+    createInAppNotifications(reminder);
     return true;
   }
 
@@ -94,11 +100,25 @@ public class ReminderCreationService {
     return count > 0;
   }
 
-  private void createInAppNotification(ReminderTaskEntity reminder) {
+  private void createInAppNotifications(ReminderTaskEntity reminder) {
     // 当前阶段只落站内通知记录，邮件和 Webhook 可在通知基础设施中扩展。
+    if (reminder.getUserId() != null) {
+      createInAppNotification(reminder, reminder.getUserId());
+      return;
+    }
+    List<FamilyMemberEntity> members = familyMemberMapper.selectList(
+        new LambdaQueryWrapper<FamilyMemberEntity>()
+            .eq(FamilyMemberEntity::getFamilyId, reminder.getFamilyId())
+    );
+    for (FamilyMemberEntity member : members) {
+      createInAppNotification(reminder, member.getUserId());
+    }
+  }
+
+  private void createInAppNotification(ReminderTaskEntity reminder, Long userId) {
     NotificationRecordEntity notification = new NotificationRecordEntity();
     notification.setFamilyId(reminder.getFamilyId());
-    notification.setUserId(reminder.getUserId());
+    notification.setUserId(userId);
     notification.setReminderId(reminder.getId());
     notification.setChannel(NotificationChannel.IN_APP.getCode());
     notification.setTitle(reminder.getTitle());

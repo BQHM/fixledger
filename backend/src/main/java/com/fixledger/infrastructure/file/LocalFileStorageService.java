@@ -109,6 +109,27 @@ public class LocalFileStorageService implements FileStorageService {
     }
   }
 
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：删除本地附件内容，主要用于数据库元数据写入失败时补偿清理。
+   * </p>
+   * @param storagePath 文件存储路径
+   */
+  @Override
+  public void delete(String storagePath) {
+    try {
+      Path root = Paths.get(properties.localRoot()).toAbsolutePath().normalize();
+      Path filePath = root.resolve(storagePath).normalize();
+      if (!filePath.startsWith(root)) {
+        throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文件路径非法");
+      }
+      Files.deleteIfExists(filePath);
+    } catch (IOException | IllegalStateException e) {
+      throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文件删除失败", e);
+    }
+  }
+
   private String cleanOriginalName(String originalName) {
     return StringUtils.hasText(originalName) ? StringUtils.cleanPath(originalName) : "";
   }

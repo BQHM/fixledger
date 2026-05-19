@@ -128,9 +128,9 @@ onUnmounted(() => {
     <section class="passport-hero">
       <div class="hero-copy">
         <div class="hero-kicker">设备护照</div>
-        <h1>按房间收好每一台家庭设备</h1>
+        <h1>一眼看清家里的每台设备</h1>
         <p>
-          用卡片墙记录设备购买、保修、耗材、维修和凭证，让面试演示先看到家庭场景，表格作为高级清单保留。
+          按房间摆放设备卡片，像家庭设备 App 一样快速看到状态、保修和下一次提醒。
         </p>
       </div>
       <div class="hero-side">
@@ -334,21 +334,22 @@ onUnmounted(() => {
   gap: 28px;
   align-items: stretch;
   padding: clamp(24px, 4vw, 42px);
-  border: 1px solid rgba(47, 125, 104, 0.14);
-  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 38px;
   background:
-    radial-gradient(circle at 8% 12%, rgba(242, 166, 90, 0.28), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(222, 239, 231, 0.86));
-  box-shadow: 0 24px 70px rgba(36, 49, 47, 0.12);
+    radial-gradient(circle at 8% 12%, rgba(255, 196, 122, 0.34), transparent 28%),
+    radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.72), transparent 24%),
+    linear-gradient(135deg, #fffdf8 0%, #f6ead8 50%, #edf2eb 100%);
+  box-shadow: var(--fl-shadow-md);
 }
 
 .passport-hero::after {
   position: absolute;
-  right: -72px;
+  right: -78px;
   bottom: -92px;
-  width: 240px;
-  height: 240px;
-  border: 32px solid rgba(47, 125, 104, 0.1);
+  width: 250px;
+  height: 250px;
+  border: 32px solid rgba(255, 138, 31, 0.1);
   border-radius: 999px;
   content: '';
 }
@@ -363,21 +364,21 @@ onUnmounted(() => {
   display: inline-flex;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(47, 125, 104, 0.12);
-  color: var(--fl-green-dark);
+  background: rgba(255, 138, 31, 0.12);
+  color: var(--fl-mi-orange-dark);
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 950;
   letter-spacing: 0.18em;
 }
 
 .passport-hero h1 {
-  max-width: 680px;
+  max-width: 720px;
   margin: 18px 0 14px;
   color: var(--fl-ink);
-  font-size: clamp(32px, 5vw, 56px);
-  font-weight: 900;
-  letter-spacing: -0.07em;
-  line-height: 1;
+  font-size: clamp(36px, 5vw, 66px);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.98;
 }
 
 .passport-hero p {
@@ -385,7 +386,7 @@ onUnmounted(() => {
   margin: 0;
   color: var(--fl-muted);
   font-size: 16px;
-  line-height: 1.8;
+  line-height: 1.85;
 }
 
 .hero-side {
@@ -403,16 +404,17 @@ onUnmounted(() => {
 
 .hero-stats div {
   padding: 16px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 12px 28px rgba(88, 72, 49, 0.07);
 }
 
 .hero-stats strong {
   display: block;
-  color: var(--fl-green-dark);
-  font-size: 30px;
-  font-weight: 900;
+  color: var(--fl-ink);
+  font-size: 31px;
+  font-weight: 950;
   line-height: 1;
 }
 
@@ -421,6 +423,7 @@ onUnmounted(() => {
   margin-top: 8px;
   color: var(--fl-muted);
   font-size: 13px;
+  font-weight: 700;
 }
 
 .filter-title {
@@ -434,7 +437,7 @@ onUnmounted(() => {
 .filter-title span {
   color: var(--fl-ink);
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 950;
 }
 
 .filter-title small {
@@ -454,10 +457,10 @@ onUnmounted(() => {
 
 .room-section {
   padding: 20px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 18px 45px rgba(36, 49, 47, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 18px 42px rgba(88, 72, 49, 0.08);
 }
 
 .room-header {
@@ -470,17 +473,18 @@ onUnmounted(() => {
 
 .room-label {
   margin: 0 0 4px;
-  color: var(--fl-orange);
+  color: var(--fl-mi-orange-dark);
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
+  font-weight: 950;
+  letter-spacing: 0.15em;
 }
 
 .room-header h2 {
   margin: 0;
   color: var(--fl-ink);
-  font-size: 24px;
-  letter-spacing: -0.04em;
+  font-size: 25px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
 }
 
 .room-meta {
@@ -493,15 +497,15 @@ onUnmounted(() => {
 .room-meta span {
   padding: 7px 11px;
   border-radius: 999px;
-  background: rgba(47, 125, 104, 0.1);
-  color: var(--fl-green-dark);
+  background: rgba(255, 138, 31, 0.1);
+  color: var(--fl-mi-orange-dark);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .device-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(276px, 1fr));
   gap: 14px;
 }
 
@@ -509,16 +513,16 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   overflow: hidden;
-  min-height: 260px;
+  min-height: 268px;
   flex-direction: column;
   gap: 16px;
   padding: 18px;
-  border: 1px solid rgba(47, 125, 104, 0.1);
-  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 28px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 242, 231, 0.9)),
-    repeating-linear-gradient(90deg, rgba(47, 125, 104, 0.04) 0 1px, transparent 1px 18px);
-  box-shadow: 0 14px 34px rgba(36, 49, 47, 0.1);
+    radial-gradient(circle at 88% 12%, rgba(255, 217, 149, 0.3), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 238, 0.86));
+  box-shadow: 0 16px 36px rgba(88, 72, 49, 0.1);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -529,21 +533,21 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 22px;
-  width: 72px;
-  height: 5px;
-  border-radius: 0 0 12px 12px;
-  background: var(--fl-orange);
+  width: 78px;
+  height: 6px;
+  border-radius: 0 0 14px 14px;
+  background: linear-gradient(90deg, var(--fl-mi-orange), #ffbd63);
   content: '';
 }
 
 .device-passport-card:hover {
-  border-color: rgba(47, 125, 104, 0.28);
-  box-shadow: 0 22px 45px rgba(36, 49, 47, 0.14);
-  transform: translateY(-2px);
+  border-color: rgba(255, 138, 31, 0.28);
+  box-shadow: 0 24px 50px rgba(88, 72, 49, 0.14);
+  transform: translateY(-3px);
 }
 
 .device-passport-card.is-attention::before {
-  background: var(--fl-danger);
+  background: linear-gradient(90deg, var(--fl-danger), #ff9d71);
 }
 
 .device-card-top {
@@ -555,15 +559,15 @@ onUnmounted(() => {
 
 .passport-stamp {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 2px solid rgba(47, 125, 104, 0.24);
-  border-radius: 16px;
-  background: rgba(220, 238, 230, 0.7);
-  color: var(--fl-green-dark);
-  font-size: 20px;
-  font-weight: 900;
+  border: 1px solid rgba(255, 138, 31, 0.2);
+  border-radius: 18px;
+  background: rgba(255, 244, 228, 0.9);
+  color: var(--fl-mi-orange-dark);
+  font-size: 21px;
+  font-weight: 950;
 }
 
 .device-card-main {
@@ -581,9 +585,9 @@ onUnmounted(() => {
 
 .device-card-main span {
   color: var(--fl-ink);
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: -0.04em;
+  font-size: 23px;
+  font-weight: 950;
+  letter-spacing: -0.05em;
 }
 
 .device-card-main small {
@@ -592,7 +596,7 @@ onUnmounted(() => {
 }
 
 .device-card-main:focus-visible {
-  outline: 3px solid rgba(47, 125, 104, 0.28);
+  outline: 3px solid rgba(255, 138, 31, 0.28);
   outline-offset: 4px;
 }
 
@@ -605,8 +609,8 @@ onUnmounted(() => {
 .device-card-facts div {
   min-width: 0;
   padding: 10px;
-  border-radius: 16px;
-  background: rgba(47, 125, 104, 0.06);
+  border-radius: 17px;
+  background: rgba(246, 241, 232, 0.78);
 }
 
 .device-card-facts span,
@@ -701,7 +705,7 @@ onUnmounted(() => {
 @media (max-width: 720px) {
   .passport-hero,
   .room-section {
-    border-radius: 22px;
+    border-radius: 24px;
   }
 
   .hero-stats,

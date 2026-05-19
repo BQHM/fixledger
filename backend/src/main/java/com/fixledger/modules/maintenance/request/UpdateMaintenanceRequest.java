@@ -1,6 +1,7 @@
 package com.fixledger.modules.maintenance.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
@@ -33,6 +34,7 @@ public record UpdateMaintenanceRequest(
     String repairContact,
 
     @DecimalMin(value = "0.00", message = "维修费用不能小于 0")
+    @Digits(integer = 10, fraction = 2, message = "维修费用最多 10 位整数和 2 位小数")
     BigDecimal repairCost,
 
     @Size(max = 2048, message = "处理结果最多 2048 个字符")

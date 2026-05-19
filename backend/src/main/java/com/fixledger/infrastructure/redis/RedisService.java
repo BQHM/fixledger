@@ -36,6 +36,27 @@ public interface RedisService {
   Optional<String> get(String key);
 
   /**
+   * 写入必须成功的安全状态，调用方负责处理 Redis 异常。
+   *
+   * @param key Redis Key
+   * @param value Redis Value
+   * @param ttl 过期时间
+   */
+  default void requireSet(String key, String value, Duration ttl) {
+    set(key, value, ttl);
+  }
+
+  /**
+   * 读取必须成功的安全状态，调用方负责处理 Redis 异常。
+   *
+   * @param key Redis Key
+   * @return 缓存值
+   */
+  default Optional<String> requireGet(String key) {
+    return get(key);
+  }
+
+  /**
    * 删除缓存。
    *
    * @param key Redis Key

@@ -29,4 +29,11 @@ public interface FileStorageService {
    * @return 可下载资源
    */
   Resource loadAsResource(String storagePath);
+
+  /**
+   * 删除已写入的文件内容，用于元数据写入失败后的补偿清理。
+   *
+   * @param storagePath 数据库中保存的相对存储路径或对象 Key
+   */
+  void delete(String storagePath);
 }

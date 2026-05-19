@@ -28,7 +28,7 @@
 | P11 | 代码质量治理 | 统一异常、日志、注释、分页、安全边界和分层职责 |
 | P12 | 测试体系补强 | 补强 Service、Controller、核心流程和边界场景测试 |
 | P13 | 安全与数据隔离 | 强化家庭空间隔离、附件鉴权、JWT 和敏感信息保护 |
-| P14 | 演示体验完善 | 准备演示数据、演示账号、README、截图和面试讲解稿 |
+| P14 | 演示体验完善 | 准备演示数据、演示账号、README、页面展示说明和面试讲解稿 |
 | P15 | 产品体验升级与可选增强 | 继续弱化后台感，评估文件存储、AI Provider、通知和 CI/CD |
 
 ## 2.1 全阶段小版本计划总览
@@ -95,15 +95,16 @@
 | P12 测试体系补强 | P12.2 Controller 与权限测试 | 补强参数校验、认证拦截和越权访问测试 | 已完成 |
 | P12 测试体系补强 | P12.3 前端构建与冒烟测试 | 固化前端构建、关键页面和接口联调检查 | 已完成 |
 | P12 测试体系补强 | P12.4 Docker 启动验证 | 固化一键启动后的健康检查和排障说明 | 已完成 |
-| P13 安全与数据隔离 | P13.1 家庭空间隔离审计 | 审查设备、保修、耗材、维修、提醒和附件归属校验 | 计划中 |
-| P13 安全与数据隔离 | P13.2 附件安全审计 | 审查文件类型、大小、访问鉴权和删除策略 | 计划中 |
-| P13 安全与数据隔离 | P13.3 认证与敏感信息审计 | 审查 JWT、密码、Token、日志和响应脱敏 | 计划中 |
-| P13 安全与数据隔离 | P13.4 边界参数审计 | 审查分页上限、ID 越权、日期和金额边界 | 计划中 |
-| P14 演示体验完善 | P14.1 演示数据整理 | 固化可重复演示的用户、家庭、设备和业务数据 | 计划中 |
-| P14 演示体验完善 | P14.2 面试演示路径 | 整理 5-10 分钟功能演示和技术讲解路线 | 计划中 |
-| P14 演示体验完善 | P14.3 README 展示增强 | 增加启动、账号、截图、功能亮点和排障说明 | 计划中 |
-| P14 演示体验完善 | P14.4 常见问答材料 | 整理架构、数据库、Redis、AI、文件存储和安全问答 | 计划中 |
-| P15 产品体验升级与可选增强 | P15.1 设备护照深化 | 完善设备详情生命周期表达和可视化体验 | 计划中 |
+| P13 安全与数据隔离 | P13.1 家庭空间隔离审计 | 审查设备、保修、耗材、维修、提醒和附件归属校验 | 已完成 |
+| P13 安全与数据隔离 | P13.2 附件安全审计 | 审查文件类型、大小、访问鉴权和删除策略 | 已完成 |
+| P13 安全与数据隔离 | P13.3 认证与敏感信息审计 | 审查 JWT、密码、Token、日志和响应脱敏 | 已完成 |
+| P13 安全与数据隔离 | P13.4 边界参数审计 | 审查分页上限、ID 越权、日期和金额边界 | 已完成 |
+| P14 演示体验完善 | P14.1 演示数据整理 | 固化可重复演示的用户、家庭、设备和业务数据 | 已完成 |
+| P14 演示体验完善 | P14.2 面试演示路径 | 整理 5-10 分钟功能演示和技术讲解路线 | 已完成 |
+| P14 演示体验完善 | P14.3 README 展示增强 | 增加启动、账号、页面展示、功能亮点和排障说明 | 已完成 |
+| P14 演示体验完善 | P14.4 常见问答材料 | 整理架构、数据库、Redis、AI、文件存储和安全问答 | 已完成 |
+| P15 产品体验升级与可选增强 | P15.1 设备护照深化 | 完善设备详情生命周期表达和可视化体验 | 已完成首批米家风格改造 |
+| P15 产品体验升级与可选增强 | P15.1.1 公开首页 | 增加类似米家官网气质的产品首页和演示入口 | 已完成 |
 | P15 产品体验升级与可选增强 | P15.2 凭证盒深化 | 完善凭证分类、完整度和附件预览体验 | 计划中 |
 | P15 产品体验升级与可选增强 | P15.3 存储与 AI 增强 | 评估 RustFS/MinIO、真实 AI Provider 和 Mock 兜底 | 计划中 |
 | P15 产品体验升级与可选增强 | P15.4 自动化与通知增强 | 评估 CI/CD、邮件、Webhook 和操作日志 | 计划中 |
@@ -1900,7 +1901,217 @@ P12 的目标不是继续新增业务功能，而是把核心业务闭环变成�
 
 - 进入 P13 安全与数据隔离：继续围绕家庭空间隔离、附件鉴权、JWT 敏感信息和边界参数做专项审计。
 
-## 16. MVP 验收清单
+
+## 16. P13 安全与数据隔离
+
+P13 的目标是在已有认证、家庭空间权限和文件存储能力基础上做专项安全收口：重点证明用户只能访问所属家庭数据，附件上传不能通过伪装扩展名或 MIME 类型绕过校验，JWT 和日志不泄露敏感信息，分页、ID、日期和金额等边界参数有明确约束。
+
+### P13.1 家庭空间隔离审计
+
+目标：
+
+- 审查设备、保修、耗材、维修、提醒、看板、AI 和附件的家庭空间隔离入口，确认所有 family_id 数据访问前都经过成员校验。
+
+范围：
+
+- 扫描 Service 层 `familyService.checkFamilyMember`、`getDevice(familyId, ...)`、`getWarranty(familyId, ...)`、`getConsumable(familyId, ...)`、`getMaintenance(familyId, ...)` 等隔离模式。
+- 对已存在的 Controller 越权测试和 Service 非成员测试做证据归档。
+- 不在本小节改业务功能；发现可复现漏洞时转入对应修复小节。
+
+验收标准：
+
+- 明确已覆盖模块和剩余风险。
+- 若发现隔离漏洞，必须补测试并修复。
+
+当前记录：
+
+- 已完成扫描，核心业务 Service 均先校验家庭成员，再以 `familyId` 约束业务对象查询。
+- AI 故障建议和维修总结通过 `getDevice(familyId, deviceId)` 与 `validateMaintenanceIfPresent(familyId, deviceId, maintenanceId)` 限制跨家庭、跨设备访问。
+- 附件上传、列表、下载和删除均先校验家庭成员，再校验附件元数据或业务对象归属。
+- 本轮发现名称补全类查询存在隐性隔离风险：设备分类名、维修/保修/耗材/提醒中的设备名补全不能只按 ID 回查，否则异常外键数据可能暴露其他家庭名称。
+- 已将设备、AI、保修、耗材、维修和提醒中的分类/设备名称补全统一改为带 `familyId` 的 `selectOne/selectList`，保留批量加载避免 N+1。
+
+验证记录：
+
+- 先新增 `DeviceAssetServiceFamilyIsolationTest` 与 `MaintenanceServiceFamilyIsolationTest` 复现异常外键泄露名称风险，旧实现下失败。
+- 修复后执行 `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; $env:Path="$env:JAVA_HOME\bin;$env:Path"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dmaven.repo.local=repository" "-Dtest=AiServiceTest,DeviceAssetServiceFamilyIsolationTest,DeviceAssetServiceNPlusOneTest,MaintenanceServiceFamilyIsolationTest,MaintenanceServiceNPlusOneTest,WarrantyServiceNPlusOneTest,ConsumableServiceNPlusOneTest,ReminderServiceTransactionBoundaryTest" test`：通过；15 个测试失败 0、错误 0、跳过 0。
+
+完成结论：
+
+- P13.1 家庭空间隔离审计已完成。所有核心数据入口保留家庭成员校验，业务对象读取和名称补全均带 `familyId` 约束；已补回归测试防止后续重新引入只按 ID 补全名称的泄露风险。
+
+### P13.2 附件安全审计
+
+目标：
+
+- 强化附件上传安全，除扩展名和 MIME 类型外，增加文件头魔数校验，阻断把文本或可执行内容伪装成图片/PDF 上传。
+
+范围：
+
+- 后端附件上传校验。
+- 附件相关 Service / Controller 测试数据调整为真实 JPEG、PNG、PDF 文件头。
+- 补充伪装文件回归测试。
+
+验收标准：
+
+- `.jpg/.jpeg` 必须匹配 JPEG 文件头和 `image/jpeg`。
+- `.png` 必须匹配 PNG 文件头和 `image/png`。
+- `.pdf` 必须匹配 `%PDF-` 文件头和 `application/pdf`。
+- 内容与扩展名或 MIME 类型不一致时返回 `FILE_TYPE_NOT_ALLOWED`。
+
+验证记录：
+
+- 先新增 `FileResourceServiceTest#rejectSpoofedFileContent`，当前实现下失败，证明只校验扩展名和 MIME 类型不足。
+- 已在 `FileResourceServiceImpl` 增加 JPEG、PNG、PDF 魔数校验。
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; $env:Path="$env:JAVA_HOME\bin;$env:Path"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dmaven.repo.local=repository" "-Dtest=FileResourceServiceTest#rejectSpoofedFileContent" test`：通过。
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; $env:Path="$env:JAVA_HOME\bin;$env:Path"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dmaven.repo.local=repository" "-Dtest=FileResourceServiceTest,FileResourceControllerTest,FileResourceServiceCompensationTest" test`：通过；附件相关 11 个测试失败 0、错误 0、跳过 0。
+
+完成结论：
+
+- P13.2 附件安全审计已完成主要修复。当前允许的图片和 PDF 类型都具备扩展名、MIME、魔数三层校验；附件鉴权和归属校验沿用已有家庭空间隔离逻辑。
+
+### P13.3 认证与敏感信息审计
+
+目标：
+
+- 审查 JWT、密码、Token、日志和响应脱敏，确认不会在接口响应或日志中暴露密码哈希、Token、API Key 等敏感信息。
+
+范围：
+
+- 扫描认证响应、用户响应、日志语句、配置文件和测试数据。
+- 复核 JWT 黑名单 Redis 失败时的 fail-safe 行为。
+
+验收标准：
+
+- 不直接返回 `UserEntity` 或 `passwordHash`。
+- 日志不输出密码、Token、API Key。
+- JWT 退出黑名单写入失败不能静默成功，读取失败按 Token 失效处理。
+
+验证记录：
+
+- 已执行敏感关键词扫描：`password`、`passwordHash`、`token`、`accessToken`、`refreshToken`、`Authorization`、`api-key`、`secret` 和 `log.`。
+- 认证响应只返回 `RegisterResponse`、`LoginResponse` 和 `UserProfileResponse`，不直接返回 `UserEntity`，不包含 `passwordHash`。
+- 日志未发现直接输出密码、完整 Token、API Key 或 Secret；JWT 黑名单读取失败时记录堆栈但不记录 Token 内容。
+- `JwtBlacklistServiceTest` 已覆盖 Redis 黑名单读失败按 Token 失效处理、写失败转业务异常，避免退出登录静默成功。
+
+完成结论：
+
+- P13.3 认证与敏感信息审计已完成。密码只以哈希入库，接口响应不暴露密码哈希；JWT 退出依赖 Redis 黑名单 fail-safe；日志敏感信息风险可控，README/docs 中出现的密码和 Token 均为演示或占位示例。
+
+### P13.4 边界参数审计
+
+目标：
+
+- 审查分页上限、ID 越权、日期范围、金额和枚举状态边界，避免非法参数进入业务状态流转或造成资源滥用。
+
+范围：
+
+- PageQuery、日期查询、金额字段、状态更新请求、AI 输入长度和文件大小限制。
+- 必要时补充边界测试。
+
+验收标准：
+
+- 分页上限保持 100。
+- 日期、金额、状态枚举和文件大小等边界都有后端约束。
+- 新增或确认对应测试证据。
+
+验证记录：
+
+- 已复核 `PageQuery` 分页上限：`pageSize` 通过 `@Max(100)` 限制。
+- 已复核查询窗口：保修/耗材 due soon 天数限制在 `0..3650`，首页趋势月份限制在 `1..24`，提醒日历和维修费用统计校验结束日期不得早于开始日期。
+- 已为金额字段按数据库 `DECIMAL(12,2)` 增加 `@Digits(integer = 10, fraction = 2)`：设备购买价、耗材更换费用、维修费用。
+- 已新增 Controller 边界测试：分页超过 100、设备金额整数位超限、耗材金额小数位超限、首页趋势月份超限、提醒日历日期倒挂。
+- `cd backend; $env:JAVA_HOME="D:\Software\Tools\Java tools\jdk\jdk-21.0.11"; $env:Path="$env:JAVA_HOME\bin;$env:Path"; & "D:\Software\Tools\Java tools\Maven\apache-maven-3.9.15\bin\mvn.cmd" "-Dmaven.repo.local=repository" "-Dtest=DeviceAssetControllerTest,ConsumableControllerTest,DashboardControllerTest" test`：通过；15 个测试失败 0、错误 0、跳过 0。
+
+完成结论：
+
+- P13.4 边界参数审计已完成。分页、日期窗口、月份窗口、状态枚举、文件大小、AI 输入长度和金额精度均有后端约束，并已补充对应回归测试证据。
+
+## 17. P14 演示体验完善
+
+P14 的目标是把已有 MVP 和 P10-P13 的质量、安全成果包装成可重复演示的体验：演示数据可解释、启动路径清晰、5-10 分钟路线稳定、README 能快速导航，常见问答能覆盖架构、数据库、Redis、AI、文件存储和安全追问。
+
+### P14.1 演示数据整理
+
+目标：
+
+- 固化 `demo / fixledger123`、`演示家庭`、三台示例设备和保修/耗材/维修/提醒/附件/AI 数据的讲解地图。
+
+范围：
+
+- 复核 `backend/src/main/resources/db/demo-data.sql` 的演示用户、家庭空间、设备、提醒和 AI 留痕。
+- 在 `docs/demo-guide.md` 和 `docs/database.md` 说明演示数据含义、固定日期基准和附件元数据限制。
+- 不改生产表结构，不新增与家庭设备生命周期无关的演示业务。
+
+完成记录：
+
+- 已新增 `docs/demo-guide.md`，整理演示账号、数据地图、启动命令、重置方式和排障预案。
+- 已在 `docs/database.md` 增加 P14 演示数据地图，明确三个设备分别承担净水器生命周期、吸尘器耗材提醒和路由器维修/AI 场景。
+- 已说明初始化 SQL 中的附件记录主要是元数据样例，真实下载需要通过页面上传文件写入 RustFS。
+
+### P14.2 面试演示路径
+
+目标：
+
+- 整理可在 5 分钟内讲清核心闭环、10 分钟内展开技术追问的演示路线。
+
+范围：
+
+- 以“我的家 -> 设备护照 -> 设备详情 -> 耗材 -> 维修 -> 凭证盒 -> 智能助手”为主线。
+- 把 OpenAPI、Docker Compose、Redis、P13 安全审计作为追问支线，而不是抢主线。
+
+完成记录：
+
+- 已在 `docs/demo-guide.md` 补充 5 分钟路线和 10 分钟技术路线。
+- 已更新 `docs/interview-guide.md`，把 P11/P12/P13/P14 纳入已完成阶段，并补充现场兜底口径。
+
+### P14.3 README 展示增强
+
+目标：
+
+- 让 README 能承担项目入口职责：快速启动、演示账号、功能亮点、文档导航、演示路线和后续状态都能直接找到。
+
+范围：
+
+- 增加 `docs/demo-guide.md` 文档导航。
+- 更新效果展示，从“后续补截图”调整为“按真实环境可重复演示的页面、讲解重点和截图策略”。
+- 更新当前完善状态到 P14。
+
+完成记录：
+
+- README 已新增 P14 演示指南入口。
+- README 效果展示已按登录页、我的家、家庭日历、设备护照、设备详情、耗材、维修、凭证盒和智能助手整理，并说明 P14 不把静态截图作为唯一展示依据。
+- README 底部状态已从 P10 更新到 P14，并把 P15 作为下一阶段。
+
+### P14.4 常见问答材料
+
+目标：
+
+- 面试追问时能快速解释架构、数据库、Redis、AI、文件存储、安全边界和延期项。
+
+范围：
+
+- 在 `docs/demo-guide.md` 汇总高频问答速答。
+- 在 `docs/interview-guide.md` 补充附件下载、截图策略和 P14 后续计划口径。
+- 保持“AI 是辅助、文件访问走后端鉴权、家庭空间隔离是核心权限模型”的一致表达。
+
+完成记录：
+
+- 已补充 P14 高频问答速答，覆盖普通后台差异、家庭空间隔离、Redis、RustFS、AI 和延期项。
+- 已在面试指南补充附件下载失败和不提交静态截图的说明，避免演示现场把元数据样例误当真实对象文件。
+
+### P14 验证记录
+
+- `rg -n "P14|demo-guide|演示路线|后续建议" docs README.md`：通过，已确认 README、演示指南、面试指南、数据库文档和任务记录均出现 P14 演示入口与下一步 P15 口径。
+- `git diff --check`：通过；仅出现既有 LF/CRLF 换行提示，无空白错误。
+- `docker compose config --quiet`：通过，P14 文档中的一键启动配置仍可解析。
+
+完成结论：
+
+- P14 演示体验完善已完成文档与演示材料收口。项目现在可以通过 README 找到演示指南，通过 `docs/demo-guide.md` 走稳定路线，通过 `docs/interview-guide.md` 回答常见追问，通过 `docs/database.md` 解释演示数据来源。
+
+
+## 18. MVP 验收清单
 
 MVP 完成需要满足：
 
@@ -1922,7 +2133,7 @@ MVP 完成需要满足：
 - [x] AI Mock 功能可用。
 - [x] README 可指导本地启动。
 
-## 17. 推荐开发顺序
+## 19. 推荐开发顺序
 
 ```text
 1. 后端脚手架
@@ -1943,7 +2154,7 @@ MVP 完成需要满足：
 16. Docker 和测试
 ```
 
-## 18. 面试展示优先级
+## 20. 面试展示优先级
 
 优先打磨这些能力：
 
@@ -1955,7 +2166,7 @@ MVP 完成需要满足：
 6. 我的家场景首页。
 7. 设备护照和凭证盒。
 
-## 19. 风险与控制
+## 21. 风险与控制
 
 | 风险 | 控制方式 |
 | --- | --- |
@@ -1966,7 +2177,7 @@ MVP 完成需要满足：
 | 定时任务难测试 | 提供手动扫描接口 |
 | 权限遗漏 | 所有业务接口统一校验 familyId |
 
-## 20. 当前状态
+## 22. 当前状态
 
 截至当前文档版本：
 
@@ -1975,17 +2186,96 @@ MVP 完成需要满足：
 - docs 开发资料已完成第一版。
 - 后端 P0-P7 已完成：脚手架、认证与家庭空间、设备分类与设备档案、保修记录与附件、耗材与维修、提醒与看板、AI 辅助、后端工程化。
 - 前端 MVP 页面已完成：登录注册、主布局、首页看板、设备档案、设备详情、保修管理、耗材管理、维修记录、维修详情、提醒中心、附件库、AI 助手和家庭设置。
-- 后端完整 Maven 测试已通过，当前共 95 个测试用例，失败 0、错误 0、跳过 0。
+- 后端完整 Maven 测试已通过，当前共 113 个测试用例，失败 0、错误 0、跳过 0。
 - 前端 `npm run build` 已通过，Vue 类型检查和 Vite 构建均成功。
 - Docker Compose 已支持一键启动前端、后端、MySQL、Redis 和 RustFS，前端通过 Nginx 代理后端 API。
 - P8 产品化体验重构已启动：首页升级为“我的家”，导航从后台模块转向家庭场景入口。
 - 已完成一次项目注释审查：补充后端核心类/公开方法 Javadoc，以及前端 API、Store、路由和字典工具注释。
 - P9 系统性完善阶段已完成：文档对齐、代码质量、安全测试、RustFS、Skills 文档规范、面试材料、产品体验、CI 门禁和全量验收均已收口。
 - P10 文档深度对齐已完成：需求、架构、接口、数据库、UI、README 与当前实现和演示体验保持一致。
+- P11 代码质量治理已完成：异常、日志、事务、配置、前端 API 封装和构建静态检查已收口。
 - P12 测试体系补强已完成：Service 边界、Controller 参数与越权、前端 smoke 和 Docker 健康检查脚本均已收口。
+- P13 安全与数据隔离已完成：家庭空间隔离、附件安全、JWT 敏感信息和边界参数均已补强并通过全量测试。
+- P14 演示体验完善已完成：演示指南、演示数据地图、README 展示增强和常见问答材料已收口。
 
 下一步建议：
 
 ```text
-P13 安全与数据隔离建议启动，优先审查家庭空间隔离、附件鉴权、JWT 敏感信息和边界参数。
+P14 已完成，下一步建议进入 P15 产品体验升级与可选增强，继续深化设备护照、凭证盒、附件预览、真实 AI Provider、通知渠道和自动化流水线。
 ```
+
+
+## 23. P15 产品体验升级与可选增强
+
+P15 的目标是在不扩大业务边界的前提下继续弱化后台感，把页面视觉调整为更接近米家 App 的家庭设备体验：浅色空间、柔和卡片、设备状态可感知、房间与设备卡片优先，表格作为辅助能力保留。
+
+### P15.1 米家风格视觉基线与设备护照深化
+
+目标：
+
+- 建立接近米家 App 的前端视觉基线：暖白背景、柔和阴影、圆角设备卡、状态色克制、移动端单列优先。
+- 优先改造登录页、主布局、我的家首页、设备护照和设备详情，让演示第一眼更像家庭设备应用。
+
+范围：
+
+- `frontend/src/styles/main.css`：统一颜色、字体、卡片、按钮、表单、表格和动效基础。
+- `frontend/src/layouts/MainLayout.vue`：侧边导航和顶部栏改为更轻的家庭设备控制台风格。
+- `frontend/src/views/auth/LoginView.vue`：登录页改为米家式浅色欢迎页和设备能力卡片。
+- `frontend/src/views/dashboard/DashboardView.vue`：首页 Hero、健康分、指标卡、日历和任务卡视觉升级。
+- `frontend/src/views/devices/DeviceListView.vue`、`DeviceDetailView.vue`：设备卡片和设备详情护照深化。
+
+验收标准：
+
+- 页面仍能正常登录、切换家庭、查看首页和设备页面。
+- `npm run build` 通过。
+- Docker 前端镜像可重新构建并通过 `http://localhost:5173` 访问。
+- 不引入新业务方向，不把项目改成泛智能家居控制平台。
+
+当前记录：
+
+- 已启动 P15.1，先补充任务记录和 UI 方向，再进行前端视觉改造。
+- 已完成首批米家风格视觉改造：全局视觉基线、主布局、登录页、我的家首页、设备护照和设备详情。
+- 已保留家庭设备生命周期定位，没有新增智能家居控制、商城或企业资产盘点方向。
+
+验证记录：
+
+- `cd frontend; npm run build`：通过；仅保留 Rollup PURE 注释和大 chunk 的既有构建告警。
+- `docker compose build frontend`：通过，前端镜像已重新构建。
+- `docker compose up -d frontend`：通过，`fixledger-frontend` 已重新启动。
+- `Invoke-WebRequest http://localhost:5173`：返回 200，页面标题为 `FixLedger 家庭设备档案本`。
+- `git diff --check -- frontend/src/styles/main.css frontend/src/layouts/MainLayout.vue frontend/src/views/auth/LoginView.vue frontend/src/views/dashboard/DashboardView.vue frontend/src/views/devices/DeviceListView.vue frontend/src/views/devices/DeviceDetailView.vue docs/tasks.md docs/ui.md`：通过；仅有 LF/CRLF 换行提示，无空白错误。
+
+
+### P15.1.1 公开首页
+
+目标：
+
+- 增加一个公开访问的产品首页，参考 `https://home.mi.com/` 的浅色官网气质、顶部导航、大 Hero、产品能力卡片和清晰 CTA。
+- 首页用于项目展示和面试开场，强调家庭设备生命周期管理，不做商城、不做 IoT 控制台。
+
+范围：
+
+- 新增公开首页页面，路由为 `/`。
+- 登录、注册和应用内页面保持原有功能；登录后进入 `/dashboard`。
+- 首页只使用项目自有文案和 CSS 形状，不复制米家品牌素材、Logo 或图片。
+
+验收标准：
+
+- 未登录访问 `http://localhost:5173/` 能看到公开首页。
+- 点击“登录 / 体验演示”能进入登录页。
+- 已登录用户仍可访问 `/dashboard`、`/devices` 等应用内页面。
+- `npm run build` 通过，Docker 前端镜像可重新构建。
+
+当前记录：
+
+- 已启动公开首页开发，先补充任务记录和 UI 文档，再新增页面与路由。
+- 已新增 `frontend/src/views/home/HomeLandingView.vue`，以浅色官网、顶部导航、大 Hero、能力卡片、场景区和工程可信度作为首页结构。
+- 已调整前端路由：`/` 为公开首页，`/dashboard` 仍是登录后的我的家工作台，`/login` 和 `/register` 继续公开访问。
+- 首页 CTA 指向登录页，保持演示账号由登录页主动填入。
+
+验证记录：
+
+- `cd frontend; npm run build`：通过；仅保留 Rollup PURE 注释和大 chunk 的既有构建告警。
+- `git diff --check -- frontend/src/router/index.ts frontend/src/views/home/HomeLandingView.vue docs/tasks.md docs/ui.md`：通过；仅有 LF/CRLF 换行提示，无空白错误。
+- `docker compose build frontend; docker compose up -d frontend`：通过，前端镜像已重新构建并重启。
+- `Invoke-WebRequest http://localhost:5173/` 与 `Invoke-WebRequest http://localhost:5173/login`：均返回 200。

@@ -19,6 +19,9 @@ import com.fixledger.modules.asset.response.DeviceDetailResponse;
 import com.fixledger.modules.asset.response.DeviceListResponse;
 import com.fixledger.modules.family.service.FamilyService;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -71,7 +74,9 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
         query.toPage(),
         buildPageWrapper(familyId, query)
     );
-    IPage<DeviceListResponse> responsePage = page.convert(this::toListResponse);
+    Map<Long, String> categoryNames = listCategoryNames(familyId, page.getRecords());
+    IPage<DeviceListResponse> responsePage = page.convert(device ->
+        toListResponse(device, categoryNames));
     return PageResponse.from(responsePage);
   }
 
@@ -295,13 +300,35 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return device;
   }
 
-  private DeviceListResponse toListResponse(DeviceAssetEntity device) {
+  private Map<Long, String> listCategoryNames(Long familyId, List<DeviceAssetEntity> devices) {
+    Set<Long> categoryIds = devices.stream()
+        .map(DeviceAssetEntity::getCategoryId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (categoryIds.isEmpty()) {
+      return Map.of();
+    }
+    return deviceCategoryMapper.selectList(new LambdaQueryWrapper<DeviceCategoryEntity>()
+            .eq(DeviceCategoryEntity::getFamilyId, familyId)
+            .in(DeviceCategoryEntity::getId, categoryIds))
+        .stream()
+        .collect(Collectors.toMap(
+            DeviceCategoryEntity::getId,
+            DeviceCategoryEntity::getName,
+            (left, right) -> left
+        ));
+  }
+
+  private DeviceListResponse toListResponse(
+      DeviceAssetEntity device,
+      Map<Long, String> categoryNames
+  ) {
     return new DeviceListResponse(
         device.getId(),
         device.getName(),
         device.getBrand(),
         device.getModel(),
-        getCategoryName(device.getCategoryId()),
+        categoryNames.get(device.getCategoryId()),
         device.getPurchaseDate(),
         device.getPurchasePrice(),
         device.getLocation(),
@@ -315,7 +342,7 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     return new DeviceDetailResponse(
         device.getId(),
         device.getCategoryId(),
-        getCategoryName(device.getCategoryId()),
+        getCategoryName(device.getFamilyId(), device.getCategoryId()),
         device.getName(),
         device.getBrand(),
         device.getModel(),
@@ -333,11 +360,15 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     );
   }
 
-  private String getCategoryName(Long categoryId) {
+  private String getCategoryName(Long familyId, Long categoryId) {
     if (categoryId == null) {
       return null;
     }
-    DeviceCategoryEntity category = deviceCategoryMapper.selectById(categoryId);
+    DeviceCategoryEntity category = deviceCategoryMapper.selectOne(
+        new LambdaQueryWrapper<DeviceCategoryEntity>()
+            .eq(DeviceCategoryEntity::getId, categoryId)
+            .eq(DeviceCategoryEntity::getFamilyId, familyId)
+    );
     return category == null ? null : category.getName();
   }
 }

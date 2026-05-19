@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadBucketRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
@@ -132,6 +133,29 @@ public class S3FileStorageService implements FileStorageService {
       throw new BusinessException(ErrorCode.NOT_FOUND, "文件不存在", e);
     } catch (S3Exception | IllegalArgumentException e) {
       throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "RustFS 文件读取失败", e);
+    }
+  }
+
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：删除 RustFS 中的对象，主要用于数据库元数据写入失败时补偿清理。
+   * </p>
+   * @param storagePath 文件对象 Key
+   */
+  @Override
+  public void delete(String storagePath) {
+    try {
+      if (!isValidObjectKey(storagePath)) {
+        throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "文件路径非法");
+      }
+      FileStorageProperties.S3Properties s3 = s3Properties();
+      s3Client.deleteObject(DeleteObjectRequest.builder()
+          .bucket(s3.bucket())
+          .key(storagePath)
+          .build());
+    } catch (S3Exception | IllegalArgumentException e) {
+      throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, "RustFS 文件删除失败", e);
     }
   }
 

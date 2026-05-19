@@ -1,6 +1,7 @@
 package com.fixledger.modules.dashboard.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fixledger.common.constant.RedisKeys;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
@@ -32,6 +33,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,16 +130,13 @@ public class DashboardServiceImpl implements DashboardService {
             .eq(DeviceCategoryEntity::getFamilyId, familyId)
             .orderByAsc(DeviceCategoryEntity::getSortOrder)
     );
+    Map<Long, Long> categoryCounts = countDevicesByCategory(familyId);
     List<DeviceCategoryDistributionResponse> result = new ArrayList<>();
     for (DeviceCategoryEntity category : categories) {
-      Long count = deviceAssetMapper.selectCount(new LambdaQueryWrapper<DeviceAssetEntity>()
-          .eq(DeviceAssetEntity::getFamilyId, familyId)
-          .eq(DeviceAssetEntity::getCategoryId, category.getId()));
+      Long count = categoryCounts.getOrDefault(category.getId(), 0L);
       result.add(new DeviceCategoryDistributionResponse(category.getName(), count));
     }
-    Long uncategorized = deviceAssetMapper.selectCount(new LambdaQueryWrapper<DeviceAssetEntity>()
-        .eq(DeviceAssetEntity::getFamilyId, familyId)
-        .isNull(DeviceAssetEntity::getCategoryId));
+    Long uncategorized = categoryCounts.getOrDefault(null, 0L);
     if (uncategorized > 0) {
       result.add(new DeviceCategoryDistributionResponse("未分类", uncategorized));
     }
@@ -214,6 +213,46 @@ public class DashboardServiceImpl implements DashboardService {
             entry.getValue()
         ))
         .toList();
+  }
+
+  private Map<Long, Long> countDevicesByCategory(Long familyId) {
+    List<Map<String, Object>> rows = deviceAssetMapper.selectMaps(
+        new QueryWrapper<DeviceAssetEntity>()
+            .select("category_id AS categoryId", "COUNT(*) AS deviceCount")
+            .eq("family_id", familyId)
+            .groupBy("category_id")
+    );
+    Map<Long, Long> categoryCounts = new HashMap<>();
+    for (Map<String, Object> row : rows) {
+      Long categoryId = toLong(getColumnValue(row, "categoryId", "category_id"));
+      Long count = toLong(getColumnValue(row, "deviceCount", "count"));
+      categoryCounts.put(categoryId, count == null ? 0L : count);
+    }
+    return categoryCounts;
+  }
+
+  private Object getColumnValue(Map<String, Object> row, String... names) {
+    for (String name : names) {
+      if (row.containsKey(name)) {
+        return row.get(name);
+      }
+      for (Map.Entry<String, Object> entry : row.entrySet()) {
+        if (entry.getKey().equalsIgnoreCase(name)) {
+          return entry.getValue();
+        }
+      }
+    }
+    return null;
+  }
+
+  private Long toLong(Object value) {
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof Number number) {
+      return number.longValue();
+    }
+    return Long.valueOf(value.toString());
   }
 
   private long countDevices(Long familyId) {

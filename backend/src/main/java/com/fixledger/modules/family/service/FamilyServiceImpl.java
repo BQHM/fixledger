@@ -16,6 +16,9 @@ import com.fixledger.modules.user.entity.UserEntity;
 import com.fixledger.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -91,9 +94,10 @@ public class FamilyServiceImpl implements FamilyService {
             .eq(FamilyMemberEntity::getUserId, userId)
             .orderByAsc(FamilyMemberEntity::getId)
     );
+    Map<Long, FamilySpaceEntity> families = listFamiliesById(members);
     return members.stream()
         .map(member -> {
-          FamilySpaceEntity family = familySpaceMapper.selectById(member.getFamilyId());
+          FamilySpaceEntity family = families.get(member.getFamilyId());
           if (family == null) {
             throw new BusinessException(ErrorCode.FAMILY_SPACE_NOT_FOUND, "家庭空间不存在");
           }
@@ -147,8 +151,9 @@ public class FamilyServiceImpl implements FamilyService {
             .eq(FamilyMemberEntity::getFamilyId, familyId)
             .orderByAsc(FamilyMemberEntity::getJoinedAt)
     );
+    Map<Long, UserEntity> users = listUsersById(members);
     return members.stream()
-        .map(this::toMemberResponse)
+        .map(member -> toMemberResponse(member, users))
         .toList();
   }
 
@@ -219,6 +224,42 @@ public class FamilyServiceImpl implements FamilyService {
     return member;
   }
 
+  private Map<Long, FamilySpaceEntity> listFamiliesById(List<FamilyMemberEntity> members) {
+    Set<Long> familyIds = members.stream()
+        .map(FamilyMemberEntity::getFamilyId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (familyIds.isEmpty()) {
+      return Map.of();
+    }
+    return familySpaceMapper.selectList(new LambdaQueryWrapper<FamilySpaceEntity>()
+            .in(FamilySpaceEntity::getId, familyIds))
+        .stream()
+        .collect(Collectors.toMap(
+            FamilySpaceEntity::getId,
+            family -> family,
+            (left, right) -> left
+        ));
+  }
+
+  private Map<Long, UserEntity> listUsersById(List<FamilyMemberEntity> members) {
+    Set<Long> userIds = members.stream()
+        .map(FamilyMemberEntity::getUserId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (userIds.isEmpty()) {
+      return Map.of();
+    }
+    return userMapper.selectList(new LambdaQueryWrapper<UserEntity>()
+            .in(UserEntity::getId, userIds))
+        .stream()
+        .collect(Collectors.toMap(
+            UserEntity::getId,
+            user -> user,
+            (left, right) -> left
+        ));
+  }
+
   private FamilyResponse toFamilyResponse(FamilySpaceEntity family, String role) {
     return new FamilyResponse(
         family.getId(),
@@ -229,8 +270,11 @@ public class FamilyServiceImpl implements FamilyService {
     );
   }
 
-  private FamilyMemberResponse toMemberResponse(FamilyMemberEntity member) {
-    UserEntity user = userMapper.selectById(member.getUserId());
+  private FamilyMemberResponse toMemberResponse(
+      FamilyMemberEntity member,
+      Map<Long, UserEntity> users
+  ) {
+    UserEntity user = users.get(member.getUserId());
     if (user == null) {
       throw new BusinessException(ErrorCode.USER_NOT_FOUND, "家庭成员用户不存在");
     }

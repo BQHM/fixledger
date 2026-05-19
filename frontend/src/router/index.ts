@@ -7,6 +7,12 @@ import { useAuthStore } from '@/stores/auth';
  */
 const routes: RouteRecordRaw[] = [
   {
+    path: '/',
+    name: 'home',
+    component: () => import('@/views/home/HomeLandingView.vue'),
+    meta: { public: true, allowAuthenticated: true }
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/views/auth/LoginView.vue'),
@@ -21,7 +27,6 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
-    redirect: '/dashboard',
     children: [
       { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue') },
       { path: 'devices', name: 'devices', component: () => import('@/views/devices/DeviceListView.vue') },
@@ -52,7 +57,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (to.meta.public) {
-    return auth.isAuthenticated && to.path !== '/login' ? '/dashboard' : true;
+    return auth.isAuthenticated && !to.meta.allowAuthenticated && to.path !== '/login' ? '/dashboard' : true;
   }
   if (!auth.isAuthenticated) {
     return `/login?redirect=${encodeURIComponent(to.fullPath)}`;

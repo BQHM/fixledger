@@ -1,8 +1,11 @@
 package com.fixledger.common.security;
 
 import com.fixledger.common.constant.RedisKeys;
+import com.fixledger.common.exception.BusinessException;
+import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.infrastructure.redis.RedisService;
 import java.time.Duration;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -13,6 +16,7 @@ import org.springframework.util.StringUtils;
  *
  * @Author FixLedger
  */
+@Slf4j
 @Service
 public class JwtBlacklistService {
 
@@ -32,7 +36,11 @@ public class JwtBlacklistService {
     if (!StringUtils.hasText(tokenId) || ttl == null || ttl.isZero() || ttl.isNegative()) {
       return;
     }
-    redisService.set(RedisKeys.authBlacklist(tokenId), "1", ttl);
+    try {
+      redisService.requireSet(RedisKeys.authBlacklist(tokenId), "1", ttl);
+    } catch (RuntimeException e) {
+      throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登录状态服务不可用，请稍后重试", e);
+    }
   }
 
   /**
@@ -45,6 +53,11 @@ public class JwtBlacklistService {
     if (!StringUtils.hasText(tokenId)) {
       return true;
     }
-    return redisService.get(RedisKeys.authBlacklist(tokenId)).isPresent();
+    try {
+      return redisService.requireGet(RedisKeys.authBlacklist(tokenId)).isPresent();
+    } catch (RuntimeException e) {
+      log.error("JWT blacklist check failed; token is treated as invalid", e);
+      return true;
+    }
   }
 }

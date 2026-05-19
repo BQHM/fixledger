@@ -21,6 +21,9 @@ import com.fixledger.modules.consumable.response.ConsumableResponse;
 import com.fixledger.modules.family.service.FamilyService;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,14 +73,16 @@ public class ConsumableServiceImpl implements ConsumableService {
       Long deviceId
   ) {
     familyService.checkFamilyMember(userId, familyId);
-    getDevice(familyId, deviceId);
-    return consumableItemMapper.selectList(new LambdaQueryWrapper<ConsumableItemEntity>()
+    DeviceAssetEntity device = getDevice(familyId, deviceId);
+    List<ConsumableItemEntity> consumables = consumableItemMapper.selectList(
+        new LambdaQueryWrapper<ConsumableItemEntity>()
             .eq(ConsumableItemEntity::getFamilyId, familyId)
             .eq(ConsumableItemEntity::getDeviceId, deviceId)
             .orderByAsc(ConsumableItemEntity::getNextRemindDate)
-            .orderByDesc(ConsumableItemEntity::getUpdatedAt))
-        .stream()
-        .map(this::toResponse)
+            .orderByDesc(ConsumableItemEntity::getUpdatedAt)
+    );
+    return consumables.stream()
+        .map(consumable -> toResponse(consumable, device.getName()))
         .toList();
   }
 
@@ -101,7 +106,7 @@ public class ConsumableServiceImpl implements ConsumableService {
       CreateConsumableRequest request
   ) {
     familyService.checkFamilyMember(userId, familyId);
-    getDevice(familyId, deviceId);
+    DeviceAssetEntity device = getDevice(familyId, deviceId);
 
     ConsumableItemEntity entity = new ConsumableItemEntity();
     entity.setFamilyId(familyId);
@@ -121,7 +126,7 @@ public class ConsumableServiceImpl implements ConsumableService {
     refreshStatus(entity);
     entity.setRemark(request.remark());
     consumableItemMapper.insert(entity);
-    return toResponse(entity);
+    return toResponse(entity, device.getName());
   }
 
   /**
@@ -145,6 +150,7 @@ public class ConsumableServiceImpl implements ConsumableService {
   ) {
     familyService.checkFamilyMember(userId, familyId);
     ConsumableItemEntity entity = getConsumable(familyId, consumableId);
+    DeviceAssetEntity device = getDevice(familyId, entity.getDeviceId());
 
     entity.setName(request.name());
     entity.setBrand(request.brand());
@@ -161,7 +167,7 @@ public class ConsumableServiceImpl implements ConsumableService {
     refreshStatus(entity);
     entity.setRemark(request.remark());
     consumableItemMapper.updateById(entity);
-    return toResponse(entity);
+    return toResponse(entity, device.getName());
   }
 
   /**
@@ -285,7 +291,8 @@ public class ConsumableServiceImpl implements ConsumableService {
             .le(ConsumableItemEntity::getNextRemindDate, endDate)
             .orderByAsc(ConsumableItemEntity::getNextRemindDate)
     );
-    return PageResponse.from(page.convert(this::toResponse));
+    Map<Long, String> deviceNames = listDeviceNames(familyId, page.getRecords());
+    return PageResponse.from(page.convert(consumable -> toResponse(consumable, deviceNames)));
   }
 
   private DeviceAssetEntity getDevice(Long familyId, Long deviceId) {
@@ -356,13 +363,38 @@ public class ConsumableServiceImpl implements ConsumableService {
     entity.setStatus(ConsumableStatus.NORMAL.getCode());
   }
 
-  private ConsumableResponse toResponse(ConsumableItemEntity entity) {
+  private Map<Long, String> listDeviceNames(Long familyId, List<ConsumableItemEntity> consumables) {
+    Set<Long> deviceIds = consumables.stream()
+        .map(ConsumableItemEntity::getDeviceId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (deviceIds.isEmpty()) {
+      return Map.of();
+    }
+    return deviceAssetMapper.selectList(new LambdaQueryWrapper<DeviceAssetEntity>()
+            .eq(DeviceAssetEntity::getFamilyId, familyId)
+            .in(DeviceAssetEntity::getId, deviceIds))
+        .stream()
+        .collect(Collectors.toMap(
+            DeviceAssetEntity::getId,
+            DeviceAssetEntity::getName,
+            (left, right) -> left
+        ));
+  }
+
+  private ConsumableResponse toResponse(
+      ConsumableItemEntity entity,
+      Map<Long, String> deviceNames
+  ) {
+    return toResponse(entity, deviceNames.get(entity.getDeviceId()));
+  }
+
+  private ConsumableResponse toResponse(ConsumableItemEntity entity, String deviceName) {
     refreshStatus(entity);
-    DeviceAssetEntity device = deviceAssetMapper.selectById(entity.getDeviceId());
     return new ConsumableResponse(
         entity.getId(),
         entity.getDeviceId(),
-        device == null ? null : device.getName(),
+        deviceName,
         entity.getName(),
         entity.getBrand(),
         entity.getModel(),

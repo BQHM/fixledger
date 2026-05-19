@@ -76,7 +76,7 @@ class FileResourceServiceTest {
   @DisplayName("可以上传设备附件并按业务对象查询")
   void uploadAndListDeviceFile() {
     TestFixture fixture = createFixture("filedevice");
-    MockMultipartFile file = mockFile("invoice.jpg", "image/jpeg", "invoice image");
+    MockMultipartFile file = mockJpeg("invoice.jpg");
 
     FileResourceResponse uploaded = fileResourceService.uploadFile(
         fixture.userId(),
@@ -125,7 +125,7 @@ class FileResourceServiceTest {
         fixture.familyId(),
         FileBizType.WARRANTY.getCode(),
         warranty.id(),
-        mockFile("warranty-card.png", "image/png", "warranty image")
+        mockPng("warranty-card.png")
     );
 
     assertThat(uploaded.bizType()).isEqualTo(FileBizType.WARRANTY.getCode());
@@ -136,7 +136,7 @@ class FileResourceServiceTest {
   @DisplayName("可以下载已上传附件")
   void downloadFileResource() throws Exception {
     TestFixture fixture = createFixture("filedownload");
-    byte[] content = "manual-content".getBytes(StandardCharsets.UTF_8);
+    byte[] content = "%PDF-1.7\nmanual-content".getBytes(StandardCharsets.UTF_8);
     MockMultipartFile file = new MockMultipartFile(
         "file",
         "manual.pdf",
@@ -199,7 +199,7 @@ class FileResourceServiceTest {
         fixture.familyId(),
         FileBizType.DEVICE.getCode(),
         fixture.deviceId(),
-        mockFile("../invoice.jpg", "image/jpeg", "bad")
+        mockJpeg("../invoice.jpg")
     )).isInstanceOfSatisfying(BusinessException.class, e ->
         assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FILE_TYPE_NOT_ALLOWED));
   }
@@ -219,7 +219,7 @@ class FileResourceServiceTest {
         owner.familyId(),
         FileBizType.DEVICE.getCode(),
         owner.deviceId(),
-        mockFile("invoice.jpg", "image/jpeg", "invoice")
+        mockJpeg("invoice.jpg")
     );
 
     assertThatThrownBy(() -> fileResourceService.downloadFile(
@@ -266,14 +266,14 @@ class FileResourceServiceTest {
         fixture.familyId(),
         FileBizType.CONSUMABLE.getCode(),
         consumable.id(),
-        mockFile("consumable.jpg", "image/jpeg", "consumable")
+        mockJpeg("consumable.jpg")
     );
     FileResourceResponse maintenanceFile = fileResourceService.uploadFile(
         fixture.userId(),
         fixture.familyId(),
         FileBizType.MAINTENANCE.getCode(),
         maintenance.id(),
-        mockFile("repair.jpg", "image/jpeg", "repair")
+        mockJpeg("repair.jpg")
     );
 
     assertThat(consumableFile.bizType()).isEqualTo(FileBizType.CONSUMABLE.getCode());
@@ -282,6 +282,20 @@ class FileResourceServiceTest {
     assertThat(maintenanceFile.bizId()).isEqualTo(maintenance.id());
   }
 
+  @Test
+  @DisplayName("拒绝内容与扩展名或 MIME 类型不一致的伪装附件")
+  void rejectSpoofedFileContent() {
+    TestFixture fixture = createFixture("filespoof");
+
+    assertThatThrownBy(() -> fileResourceService.uploadFile(
+        fixture.userId(),
+        fixture.familyId(),
+        FileBizType.DEVICE.getCode(),
+        fixture.deviceId(),
+        mockFile("invoice.jpg", "image/jpeg", "not-real-jpeg")
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FILE_TYPE_NOT_ALLOWED));
+  }
   private TestFixture createFixture(String username) {
     LocalDate purchaseDate = LocalDate.now().minusMonths(2);
     RegisterResponse user = authService.register(new RegisterRequest(
@@ -313,6 +327,26 @@ class FileResourceServiceTest {
         )
     );
     return new TestFixture(user.userId(), familyId, device.id(), purchaseDate);
+  }
+
+  private MockMultipartFile mockJpeg(String originalName) {
+    return new MockMultipartFile(
+        "file",
+        originalName,
+        "image/jpeg",
+        new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00}
+    );
+  }
+
+  private MockMultipartFile mockPng(String originalName) {
+    return new MockMultipartFile(
+        "file",
+        originalName,
+        "image/png",
+        new byte[] {
+            (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
+        }
+    );
   }
 
   private MockMultipartFile mockFile(String originalName, String contentType, String content) {

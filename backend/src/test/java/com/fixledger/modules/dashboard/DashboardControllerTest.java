@@ -81,6 +81,40 @@ class DashboardControllerTest {
         .andExpect(jsonPath("$.data[0].count").value(1));
   }
 
+
+  @Test
+  @DisplayName("维修费用趋势月份超过上限时返回参数错误")
+  void maintenanceCostTrendWithInvalidMonthsReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("dashboardmonths");
+    LoginResponse login = authService.login(new LoginRequest("dashboardmonths", "123456"));
+
+    mockMvc.perform(get(
+            "/api/families/{familyId}/dashboard/maintenance-cost-trend",
+            fixture.familyId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .param("months", "25"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
+  @Test
+  @DisplayName("提醒日历结束日期早于开始日期时返回参数错误")
+  void reminderCalendarWithInvalidDateRangeReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("dashboarddaterange");
+    LoginResponse login = authService.login(new LoginRequest("dashboarddaterange", "123456"));
+
+    mockMvc.perform(get(
+            "/api/families/{familyId}/dashboard/reminder-calendar",
+            fixture.familyId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + login.accessToken())
+            .param("startDate", LocalDate.now().toString())
+            .param("endDate", LocalDate.now().minusDays(1).toString()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
   private TestFixture createFixture(String username) {
     RegisterResponse user = authService.register(new RegisterRequest(
         username,

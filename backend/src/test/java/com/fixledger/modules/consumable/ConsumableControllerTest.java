@@ -185,6 +185,50 @@ class ConsumableControllerTest {
         .andExpect(jsonPath("$.code").value(1003));
   }
 
+
+  @Test
+  @DisplayName("耗材更换金额小数超过两位时返回参数错误")
+  void createReplaceRecordWithInvalidCostDigitsReturnsBadRequest() throws Exception {
+    TestFixture fixture = createFixture("consumablecostdigits");
+    LoginResponse login = authService.login(new LoginRequest("consumablecostdigits", "123456"));
+    String token = "Bearer " + login.accessToken();
+    MvcResult createResult = mockMvc.perform(post(
+            "/api/families/{familyId}/devices/{deviceId}/consumables",
+            fixture.familyId(),
+            fixture.deviceId()
+        )
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(new CreateConsumableRequest(
+                "PP 棉滤芯",
+                "小米",
+                "PPC-001",
+                180,
+                LocalDate.now().minusDays(10),
+                7,
+                null
+            ))))
+        .andExpect(status().isOk())
+        .andReturn();
+    Long consumableId = readId(createResult);
+    CreateReplaceRecordRequest request = new CreateReplaceRecordRequest(
+        LocalDate.now(),
+        new BigDecimal("12.345"),
+        "金额精度无效"
+    );
+
+    mockMvc.perform(post(
+            "/api/families/{familyId}/consumables/{consumableId}/replace-records",
+            fixture.familyId(),
+            consumableId
+        )
+            .header(HttpHeaders.AUTHORIZATION, token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(1001));
+  }
+
   private TestFixture createFixture(String username) {
     RegisterResponse user = authService.register(new RegisterRequest(
         username,

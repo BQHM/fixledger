@@ -21,6 +21,10 @@ import com.fixledger.modules.maintenance.response.MaintenanceResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -69,7 +73,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
       CreateMaintenanceRequest request
   ) {
     familyService.checkFamilyMember(userId, familyId);
-    getDevice(familyId, deviceId);
+    DeviceAssetEntity device = getDevice(familyId, deviceId);
 
     MaintenanceRecordEntity entity = new MaintenanceRecordEntity();
     entity.setFamilyId(familyId);
@@ -81,7 +85,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     entity.setRepairChannel(request.repairChannel());
     entity.setRepairContact(request.repairContact());
     maintenanceRecordMapper.insert(entity);
-    return toResponse(entity);
+    return toResponse(entity, device.getName());
   }
 
   /**
@@ -106,7 +110,8 @@ public class MaintenanceServiceImpl implements MaintenanceService {
         query.toPage(),
         buildPageWrapper(familyId, query.getDeviceId(), status)
     );
-    return PageResponse.from(page.convert(this::toResponse));
+    Map<Long, String> deviceNames = listDeviceNames(familyId, page.getRecords());
+    return PageResponse.from(page.convert(record -> toResponse(record, deviceNames)));
   }
 
   /**
@@ -360,12 +365,53 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     return occurredAt == null ? LocalDateTime.now() : occurredAt;
   }
 
+  private Map<Long, String> listDeviceNames(Long familyId, List<MaintenanceRecordEntity> records) {
+    Set<Long> deviceIds = records.stream()
+        .map(MaintenanceRecordEntity::getDeviceId)
+        .filter(id -> id != null)
+        .collect(Collectors.toSet());
+    if (deviceIds.isEmpty()) {
+      return Map.of();
+    }
+    return deviceAssetMapper.selectList(new LambdaQueryWrapper<DeviceAssetEntity>()
+            .eq(DeviceAssetEntity::getFamilyId, familyId)
+            .in(DeviceAssetEntity::getId, deviceIds))
+        .stream()
+        .collect(Collectors.toMap(
+            DeviceAssetEntity::getId,
+            DeviceAssetEntity::getName,
+            (left, right) -> left
+        ));
+  }
+
+  private MaintenanceResponse toResponse(
+      MaintenanceRecordEntity entity,
+      Map<Long, String> deviceNames
+  ) {
+    return toResponse(entity, deviceNames.get(entity.getDeviceId()));
+  }
+
   private MaintenanceResponse toResponse(MaintenanceRecordEntity entity) {
-    DeviceAssetEntity device = deviceAssetMapper.selectById(entity.getDeviceId());
+    return toResponse(entity, getDeviceName(entity.getFamilyId(), entity.getDeviceId()));
+  }
+
+  private String getDeviceName(Long familyId, Long deviceId) {
+    if (deviceId == null) {
+      return null;
+    }
+    DeviceAssetEntity device = deviceAssetMapper.selectOne(
+        new LambdaQueryWrapper<DeviceAssetEntity>()
+            .eq(DeviceAssetEntity::getId, deviceId)
+            .eq(DeviceAssetEntity::getFamilyId, familyId)
+    );
+    return device == null ? null : device.getName();
+  }
+
+  private MaintenanceResponse toResponse(MaintenanceRecordEntity entity, String deviceName) {
     return new MaintenanceResponse(
         entity.getId(),
         entity.getDeviceId(),
-        device == null ? null : device.getName(),
+        deviceName,
         entity.getTitle(),
         entity.getFaultDescription(),
         entity.getOccurredAt(),
