@@ -818,20 +818,105 @@ Content-Type: multipart/form-data
 GET /api/families/{familyId}/files?bizType=DEVICE&bizId=1
 ```
 
-### 13.3 下载附件
+### 13.3 查询设备凭证盒
+
+```http
+GET /api/families/{familyId}/devices/{deviceId}/credential-box
+```
+
+用途：按设备一次聚合购买凭证、说明书、保修凭证、维修凭证和耗材凭证，前端不再分别查询保修、维修、耗材和多组附件。
+
+响应：
+
+```json
+{
+  "deviceId": 1,
+  "deviceName": "小米净水器 S1",
+  "location": "厨房",
+  "completionPercent": 80,
+  "archivedTypeCount": 4,
+  "totalTypeCount": 5,
+  "totalFileCount": 6,
+  "totalFileSize": 1048576,
+  "groups": [
+    {
+      "bizType": "DEVICE",
+      "title": "购买凭证",
+      "shortTitle": "发票",
+      "description": "购买发票、订单截图和支付凭证",
+      "targets": [
+        {
+          "bizId": 1,
+          "label": "小米净水器 S1"
+        }
+      ],
+      "files": [
+        {
+          "id": 10,
+          "originalName": "invoice.jpg",
+          "contentType": "image/jpeg",
+          "fileSize": 123456,
+          "bizType": "DEVICE",
+          "bizId": 1,
+          "targetLabel": "小米净水器 S1"
+        }
+      ]
+    }
+  ]
+}
+```
+
+规则：
+
+- 固定返回 `DEVICE`、`MANUAL`、`WARRANTY`、`MAINTENANCE`、`CONSUMABLE` 五类分组。
+- `targets` 表示当前类型可挂载的业务对象；设备和说明书指向设备 ID，保修、维修、耗材指向对应记录 ID。
+- 后端统一校验登录用户是否属于该家庭空间，并且查询业务对象时同时带 `familyId` 和 `deviceId`。
+- 上传、下载、预览和删除仍复用附件接口，凭证盒接口只负责聚合读取。
+
+### 13.4 下载附件
 
 ```http
 GET /api/families/{familyId}/files/{fileId}/download
 ```
 
-### 13.4 删除附件
+### 13.5 删除附件
 
 ```http
 DELETE /api/families/{familyId}/files/{fileId}
 ```
 
 
-### 13.5 RustFS 存储说明
+### 13.6 查询说明书全文
+
+```http
+GET /api/families/{familyId}/devices/{deviceId}/manuals/search?keyword=reset
+```
+
+用途：在指定设备下搜索已归档说明书的文本索引和文件名，用于从凭证盒快速定位 PDF 说明书。
+
+响应：
+
+```json
+[
+  {
+    "fileId": 20,
+    "fileName": "router-manual.pdf",
+    "contentType": "application/pdf",
+    "fileSize": 204800,
+    "snippet": "hold the reset button for 8 seconds"
+  }
+]
+```
+
+规则：
+
+- 需要登录，并校验当前用户属于 `familyId` 对应家庭空间。
+- 查询前会校验 `deviceId` 属于当前家庭空间。
+- `keyword` 必填，最大 64 个字符；空关键词返回 `BAD_REQUEST`。
+- 结果只返回说明书附件元数据和短片段，不返回完整索引文本。
+- P16.2 第一版只索引上传时可直接提取到的 PDF 文本和文件名；扫描件 OCR、复杂 PDF 解析和真实 AI Provider 不属于当前接口依赖。
+
+### 13.7 RustFS 存储说明
 
 接口路径、请求参数和响应结构不因 RustFS 接入而变化。上传时后端会将文件内容写入 RustFS Bucket，并把对象 Key 保存到 `fl_file_resource.storage_path`。`storage-type=rustfs`、`s3` 或 `minio` 均复用 S3 兼容实现。下载时仍通过：
 

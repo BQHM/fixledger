@@ -1,6 +1,8 @@
 package com.fixledger.modules.file.service;
 
+import com.fixledger.modules.file.response.CredentialBoxResponse;
 import com.fixledger.modules.file.response.FileResourceResponse;
+import com.fixledger.modules.file.response.ManualSearchResponse;
 import java.util.List;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,32 @@ public interface FileResourceService {
    * @return 附件列表
    */
   List<FileResourceResponse> listFiles(Long userId, Long familyId, String bizType, Long bizId);
+
+  /**
+   * 按设备聚合查询凭证盒，包含设备、说明书、保修、维修和耗材附件。
+   *
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 凭证盒聚合数据
+   */
+  CredentialBoxResponse getCredentialBox(Long userId, Long familyId, Long deviceId);
+
+  /**
+   * 按设备搜索已索引的说明书内容。
+   *
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param keyword 搜索关键词
+   * @return 搜索结果
+   */
+  List<ManualSearchResponse> searchManuals(
+      Long userId,
+      Long familyId,
+      Long deviceId,
+      String keyword
+  );
 
   /**
    * 下载附件，读取前会校验家庭空间访问权限。

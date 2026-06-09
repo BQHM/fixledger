@@ -566,7 +566,7 @@ FileStorageService
 
 - 前端请求下载。
 - 后端校验用户和家庭空间权限。
-- 后端读取文件流返回；对象存储临时访问 URL 仍是后续可选增强。
+- 后端读取文件流返回；P15 凭证盒前端使用后端下载流生成 Blob URL 做图片/PDF 预览，不直接暴露对象存储地址。对象存储临时访问 URL 仍是后续可选增强。
 
 ## 13. 部署架构
 
@@ -654,6 +654,7 @@ Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/
 - Prompt 模板位于 `backend/src/main/resources/prompts/`，当前包含票据提取、故障排查和维修总结三个模板。
 - 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
 - 当前文件存储新增 `S3FileStorageService`，Docker 默认对接 RustFS；`LocalFileStorageService` 保留为测试和兜底。
+- P15 凭证盒已支持图片/PDF 在线预览，但预览数据仍通过后端鉴权接口转发，未把 RustFS/MinIO 对象 Key 或临时 URL 暴露给浏览器。
 - 当前登录退出已实现 Redis Token 黑名单，Refresh Token 和多端会话机制保留为后续增强。
 - 当前定时任务为 `ReminderScheduler` 单一 cron 入口，扫描所有家庭的保修和耗材提醒；维修待跟进扫描仍是后续增强。
 - 当前没有独立 `NotificationService` 基础设施，站内通知由 `ReminderCreationService` 与提醒任务同事务写入，邮件和 Webhook 通过后续通知基础设施扩展。

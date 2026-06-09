@@ -11,7 +11,11 @@ import com.fixledger.modules.asset.response.CreateDeviceResponse;
 import com.fixledger.modules.asset.response.DeviceDetailResponse;
 import com.fixledger.modules.asset.response.DeviceListResponse;
 import com.fixledger.modules.asset.service.DeviceAssetService;
+import com.fixledger.modules.file.response.CredentialBoxResponse;
+import com.fixledger.modules.file.response.ManualSearchResponse;
+import com.fixledger.modules.file.service.FileResourceService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -36,9 +41,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceAssetController {
 
   private final DeviceAssetService deviceAssetService;
+  private final FileResourceService fileResourceService;
 
-  public DeviceAssetController(DeviceAssetService deviceAssetService) {
+  public DeviceAssetController(
+      DeviceAssetService deviceAssetService,
+      FileResourceService fileResourceService
+  ) {
     this.deviceAssetService = deviceAssetService;
+    this.fileResourceService = fileResourceService;
   }
 
   /**
@@ -93,6 +103,44 @@ public class DeviceAssetController {
   ) {
     Long userId = CurrentUserContext.getUserId();
     return Result.success(deviceAssetService.getDeviceDetail(userId, familyId, deviceId));
+  }
+
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备凭证盒聚合查询接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @return 凭证盒聚合数据
+   */
+  @GetMapping("/{deviceId}/credential-box")
+  public Result<CredentialBoxResponse> getCredentialBox(
+      @PathVariable Long familyId,
+      @PathVariable Long deviceId
+  ) {
+    Long userId = CurrentUserContext.getUserId();
+    return Result.success(fileResourceService.getCredentialBox(userId, familyId, deviceId));
+  }
+
+  /**
+   * @Author FixLedger
+   * <p>
+   * 功能说明：处理设备说明书全文搜索接口请求。
+   * </p>
+   * @param familyId 家庭空间 ID
+   * @param deviceId 设备 ID
+   * @param keyword 搜索关键词
+   * @return 说明书搜索结果
+   */
+  @GetMapping("/{deviceId}/manuals/search")
+  public Result<List<ManualSearchResponse>> searchManuals(
+      @PathVariable Long familyId,
+      @PathVariable Long deviceId,
+      @RequestParam("keyword") String keyword
+  ) {
+    Long userId = CurrentUserContext.getUserId();
+    return Result.success(fileResourceService.searchManuals(userId, familyId, deviceId, keyword));
   }
 
   /**

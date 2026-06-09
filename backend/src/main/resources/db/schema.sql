@@ -130,6 +130,25 @@ CREATE TABLE IF NOT EXISTS fl_file_resource (
   KEY idx_fl_file_resource_family (family_id),
   KEY idx_fl_file_resource_biz (family_id, biz_type, biz_id)
 );
+
+CREATE TABLE IF NOT EXISTS fl_manual_text_index (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  family_id BIGINT NOT NULL,
+  device_id BIGINT NOT NULL,
+  file_id BIGINT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  content_text TEXT DEFAULT NULL,
+  index_status VARCHAR(32) NOT NULL DEFAULT 'INDEXED',
+  error_message VARCHAR(1024) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  created_by BIGINT DEFAULT NULL,
+  updated_by BIGINT DEFAULT NULL,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_fl_manual_text_index_file (file_id),
+  KEY idx_fl_manual_text_index_device (family_id, device_id),
+  KEY idx_fl_manual_text_index_status (family_id, index_status)
+);
 CREATE TABLE IF NOT EXISTS fl_consumable_item (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   family_id BIGINT NOT NULL,

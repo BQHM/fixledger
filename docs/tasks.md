@@ -105,9 +105,9 @@
 | P14 演示体验完善 | P14.4 常见问答材料 | 整理架构、数据库、Redis、AI、文件存储和安全问答 | 已完成 |
 | P15 产品体验升级与可选增强 | P15.1 设备护照深化 | 完善设备详情生命周期表达和可视化体验 | 已完成首批米家风格改造 |
 | P15 产品体验升级与可选增强 | P15.1.1 公开首页 | 增加类似米家官网气质的产品首页和演示入口 | 已完成 |
-| P15 产品体验升级与可选增强 | P15.2 凭证盒深化 | 完善凭证分类、完整度和附件预览体验 | 计划中 |
-| P15 产品体验升级与可选增强 | P15.3 存储与 AI 增强 | 评估 RustFS/MinIO、真实 AI Provider 和 Mock 兜底 | 计划中 |
-| P15 产品体验升级与可选增强 | P15.4 自动化与通知增强 | 评估 CI/CD、邮件、Webhook 和操作日志 | 计划中 |
+| P15 产品体验升级与可选增强 | P15.2 凭证盒深化 | 完善凭证分类、完整度和附件预览体验 | 已完成 |
+| P15 产品体验升级与可选增强 | P15.3 存储与 AI 增强 | 评估 RustFS/MinIO、真实 AI Provider 和 Mock 兜底 | 已完成本轮收口 |
+| P15 产品体验升级与可选增强 | P15.4 自动化与通知增强 | 评估 CI/CD、邮件、Webhook 和操作日志 | 已完成本轮收口 |
 
 ## 2.2 开发留痕规则
 
@@ -2279,3 +2279,218 @@ P15 的目标是在不扩大业务边界的前提下继续弱化后台感，把�
 - `git diff --check -- frontend/src/router/index.ts frontend/src/views/home/HomeLandingView.vue docs/tasks.md docs/ui.md`：通过；仅有 LF/CRLF 换行提示，无空白错误。
 - `docker compose build frontend; docker compose up -d frontend`：通过，前端镜像已重新构建并重启。
 - `Invoke-WebRequest http://localhost:5173/` 与 `Invoke-WebRequest http://localhost:5173/login`：均返回 200。
+
+
+### P15.2 凭证盒深化
+
+目标：
+
+- 将 `/files` 从普通附件列表升级为“凭证盒”体验，突出家庭设备凭证归档、完整度和可预览能力。
+- 保持现有后端附件接口不变，先通过前端信息架构完成凭证分类、设备关联和演示体验升级。
+
+范围：
+
+- `frontend/src/views/files/FileLibraryView.vue`：改为设备优先的凭证盒页面，支持凭证类型切换、完整度统计、上传、下载、删除和预览。
+- `frontend/src/api/file.ts`：补充附件预览 Blob URL 能力，下载仍保持浏览器保存。
+- `docs/ui.md`、`docs/tasks.md`：同步凭证盒体验边界和完成记录。
+
+验收标准：
+
+- 能按设备选择凭证归档对象，并按发票/说明书/保修/维修/耗材类型查看附件。
+- 图片和 PDF 可以在页面中预览；不支持预览的类型仍提供下载。
+- 页面保留后端鉴权下载路径，不暴露对象存储地址。
+- `npm run build` 和 `npm run smoke` 通过。
+
+当前记录：
+
+- 已启动 P15.2，先按现有接口完成前端体验升级，不新增表结构和后端路由。
+- 完整度采用前端按当前设备已查询凭证类型计算，后续如需要跨业务对象汇总，可再扩展后端聚合接口。
+- 已将 `/files` 改为设备优先的凭证盒：先选择设备，再按发票、说明书、保修、维修和耗材类型查看凭证。
+- 已补充图片/PDF 预览，预览数据仍来自后端鉴权下载流，不暴露 RustFS 对象地址。
+- 保修、维修和耗材凭证按真实业务记录 ID 查询和上传，不把设备 ID 误用为业务记录 ID。
+
+验证记录：
+
+- `cd frontend; npm run build`：首次在清理旧 `dist/assets` 时遇到 Windows `EPERM unlink`，提升权限重跑通过；仅保留 Rollup PURE 注释和大 chunk 的既有构建告警。
+- `cd frontend; npm run smoke`：通过，前端关键页面、路由和 API 契约检查成功。
+- `git diff --check`：通过；仅有 LF/CRLF 换行提示，无空白错误。
+
+完成结论：
+
+- P15.2 已完成。凭证盒已从后台式附件查询页升级为设备优先、按凭证类型组织、支持图片/PDF 预览的家庭凭证归档体验。
+
+### P15.3 存储与 AI 增强
+
+目标：
+
+- 明确当前 RustFS/S3、本地存储、OpenAI-compatible Client 和 Mock AI 的边界，让增强能力可配置、可演示、可降级。
+- 不把真实 AI Provider 或对象存储临时 URL 变成核心业务强依赖。
+
+范围：
+
+- 凭证预览继续走后端鉴权转发下载，不直接暴露 RustFS/MinIO 临时 URL。
+- AI 继续保留 Mock Provider 和 OpenAI-compatible Provider 两条路径，真实 Provider 需要通过环境变量启用。
+- 文档说明 P15 阶段的取舍：文件预览先做前端 Blob 预览，全文搜索/OCR/临时 URL 仍是后续增强。
+
+验收标准：
+
+- README、架构和 UI 口径不夸大当前 AI 和对象存储能力。
+- 前端预览失败时不影响下载和核心附件管理。
+- 不新增真实密钥或硬编码 Provider 配置。
+
+当前记录：
+
+- P15.3 选择先完成文件预览体验与文档口径收口，不新增真实 Provider 密钥和外部服务依赖。
+- 当前 AI 基础设施已经支持 `MOCK` 和 `OPENAI_COMPATIBLE` 两种 Provider，真实调用需要显式启用并配置 `apiKey`、`baseUrl` 和 `model`。
+- P15.3 当时凭证预览采用后端下载接口返回 Blob，浏览器生成对象 URL；对象存储临时访问 URL、OCR 和 PDF 全文搜索继续作为后续增强，后续 P16.2 已完成文本型 PDF/文件名搜索第一版。
+
+完成结论：
+
+- P15.3 已完成本轮收口。当前增强重点落在“可安全预览、可解释配置、可离线演示”，没有把真实 AI Provider 或对象存储临时 URL 变成核心依赖。
+
+### P15.4 自动化与通知增强
+
+目标：
+
+- 复核当前 CI、Docker 健康检查、站内通知和延期通知渠道，形成 P15 可交付边界。
+- 邮件/Webhook 和操作日志如果不进入本轮实现，必须写清原因和后续落点。
+
+范围：
+
+- 继续使用现有 GitHub Actions：后端测试、前端构建、前端 smoke、Docker Compose 配置校验和 Docker health dry-run。
+- 通知能力当前保持站内通知；邮件/Webhook 作为后续通知基础设施扩展，不阻塞家庭设备核心闭环。
+- 在任务记录中补充 P15 收口验证。
+
+验收标准：
+
+- `npm run build`、`npm run smoke`、`git diff --check` 通过。
+- 文档能解释为什么 P15 优先做凭证盒和预览，而不是先接邮件/Webhook。
+
+当前记录：
+
+- P15.4 本轮不新增邮件/Webhook 实现，避免引入投递配置、失败重试、敏感配置和通知审计表的半成品能力。
+- 当前自动化仍以 GitHub Actions 和本地脚本为主：后端测试、前端构建、前端 smoke、Docker Compose 配置校验和 Docker health dry-run。
+- 操作日志和独立 NotificationService 保持为后续增强，当前站内通知仍由提醒模块同事务写入。
+
+完成结论：
+
+- P15.4 已完成本轮收口。自动化与通知边界已明确：当前保留稳定 CI 与站内通知，邮件/Webhook、操作日志和更完整部署流水线作为后续专项。
+
+### P15 总结
+
+完成范围：
+
+- P15.1 米家风格视觉基线：全局样式、主布局、登录页、我的家、设备护照和设备详情完成首批产品化改造。
+- P15.1.1 公开首页：新增 `/` 产品首页，登录后的工作台仍保留 `/dashboard`。
+- P15.2 凭证盒深化：设备优先的凭证盒、凭证完整度、按类型归档、图片/PDF 预览和安全下载已完成。
+- P15.3 存储与 AI 增强：文件预览走后端鉴权 Blob，AI Provider 配置边界和 Mock 兜底口径已收口。
+- P15.4 自动化与通知增强：CI、Docker health dry-run、站内通知和后续邮件/Webhook/操作日志边界已收口。
+
+验证记录：
+
+- `cd frontend; npm run build`：通过；首次因旧 `dist` 文件删除权限失败，提升权限重跑成功。
+- `cd frontend; npm run smoke`：通过。
+- `git diff --check`：通过；仅有 LF/CRLF 换行提示。
+
+下一步建议：
+
+- 如继续增强，优先进入 P16：凭证聚合后端接口、说明书 PDF 全文搜索、OCR 辅助录入、邮件/Webhook 通知基础设施、操作日志和更完整 E2E。
+
+
+## 24. P16 凭证聚合与智能归档增强
+
+P16 的目标是在 P15 凭证盒前端体验基础上，把“设备、保修、维修、耗材、附件”的拼装逻辑逐步收回后端，减少前端重复请求和业务知识泄漏，并逐步补齐说明书搜索、OCR 和凭证自动分类基础。
+
+### P16.1 凭证盒后端聚合接口
+
+目标：
+
+- 新增设备维度凭证盒聚合接口，让前端一次获取设备凭证、说明书、保修凭证、维修凭证和耗材凭证。
+- 后端统一处理家庭空间校验、业务对象归属、附件分组和完整度统计，避免前端把设备 ID 误当作保修/维修/耗材记录 ID。
+
+接口契约：
+
+```text
+GET /api/families/{familyId}/devices/{deviceId}/credential-box
+```
+
+响应内容：
+
+- `deviceId`、`deviceName`、`location`。
+- `completionPercent`、`archivedTypeCount`、`totalTypeCount`、`totalFileCount`、`totalFileSize`。
+- `groups[]`：每个凭证类型包含 `bizType`、`title`、`shortTitle`、`description`、`targets[]`、`files[]`。
+- `targets[]`：可挂载对象，设备/说明书指向设备 ID，保修/维修/耗材指向对应业务记录 ID。
+- `files[]`：附件元数据，额外带 `targetLabel`，前端无需再维护业务对象名称映射。
+
+范围：
+
+- 后端新增凭证盒响应 DTO、Service 方法和 Controller 路由。
+- 后端补充聚合接口测试，覆盖设备、说明书、保修、维修、耗材附件分组和文件数量统计。
+- 前端 `/files` 改为优先调用聚合接口，上传/下载/预览仍复用现有附件接口。
+- 同步 `docs/api.md`、`docs/ui.md` 和任务记录。
+
+验收标准：
+
+- 聚合接口只允许家庭成员访问，并且所有业务对象查询都带 `familyId` 和 `deviceId`。
+- 前端凭证盒加载时不再分别调用设备保修、维修、耗材和多次附件查询接口。
+- `mvn -Dtest=FileResourceControllerTest test`、`npm run build`、`npm run smoke` 和 `git diff --check` 通过。
+
+本轮完成：
+
+- 后端新增 `GET /api/families/{familyId}/devices/{deviceId}/credential-box` 聚合接口，固定返回设备凭证、说明书、保修、维修和耗材五类分组。
+- `FileResourceService` 统一校验家庭成员、设备归属，并按 `familyId + deviceId` 批量读取保修、维修、耗材和附件，避免前端多次拼装造成的 N+1 查询风险。
+- 前端 `/files` 已切换为调用凭证盒聚合接口；上传、删除、预览和下载继续复用原附件接口。
+- `docs/api.md` 和 `docs/ui.md` 已补充 P16.1 聚合接口契约与页面数据流说明。
+
+验证：
+
+- 后端目标测试：`mvn -Dmaven.repo.local=repository -Dtest=FileResourceControllerTest#getCredentialBoxAggregatesDeviceRelatedFiles test` 通过。
+- 后端附件测试：`mvn -Dmaven.repo.local=repository -Dtest=FileResourceControllerTest,FileResourceServiceTest test` 通过，11 个测试全部通过。
+- 前端构建：`npm run build` 通过；Windows 普通权限下旧 `dist` 文件偶发 EPERM，提升权限重跑成功。
+- 前端冒烟：`npm run smoke` 通过。
+- 静态空白检查：`git diff --check` 通过，仅保留 Git 的 LF/CRLF 换行提示。
+
+### P16.2 说明书全文搜索
+
+目标：
+
+- 在 P16.1 设备凭证盒聚合基础上，让已归档的说明书可以按关键词搜索。
+- 第一版只做离线可演示能力：索引文本型 PDF 中可提取的文字和说明书文件名，不接真实 OCR、不依赖真实 AI Provider。
+- 搜索结果返回匹配说明书附件、文件名和短片段，避免向前端返回完整说明书文本。
+
+接口契约：
+
+```text
+GET /api/families/{familyId}/devices/{deviceId}/manuals/search?keyword=reset
+```
+
+范围：
+
+- 新增说明书文本索引表、Entity、Mapper 和响应 DTO。
+- 上传 `MANUAL` 附件后，后端尝试提取文本并写入索引；提取失败不影响附件上传。
+- 删除说明书附件时同步逻辑删除文本索引。
+- 前端凭证盒在说明书分组内提供关键词搜索，结果可继续复用预览/下载能力。
+- 同步 `docs/api.md`、`docs/database.md`、`docs/ui.md` 和任务记录。
+
+验收标准：
+
+- 搜索接口只允许家庭成员访问，并且查询必须同时带 `familyId` 和 `deviceId`。
+- 搜索空关键词或过长关键词返回参数错误。
+- 上传文本型说明书 PDF 后可通过关键词命中，扫描件/OCR 不作为本轮阻塞项。
+- 后端文件测试、前端构建、前端冒烟和 `git diff --check` 通过。
+
+完成记录：
+
+- 已新增 `fl_manual_text_index` 表、Entity、Mapper 和 `ManualSearchResponse`。
+- 已在 `FileResourceService` 中实现说明书上传索引、删除索引清理和设备维度搜索，搜索结果只返回附件元数据与短片段。
+- 已新增 `GET /api/families/{familyId}/devices/{deviceId}/manuals/search`，并补充说明书搜索成功与空关键词拒绝测试。
+- 已在 `/files` 凭证盒说明书分组接入关键词搜索，搜索结果可继续预览或下载原说明书。
+- 已同步 `docs/api.md`、`docs/database.md` 和 `docs/ui.md`，明确 P16.2 第一版不包含 OCR 和复杂 PDF 解析。
+
+验证记录：
+
+- `mvn -Dmaven.repo.local=repository -Dtest=FileResourceControllerTest#searchManualsByKeyword+searchManualsRejectsBlankKeyword test` 通过。
+- `mvn -Dmaven.repo.local=repository -Dtest=FileResourceControllerTest,FileResourceServiceTest,FileResourceServiceCompensationTest test` 通过。
+- `npm run build` 通过；普通权限首次因 Windows 旧 `dist` 文件 `EPERM` 失败，提升权限清理后构建成功。
+- `npm run smoke` 通过。
+- `git diff --check` 通过，仅输出 Git 的 LF/CRLF 换行提示。

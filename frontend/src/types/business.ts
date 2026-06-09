@@ -71,3 +71,41 @@ export interface FileResource {
   bizType: string;
   bizId: number;
 }
+
+export interface CredentialTarget {
+  bizId: number;
+  label: string;
+}
+
+export interface CredentialFileResource extends FileResource {
+  targetLabel?: string;
+}
+
+export interface CredentialBoxGroup {
+  bizType: string;
+  title: string;
+  shortTitle: string;
+  description: string;
+  targets: CredentialTarget[];
+  files: CredentialFileResource[];
+}
+
+export interface CredentialBox {
+  deviceId: number;
+  deviceName: string;
+  location?: string;
+  completionPercent: number;
+  archivedTypeCount: number;
+  totalTypeCount: number;
+  totalFileCount: number;
+  totalFileSize: number;
+  groups: CredentialBoxGroup[];
+}
+
+export interface ManualSearchResult {
+  fileId: number;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  snippet: string;
+}

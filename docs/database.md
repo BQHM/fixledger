@@ -514,7 +514,37 @@ CREATE TABLE fl_file_resource (
 
 文件内容存放在 RustFS Bucket，MySQL 只保存元数据。下载附件时仍由后端根据 `family_id` 校验权限，再从 RustFS 读取对象流返回，避免直接暴露对象存储地址。
 
-## 4.16 fl_ai_analysis AI 分析结果表
+## 4.16 fl_manual_text_index 说明书文本索引表
+
+```sql
+CREATE TABLE fl_manual_text_index (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  family_id BIGINT NOT NULL,
+  device_id BIGINT NOT NULL,
+  file_id BIGINT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  content_text TEXT DEFAULT NULL,
+  index_status VARCHAR(32) NOT NULL DEFAULT 'INDEXED',
+  error_message VARCHAR(1024) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  created_by BIGINT DEFAULT NULL,
+  updated_by BIGINT DEFAULT NULL,
+  deleted TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uk_fl_manual_text_index_file (file_id),
+  KEY idx_fl_manual_text_index_device (family_id, device_id),
+  KEY idx_fl_manual_text_index_status (family_id, index_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+说明：
+
+- `family_id` 和 `device_id` 用于说明书搜索时做家庭空间隔离和设备范围过滤。
+- `file_id` 关联 `fl_file_resource.id`，同一个说明书附件最多保留一条索引。
+- `content_text` 只保存上传时可直接提取的说明书文本，第一版限制长度，不保存 OCR 识别结果。
+- `index_status` 当前使用 `INDEXED` 和 `FAILED`，提取失败不影响附件上传。
+
+## 4.17 fl_ai_analysis AI 分析结果表
 
 ```sql
 CREATE TABLE fl_ai_analysis (
@@ -679,15 +709,11 @@ P14 在不改变表结构的前提下，把现有演示数据整理成可讲解�
 
 用于生成设备标签二维码。
 
-### 11.2 fl_manual_text_index 说明书文本索引表
-
-用于说明书 PDF 文本解析和搜索。
-
-### 11.3 fl_webhook_config Webhook 配置表
+### 11.2 fl_webhook_config Webhook 配置表
 
 用于扩展外部通知。
 
-### 11.4 fl_export_record 导出记录表
+### 11.3 fl_export_record 导出记录表
 
 用于导出家庭设备清单和维修费用报表。
 
@@ -702,6 +728,7 @@ P14 在不改变表结构的前提下，把现有演示数据整理成可讲解�
 - `fl_device_asset`
 - `fl_warranty_record`
 - `fl_file_resource`
+- `fl_manual_text_index`
 - `fl_consumable_item`
 - `fl_consumable_replace_record`
 - `fl_maintenance_record`
