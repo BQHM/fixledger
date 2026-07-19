@@ -13,6 +13,7 @@ const router = useRouter();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
 const categories = ref<DeviceCategory[]>([]);
+const categoryAutoSelected = ref(false);
 const deviceId = computed(() => Number(route.params.id));
 const isEdit = computed(() => route.name === 'device-edit');
 const familyId = computed(() => auth.currentFamilyId);
@@ -34,21 +35,58 @@ const rules: FormRules = {
   purchaseDate: [{ required: true, message: '请选择购买日期', trigger: 'change' }]
 };
 
+const selectedCategoryName = computed(() => {
+  return categories.value.find((item) => item.id === form.categoryId)?.name;
+});
+
+function toQueryString(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return typeof raw === 'string' ? raw : undefined;
+}
+
+function toQueryNumber(value: unknown) {
+  const raw = toQueryString(value);
+  if (!raw) {
+    return undefined;
+  }
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function applyQueryDefaults() {
   if (isEdit.value) return;
   const query = route.query;
+  const categoryName = toQueryString(query.categoryName);
+  const categoryId = toQueryNumber(query.categoryId)
+    ?? categories.value.find((item) => item.name === categoryName)?.id;
   Object.assign(form, {
-    name: (query.name as string) || form.name,
-    purchaseDate: (query.purchaseDate as string) || form.purchaseDate,
-    purchaseChannel: (query.purchaseChannel as string) || form.purchaseChannel,
-    purchasePrice: query.purchasePrice ? Number(query.purchasePrice) : form.purchasePrice
+    name: toQueryString(query.name) || form.name,
+    categoryId: categoryId ?? form.categoryId,
+    purchaseDate: toQueryString(query.purchaseDate) || form.purchaseDate,
+    purchaseChannel: toQueryString(query.purchaseChannel) || form.purchaseChannel,
+    purchasePrice: toQueryNumber(query.purchasePrice) ?? form.purchasePrice
   });
+}
+
+function applyDefaultCategory() {
+  if (isEdit.value || form.categoryId || categories.value.length === 0) {
+    return;
+  }
+  const defaultCategory =
+    categories.value.find((item) => item.name === '其他') ?? categories.value[0];
+  form.categoryId = defaultCategory.id;
+  categoryAutoSelected.value = true;
+}
+
+function handleCategoryChange() {
+  categoryAutoSelected.value = false;
 }
 
 async function loadData() {
   if (!familyId.value) return;
   categories.value = await getDeviceCategories(familyId.value);
   applyQueryDefaults();
+  applyDefaultCategory();
   if (isEdit.value) {
     const detail = await getDeviceDetail(familyId.value, deviceId.value);
     Object.assign(form, detail);
@@ -91,9 +129,22 @@ onMounted(loadData);
           <el-input v-model="form.name" />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="form.categoryId" clearable placeholder="选择分类">
-            <el-option v-for="item in categories" :key="item.id" :label="item.name" :value="item.id" />
+          <el-select
+            v-model="form.categoryId"
+            clearable
+            placeholder="选择分类"
+            @change="handleCategoryChange"
+          >
+            <el-option
+              v-for="item in categories"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
+          <p v-if="categoryAutoSelected" class="field-hint">
+            已为新设备预选“{{ selectedCategoryName }}”，可按实际类型调整。
+          </p>
         </el-form-item>
         <el-form-item label="品牌">
           <el-input v-model="form.brand" />
@@ -111,7 +162,12 @@ onMounted(loadData);
           <el-input v-model="form.purchaseChannel" />
         </el-form-item>
         <el-form-item label="购买价格">
-          <el-input-number v-model="form.purchasePrice" :min="0" :precision="2" style="width: 100%" />
+          <el-input-number
+            v-model="form.purchasePrice"
+            :min="0"
+            :precision="2"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="存放位置">
           <el-input v-model="form.location" />
@@ -133,5 +189,12 @@ onMounted(loadData);
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+.field-hint {
+  margin: 8px 0 0;
+  color: var(--fl-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 </style>

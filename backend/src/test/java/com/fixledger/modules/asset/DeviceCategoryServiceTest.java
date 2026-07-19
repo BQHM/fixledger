@@ -14,6 +14,7 @@ import com.fixledger.modules.asset.service.DeviceCategoryService;
 import com.fixledger.modules.auth.request.RegisterRequest;
 import com.fixledger.modules.auth.response.RegisterResponse;
 import com.fixledger.modules.auth.service.AuthService;
+import com.fixledger.modules.family.request.CreateFamilyRequest;
 import com.fixledger.modules.family.service.FamilyService;
 import java.time.LocalDate;
 import java.util.List;
@@ -50,7 +51,7 @@ class DeviceCategoryServiceTest {
     DeviceCategoryResponse created = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", "Kitchen", 1)
+        new CreateDeviceCategoryRequest("测试厨房设备", "Kitchen", 1)
     );
     List<DeviceCategoryResponse> categories = deviceCategoryService.listCategories(
         user.userId(),
@@ -58,7 +59,60 @@ class DeviceCategoryServiceTest {
     );
 
     assertThat(created.id()).isNotNull();
-    assertThat(categories).extracting(DeviceCategoryResponse::name).containsExactly("厨房设备");
+    assertThat(categories).extracting(DeviceCategoryResponse::name).contains("测试厨房设备");
+  }
+
+  @Test
+  @DisplayName("注册后的默认家庭空间会初始化常用设备分类")
+  void registerInitializesDefaultCategories() {
+    RegisterResponse user = register("catdefaults");
+    Long familyId = familyService.getDefaultFamilyId(user.userId());
+
+    List<DeviceCategoryResponse> categories = deviceCategoryService.listCategories(
+        user.userId(),
+        familyId
+    );
+
+    assertThat(categories).extracting(DeviceCategoryResponse::name)
+        .containsExactly("数码设备", "大家电", "小家电", "网络设备", "厨房设备", "清洁设备", "家居设备", "其他");
+    assertThat(categories).allSatisfy(category -> assertThat(category.systemDefault()).isTrue());
+  }
+
+  @Test
+  @DisplayName("手动创建的家庭空间也会初始化常用设备分类")
+  void createFamilyInitializesDefaultCategories() {
+    RegisterResponse user = register("catfamily");
+
+    Long familyId = familyService.createFamily(
+        user.userId(),
+        new CreateFamilyRequest("杭州的家", null)
+    ).id();
+
+    List<DeviceCategoryResponse> categories = deviceCategoryService.listCategories(
+        user.userId(),
+        familyId
+    );
+
+    assertThat(categories).extracting(DeviceCategoryResponse::name)
+        .containsExactly("数码设备", "大家电", "小家电", "网络设备", "厨房设备", "清洁设备", "家居设备", "其他");
+  }
+
+  @Test
+  @DisplayName("系统默认设备分类不允许删除")
+  void systemDefaultCategoryCannotBeDeleted() {
+    RegisterResponse user = register("catdefaultdelete");
+    Long familyId = familyService.getDefaultFamilyId(user.userId());
+    DeviceCategoryResponse defaultCategory = deviceCategoryService.listCategories(
+        user.userId(),
+        familyId
+    ).getFirst();
+
+    assertThatThrownBy(() -> deviceCategoryService.deleteCategory(
+        user.userId(),
+        familyId,
+        defaultCategory.id()
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST));
   }
 
   @Test
@@ -66,7 +120,7 @@ class DeviceCategoryServiceTest {
   void duplicateCategoryNameRejected() {
     RegisterResponse user = register("catdup");
     Long familyId = familyService.getDefaultFamilyId(user.userId());
-    CreateDeviceCategoryRequest request = new CreateDeviceCategoryRequest("数码设备", null, 0);
+    CreateDeviceCategoryRequest request = new CreateDeviceCategoryRequest("测试数码设备", null, 0);
     deviceCategoryService.createCategory(user.userId(), familyId, request);
 
     assertThatThrownBy(() -> deviceCategoryService.createCategory(user.userId(), familyId, request))
@@ -82,7 +136,7 @@ class DeviceCategoryServiceTest {
     DeviceCategoryResponse category = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("清洁设备", null, 0)
+        new CreateDeviceCategoryRequest("测试清洁设备", null, 0)
     );
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

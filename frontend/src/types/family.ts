@@ -19,3 +19,12 @@ export interface FamilyForm {
   name: string;
   description?: string;
 }
+
+export interface InviteFamilyMemberRequest {
+  account: string;
+  role: string;
+}
+
+export interface UpdateFamilyMemberRoleRequest {
+  role: string;
+}

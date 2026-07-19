@@ -47,6 +47,26 @@ CREATE TABLE IF NOT EXISTS fl_family_member (
   KEY idx_fl_family_member_role (family_id, role)
 );
 
+CREATE TABLE IF NOT EXISTS sys_operation_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT DEFAULT NULL,
+  family_id BIGINT DEFAULT NULL,
+  module VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  biz_type VARCHAR(64) DEFAULT NULL,
+  biz_id BIGINT DEFAULT NULL,
+  request_method VARCHAR(16) DEFAULT NULL,
+  request_uri VARCHAR(512) DEFAULT NULL,
+  ip_address VARCHAR(64) DEFAULT NULL,
+  success TINYINT NOT NULL DEFAULT 1,
+  error_message VARCHAR(1024) DEFAULT NULL,
+  created_at DATETIME NOT NULL,
+  KEY idx_sys_operation_log_user_id (user_id),
+  KEY idx_sys_operation_log_family (family_id),
+  KEY idx_sys_operation_log_biz (biz_type, biz_id),
+  KEY idx_sys_operation_log_created_at (created_at)
+);
+
 CREATE TABLE IF NOT EXISTS fl_device_category (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   family_id BIGINT NOT NULL,

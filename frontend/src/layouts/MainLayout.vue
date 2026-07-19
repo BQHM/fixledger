@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Calendar,
-  Cpu,
   Files,
   HomeFilled,
   House,
@@ -28,19 +27,28 @@ const activeMenu = computed(() => {
 });
 
 const primaryMenus = [
-  { path: '/dashboard', label: '我的家', hint: '健康分 / 本周事项', icon: HomeFilled },
-  { path: '/dashboard?focus=calendar', label: '家庭日历', hint: '保修 / 耗材 / 维修提醒', icon: Calendar },
-  { path: '/devices', label: '设备护照', hint: '房间设备 / 生命周期', icon: Memo },
-  { path: '/files', label: '凭证盒', hint: '发票 / 说明书 / 维修单', icon: Files },
-  { path: '/ai-tools', label: '智能助手', hint: '票据提取 / 故障建议', icon: MagicStick }
+  { path: '/dashboard', label: '总览', hint: '设备状态与待办', icon: HomeFilled },
+  { path: '/dashboard?focus=calendar', label: '日历', hint: '提醒排期', icon: Calendar },
+  { path: '/devices', label: '设备', hint: '档案与保修', icon: Memo },
+  { path: '/files', label: '凭证', hint: '发票与说明书', icon: Files },
+  { path: '/ai-tools', label: '辅助', hint: '提取与总结', icon: MagicStick }
 ];
 
 const secondaryMenus = [
-  { path: '/settings/family', label: '我的家庭', icon: Setting }
+  { path: '/settings/family', label: '家庭设置', icon: Setting }
 ];
 
 const currentFamilyName = computed(() => {
   return auth.families.find((family) => family.id === auth.currentFamilyId)?.name ?? '我的家';
+});
+
+const pageTitle = computed(() => {
+  if (route.path.startsWith('/devices')) return '设备档案';
+  if (route.path.startsWith('/files')) return '凭证归档';
+  if (route.path.startsWith('/ai-tools')) return '辅助工具';
+  if (route.path.startsWith('/settings')) return '家庭设置';
+  if (route.path.startsWith('/dashboard') && route.query.focus === 'calendar') return '家庭日历';
+  return '家庭总览';
 });
 
 onMounted(() => {
@@ -62,21 +70,18 @@ async function handleLogout() {
 
 <template>
   <el-container class="app-layout">
-    <el-aside class="app-sidebar" width="286px">
-      <div class="brand-block" @click="router.push('/dashboard')">
-        <div class="brand-mark">
-          <el-icon><House /></el-icon>
-        </div>
-        <div>
-          <div class="brand-title">FixLedger</div>
-          <div class="brand-subtitle">家庭设备管家</div>
-        </div>
-      </div>
+    <el-aside class="app-sidebar" width="260px">
+      <button class="brand-block" type="button" @click="router.push('/dashboard')">
+        <span class="brand-mark"><el-icon><House /></el-icon></span>
+        <span>
+          <strong>FixLedger</strong>
+          <small>家庭设备档案</small>
+        </span>
+      </button>
 
-      <div class="home-card">
-        <span class="home-card-label">当前家庭</span>
+      <div class="family-panel">
+        <span>当前家庭</span>
         <strong>{{ currentFamilyName }}</strong>
-        <small>把设备、凭证和提醒按家庭场景整理。</small>
       </div>
 
       <el-menu :default-active="activeMenu" router class="app-menu">
@@ -97,18 +102,13 @@ async function handleLogout() {
           </el-menu-item>
         </el-menu>
       </div>
-
-      <div class="side-note">
-        <el-icon><Cpu /></el-icon>
-        <span>AI 只做辅助建议，真正的家庭设备记录仍由你确认。</span>
-      </div>
     </el-aside>
 
     <el-container>
       <el-header class="app-header">
         <div>
-          <div class="header-eyebrow">Family Device Companion</div>
-          <div class="header-title">今天先看家里有哪些设备小事要处理</div>
+          <div class="header-title">{{ pageTitle }}</div>
+          <div class="header-subtitle">先处理待办，再补齐设备资料。</div>
         </div>
         <div class="header-actions">
           <el-select
@@ -144,85 +144,137 @@ async function handleLogout() {
 
 <style scoped>
 .app-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
+  background: transparent;
 }
 
 .app-sidebar {
   position: sticky;
   top: 0;
+  overflow: hidden;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  padding: 18px;
-  border-right: 1px solid rgba(39, 46, 42, 0.07);
+  height: 100dvh;
+  padding: 18px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.62);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(246, 248, 252, 0.56));
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.46), 18px 0 48px rgba(31, 41, 55, 0.075);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+}
+
+.app-sidebar::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: 38%;
   background:
-    radial-gradient(circle at 20% 0%, rgba(255, 196, 122, 0.32), transparent 30%),
-    linear-gradient(180deg, rgba(255, 253, 248, 0.92), rgba(246, 241, 232, 0.84));
-  backdrop-filter: blur(26px);
+    linear-gradient(110deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0)),
+    linear-gradient(135deg, rgba(255, 105, 0, 0.08), rgba(255, 255, 255, 0));
+  content: '';
+  pointer-events: none;
+}
+
+.app-sidebar::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: inset -10px 0 18px -18px rgba(255, 255, 255, 0.9), inset 1px 0 0 rgba(255, 255, 255, 0.62);
+  content: '';
+  pointer-events: none;
+}
+
+.app-sidebar > * {
+  position: relative;
+  z-index: 1;
 }
 
 .brand-block {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 8px 16px;
-  border-radius: 22px;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px 18px;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  text-align: left;
 }
 
 .brand-mark {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   place-items: center;
-  border-radius: 18px;
-  background: linear-gradient(145deg, var(--fl-mi-orange), #ffbd63);
+  border-radius: 12px;
+  background: var(--fl-primary);
   color: #fff;
-  font-size: 22px;
-  box-shadow: 0 16px 34px rgba(255, 138, 31, 0.3);
+  box-shadow: 0 12px 24px rgba(255, 105, 0, 0.16);
+  font-size: 18px;
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
 }
 
-.brand-title {
+.brand-block strong,
+.brand-block small {
+  display: block;
+}
+
+.brand-block strong {
   color: var(--fl-ink);
-  font-size: 20px;
-  font-weight: 950;
-  letter-spacing: -0.04em;
-}
-
-.brand-subtitle,
-.header-eyebrow {
-  color: var(--fl-muted);
-  font-size: 12px;
-}
-
-.home-card {
-  display: grid;
-  gap: 5px;
-  margin: 0 2px 16px;
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 85% 16%, rgba(255, 211, 144, 0.42), transparent 36%),
-    rgba(255, 255, 255, 0.66);
-  box-shadow: 0 14px 32px rgba(88, 72, 49, 0.07);
-}
-
-.home-card-label {
-  color: var(--fl-muted);
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 800;
 }
 
-.home-card strong {
-  color: var(--fl-ink);
-  font-size: 19px;
-  letter-spacing: -0.03em;
+.brand-block small,
+.family-panel span,
+.header-subtitle {
+  color: var(--fl-muted);
+  font-size: 12px;
 }
 
-.home-card small {
-  color: var(--fl-muted);
-  line-height: 1.5;
+.family-panel {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: grid;
+  gap: 4px;
+  margin: 0 6px 14px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 16px;
+  background: var(--fl-glass-chip);
+  box-shadow: var(--fl-liquid-edge), 0 10px 24px rgba(31, 41, 55, 0.045);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+.family-panel::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset -8px -7px 0 -10px rgba(255, 255, 255, 0.92), inset 0 -8px 0 -9px rgba(255, 255, 255, 0.76);
+  content: '';
+  pointer-events: none;
+}
+
+.family-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.family-panel strong {
+  overflow: hidden;
+  color: var(--fl-ink);
+  font-size: 15px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-menu {
@@ -231,90 +283,112 @@ async function handleLogout() {
 }
 
 :deep(.el-menu-item) {
-  min-height: 56px;
+  min-height: 48px;
   height: auto;
-  margin: 6px 0;
-  padding: 11px 12px !important;
-  border-radius: 18px;
+  margin: 3px 0;
+  padding: 8px 10px !important;
+  border: 1px solid transparent;
+  border-radius: 16px;
   color: var(--fl-text);
   line-height: 1.2;
+  transition: background 0.18s var(--fl-ease), border-color 0.18s var(--fl-ease), box-shadow 0.18s var(--fl-ease), transform 0.18s var(--fl-ease);
 }
 
 :deep(.el-menu-item:hover) {
-  background: rgba(255, 138, 31, 0.09);
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
 }
 
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, #fff2df, #fff9f0);
-  color: var(--fl-mi-orange-dark);
-  box-shadow: inset 0 0 0 1px rgba(255, 138, 31, 0.16), 0 12px 24px rgba(255, 138, 31, 0.1);
+  border-color: rgba(255, 255, 255, 0.72);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(246, 248, 252, 0.42)),
+    linear-gradient(135deg, rgba(255, 105, 0, 0.14), rgba(255, 255, 255, 0.14));
+  color: var(--fl-primary-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76), 0 10px 26px rgba(255, 105, 0, 0.1);
 }
 
 .scene-menu-item :deep(.el-icon) {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .menu-copy {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   margin-left: 2px;
 }
 
 .menu-copy strong {
-  font-size: 15px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .menu-copy small {
   color: inherit;
   font-size: 11px;
-  opacity: 0.68;
+  opacity: 0.7;
 }
 
 .secondary-menu {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(39, 46, 42, 0.12);
-}
-
-.side-note {
-  display: flex;
-  gap: 10px;
   margin-top: auto;
-  padding: 14px;
-  border-radius: 20px;
-  background: rgba(255, 245, 230, 0.86);
-  color: var(--fl-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.side-note :deep(.el-icon) {
-  color: var(--fl-mi-orange);
+  padding-top: 12px;
+  border-top: 1px solid var(--fl-line);
 }
 
 .app-header {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
-  padding: 0 28px;
-  border-bottom: 1px solid rgba(39, 46, 42, 0.05);
-  background: rgba(250, 247, 239, 0.72);
-  backdrop-filter: blur(18px);
+  height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.62);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.72), rgba(246, 248, 252, 0.5));
+  box-shadow: 0 12px 34px rgba(31, 41, 55, 0.055);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+}
+
+.app-header::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 0;
+  height: 55%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0));
+  content: '';
+  pointer-events: none;
+}
+
+.app-header::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 -9px 0 -10px rgba(255, 255, 255, 0.72);
+  content: '';
+  pointer-events: none;
+}
+
+.app-header > * {
+  position: relative;
+  z-index: 1;
 }
 
 .header-title {
-  margin-top: 4px;
   color: var(--fl-ink);
-  font-weight: 900;
-  letter-spacing: -0.02em;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .family-select {
@@ -323,13 +397,14 @@ async function handleLogout() {
 
 .user-avatar {
   cursor: pointer;
-  background: linear-gradient(145deg, var(--fl-mi-orange), #ffbd63);
+  background: linear-gradient(135deg, #ff6900, #ff8f2f);
   color: #fff;
-  font-weight: 900;
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(255, 105, 0, 0.2);
 }
 
 .app-main {
-  padding: 26px;
+  padding: 22px;
 }
 
 @media (max-width: 840px) {
@@ -341,13 +416,15 @@ async function handleLogout() {
     position: relative;
     width: 100% !important;
     height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--fl-line);
   }
 
   .app-header {
     align-items: flex-start;
     flex-direction: column;
     height: auto;
-    padding: 18px;
+    padding: 16px;
   }
 
   .header-actions {
@@ -356,7 +433,7 @@ async function handleLogout() {
   }
 
   .app-main {
-    padding: 18px;
+    padding: 16px;
   }
 }
 </style>

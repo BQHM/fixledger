@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { Plus, Search } from '@element-plus/icons-vue';
-import { ElMessageBox } from 'element-plus';
+import { Download, Plus, Search } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { deleteDevice, getDeviceCategories, getDevicePage, updateDeviceStatus } from '@/api/device';
+import {
+  deleteDevice,
+  exportDeviceCsv,
+  getDeviceCategories,
+  getDevicePage,
+  updateDeviceStatus
+} from '@/api/device';
 import { useAuthStore } from '@/stores/auth';
 import type { DeviceCategory, DeviceListItem } from '@/types/device';
 import { deviceStatusOptions, labelOf, statusType } from '@/utils/dicts';
@@ -18,6 +24,7 @@ interface DeviceRoomGroup {
 const auth = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
+const exportLoading = ref(false);
 const devices = ref<DeviceListItem[]>([]);
 const categories = ref<DeviceCategory[]>([]);
 const total = ref(0);
@@ -113,6 +120,17 @@ async function handleStatus(row: DeviceListItem, status: string) {
   loadData();
 }
 
+async function handleExportDevices() {
+  if (!familyId.value) return;
+  exportLoading.value = true;
+  try {
+    await exportDeviceCsv(familyId.value);
+    ElMessage.success('设备清单已开始下载');
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
 onMounted(() => {
   loadData();
   window.addEventListener('family-changed', loadData);
@@ -124,17 +142,17 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="page-shell device-passport-page">
-    <section class="passport-hero">
-      <div class="hero-copy">
-        <div class="hero-kicker">设备护照</div>
-        <h1>一眼看清家里的每台设备</h1>
+  <div class="page-shell device-list-page">
+    <section class="device-list-summary">
+      <div class="summary-copy">
+        <div class="summary-kicker">设备</div>
+        <h1>设备档案</h1>
         <p>
-          按房间摆放设备卡片，像家庭设备 App 一样快速看到状态、保修和下一次提醒。
+          按房间查看设备状态、保修和下一次提醒，表格视图保留给精确筛选。
         </p>
       </div>
-      <div class="hero-side">
-        <div class="hero-stats" aria-label="设备护照摘要">
+      <div class="summary-side">
+        <div class="summary-stats" aria-label="设备档案摘要">
           <div>
             <strong>{{ total }}</strong>
             <span>全部设备</span>
@@ -152,9 +170,21 @@ onUnmounted(() => {
             <span>本页在用</span>
           </div>
         </div>
-        <el-button type="primary" size="large" :icon="Plus" @click="router.push('/devices/create')">
-          新增设备护照
-        </el-button>
+        <div class="summary-actions">
+          <el-button
+            plain
+            size="large"
+            :icon="Download"
+            :disabled="!familyId"
+            :loading="exportLoading"
+            @click="handleExportDevices"
+          >
+            导出清单
+          </el-button>
+          <el-button type="primary" size="large" :icon="Plus" @click="router.push('/devices/create')">
+            新增设备
+          </el-button>
+        </div>
       </div>
     </section>
 
@@ -187,8 +217,8 @@ onUnmounted(() => {
       </el-form>
     </el-card>
 
-    <section v-loading="loading" class="room-wall" aria-label="按房间分组的设备护照">
-      <el-empty v-if="!loading && devices.length === 0" description="还没有设备护照。先添加一台家里的净水器、路由器或耳机吧。">
+    <section v-loading="loading" class="room-wall" aria-label="按房间分组的设备档案">
+      <el-empty v-if="!loading && devices.length === 0" description="还没有设备档案。先添加一台家里的净水器、路由器或耳机吧。">
         <el-button type="primary" :icon="Plus" @click="router.push('/devices/create')">新增第一台设备</el-button>
       </el-empty>
 
@@ -244,7 +274,7 @@ onUnmounted(() => {
             </div>
 
             <div class="device-card-actions">
-              <el-button type="primary" plain @click="openDevicePassport(device.id)">打开护照</el-button>
+              <el-button type="primary" plain @click="openDevicePassport(device.id)">打开档案</el-button>
               <el-button plain @click="router.push(`/devices/${device.id}/edit`)">编辑</el-button>
               <el-dropdown @command="(status: string) => handleStatus(device, status)">
                 <el-button plain>改状态</el-button>
@@ -269,7 +299,7 @@ onUnmounted(() => {
           <template #title>
             <div class="advanced-title">
               <strong>高级清单视图</strong>
-              <span>给精确筛选、批量浏览和面试时说明后台能力使用</span>
+              <span>用于精确筛选、批量浏览和快速定位设备</span>
             </div>
           </template>
           <el-table v-loading="loading" :data="devices">
@@ -322,103 +352,119 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.device-passport-page {
+.device-list-page {
   gap: 20px;
 }
 
-.passport-hero {
+.device-list-summary {
   position: relative;
-  display: grid;
   overflow: hidden;
+  isolation: isolate;
+  display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
-  gap: 28px;
+  gap: 18px;
   align-items: stretch;
-  padding: clamp(24px, 4vw, 42px);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 38px;
-  background:
-    radial-gradient(circle at 8% 12%, rgba(255, 196, 122, 0.34), transparent 28%),
-    radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.72), transparent 24%),
-    linear-gradient(135deg, #fffdf8 0%, #f6ead8 50%, #edf2eb 100%);
+  padding: 20px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass-strong);
   box-shadow: var(--fl-shadow-md);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
 }
 
-.passport-hero::after {
+.device-list-summary::before {
   position: absolute;
-  right: -78px;
-  bottom: -92px;
-  width: 250px;
-  height: 250px;
-  border: 32px solid rgba(255, 138, 31, 0.1);
-  border-radius: 999px;
+  inset: 1px 1px auto;
+  height: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, rgba(255, 209, 179, 0.22), rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    var(--fl-glass-veil);
   content: '';
+  pointer-events: none;
 }
 
-.hero-copy,
-.hero-side {
+.device-list-summary::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+}
+
+.summary-copy,
+.summary-side {
   position: relative;
   z-index: 1;
 }
 
-.hero-kicker {
+.summary-kicker {
   display: inline-flex;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 138, 31, 0.12);
-  color: var(--fl-mi-orange-dark);
-  font-size: 13px;
-  font-weight: 950;
-  letter-spacing: 0.18em;
+  color: var(--fl-primary-strong);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
-.passport-hero h1 {
+.device-list-summary h1 {
   max-width: 720px;
-  margin: 18px 0 14px;
+  margin: 10px 0 10px;
   color: var(--fl-ink);
-  font-size: clamp(36px, 5vw, 66px);
-  font-weight: 950;
-  letter-spacing: -0.08em;
-  line-height: 0.98;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
 }
 
-.passport-hero p {
+.device-list-summary p {
   max-width: 650px;
   margin: 0;
   color: var(--fl-muted);
-  font-size: 16px;
   line-height: 1.85;
 }
 
-.hero-side {
+.summary-side {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 18px;
 }
 
-.hero-stats {
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+.summary-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.hero-stats div {
+.summary-stats div {
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: 0 12px 28px rgba(88, 72, 49, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 18px;
+  background: var(--fl-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 22px rgba(31, 41, 55, 0.035);
 }
 
-.hero-stats strong {
+.summary-stats strong {
   display: block;
   color: var(--fl-ink);
-  font-size: 31px;
-  font-weight: 950;
+  font-size: 28px;
+  font-weight: 800;
   line-height: 1;
 }
 
-.hero-stats span {
+.summary-stats span {
   display: block;
   margin-top: 8px;
   color: var(--fl-muted);
@@ -437,7 +483,7 @@ onUnmounted(() => {
 .filter-title span {
   color: var(--fl-ink);
   font-size: 16px;
-  font-weight: 950;
+  font-weight: 800;
 }
 
 .filter-title small {
@@ -457,10 +503,12 @@ onUnmounted(() => {
 
 .room-section {
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 32px;
-  background: rgba(255, 255, 255, 0.62);
-  box-shadow: 0 18px 42px rgba(88, 72, 49, 0.08);
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass);
+  box-shadow: var(--fl-shadow-sm);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
 }
 
 .room-header {
@@ -473,18 +521,18 @@ onUnmounted(() => {
 
 .room-label {
   margin: 0 0 4px;
-  color: var(--fl-mi-orange-dark);
+  color: var(--fl-muted);
   font-size: 12px;
-  font-weight: 950;
-  letter-spacing: 0.15em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .room-header h2 {
   margin: 0;
   color: var(--fl-ink);
-  font-size: 25px;
-  font-weight: 950;
-  letter-spacing: -0.05em;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .room-meta {
@@ -497,10 +545,10 @@ onUnmounted(() => {
 .room-meta span {
   padding: 7px 11px;
   border-radius: 999px;
-  background: rgba(255, 138, 31, 0.1);
-  color: var(--fl-mi-orange-dark);
+  background: var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .device-card-grid {
@@ -510,44 +558,29 @@ onUnmounted(() => {
 }
 
 .device-passport-card {
-  position: relative;
   display: flex;
-  overflow: hidden;
   min-height: 268px;
   flex-direction: column;
   gap: 16px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 88% 12%, rgba(255, 217, 149, 0.3), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 238, 0.86));
-  box-shadow: 0 16px 36px rgba(88, 72, 49, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 20px;
+  background: var(--fl-glass-chip);
+  box-shadow: none;
+  backdrop-filter: blur(20px) saturate(175%);
+  -webkit-backdrop-filter: blur(20px) saturate(175%);
   transition:
-    transform 0.18s ease,
     box-shadow 0.18s ease,
     border-color 0.18s ease;
 }
 
-.device-passport-card::before {
-  position: absolute;
-  top: 0;
-  left: 22px;
-  width: 78px;
-  height: 6px;
-  border-radius: 0 0 14px 14px;
-  background: linear-gradient(90deg, var(--fl-mi-orange), #ffbd63);
-  content: '';
-}
-
 .device-passport-card:hover {
-  border-color: rgba(255, 138, 31, 0.28);
-  box-shadow: 0 24px 50px rgba(88, 72, 49, 0.14);
-  transform: translateY(-3px);
+  border-color: rgba(255, 105, 0, 0.32);
+  box-shadow: var(--fl-shadow-sm);
 }
 
-.device-passport-card.is-attention::before {
-  background: linear-gradient(90deg, var(--fl-danger), #ff9d71);
+.device-passport-card.is-attention {
+  border-left: 4px solid var(--fl-warning);
 }
 
 .device-card-top {
@@ -562,12 +595,13 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   place-items: center;
-  border: 1px solid rgba(255, 138, 31, 0.2);
-  border-radius: 18px;
-  background: rgba(255, 244, 228, 0.9);
-  color: var(--fl-mi-orange-dark);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7), rgba(255, 244, 235, 0.5));
+  color: var(--fl-primary-strong);
   font-size: 21px;
-  font-weight: 950;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 .device-card-main {
@@ -585,9 +619,9 @@ onUnmounted(() => {
 
 .device-card-main span {
   color: var(--fl-ink);
-  font-size: 23px;
-  font-weight: 950;
-  letter-spacing: -0.05em;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .device-card-main small {
@@ -596,7 +630,7 @@ onUnmounted(() => {
 }
 
 .device-card-main:focus-visible {
-  outline: 3px solid rgba(255, 138, 31, 0.28);
+  outline: 3px solid rgba(255, 105, 0, 0.24);
   outline-offset: 4px;
 }
 
@@ -609,8 +643,10 @@ onUnmounted(() => {
 .device-card-facts div {
   min-width: 0;
   padding: 10px;
-  border-radius: 17px;
-  background: rgba(246, 241, 232, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
 }
 
 .device-card-facts span,
@@ -693,22 +729,22 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1080px) {
-  .passport-hero {
+  .device-list-summary {
     grid-template-columns: 1fr;
   }
 
-  .hero-side {
+  .summary-side {
     align-items: stretch;
   }
 }
 
 @media (max-width: 720px) {
-  .passport-hero,
+  .device-list-summary,
   .room-section {
-    border-radius: 24px;
+    border-radius: var(--fl-radius-lg);
   }
 
-  .hero-stats,
+  .summary-stats,
   .device-card-facts {
     grid-template-columns: 1fr;
   }

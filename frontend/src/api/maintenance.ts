@@ -1,6 +1,7 @@
-import { request } from './request';
+import { axiosInstance, request } from './request';
 import type { MaintenanceRecord } from '@/types/business';
 import type { PageResponse } from '@/types/common';
+import { saveBlob } from '@/utils/download';
 
 export interface MaintenanceQuery {
   pageNum?: number;
@@ -126,4 +127,25 @@ export function getMaintenanceCostSummary(
     method: 'get',
     params
   });
+}
+
+/**
+ * 功能说明：导出家庭维修费用报表 CSV。
+ * @param familyId 家庭空间 ID
+ * @param params 日期筛选
+ * @returns 下载完成后的空结果
+ */
+export async function exportMaintenanceCostCsv(
+  familyId: number,
+  params: { startDate?: string; endDate?: string } = {}
+) {
+  const response = await axiosInstance.get(
+    `/api/families/${familyId}/exports/maintenance-costs.csv`,
+    {
+      params,
+      responseType: 'blob'
+    }
+  );
+  const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+  saveBlob(blob, `fixledger-maintenance-costs-${familyId}.csv`);
 }

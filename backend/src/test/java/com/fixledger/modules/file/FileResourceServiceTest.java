@@ -308,7 +308,7 @@ class FileResourceServiceTest {
     DeviceCategoryResponse category = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("数码设备", "Digital", 1)
+        new CreateDeviceCategoryRequest("测试数码设备", "Digital", 1)
     );
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

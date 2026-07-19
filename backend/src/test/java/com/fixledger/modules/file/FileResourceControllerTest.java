@@ -267,7 +267,7 @@ class FileResourceControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("数码设备", null, 0)
+        new CreateDeviceCategoryRequest("测试数码设备", null, 0)
     ).id();
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

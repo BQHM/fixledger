@@ -2,7 +2,9 @@ package com.fixledger.modules.asset.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.fixledger.modules.asset.entity.DeviceCategoryEntity;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * <p>
@@ -13,4 +15,12 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface DeviceCategoryMapper extends BaseMapper<DeviceCategoryEntity> {
+
+  /**
+   * 批量插入设备分类，用于家庭空间创建后的默认分类初始化。
+   *
+   * @param categories 待插入分类
+   * @return 插入行数
+   */
+  int insertBatch(@Param("categories") List<DeviceCategoryEntity> categories);
 }

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Files, Refresh, WarningFilled } from '@element-plus/icons-vue';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Files,
+  Plus,
+  Refresh,
+  WarningFilled
+} from '@element-plus/icons-vue';
 import * as echarts from 'echarts';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -31,6 +38,7 @@ interface CalendarCell {
 const router = useRouter();
 const auth = useAuthStore();
 const loading = ref(false);
+const dataLoaded = ref(false);
 const summary = ref<DashboardSummary>();
 const categories = ref<CategoryDistribution[]>([]);
 const costs = ref<MaintenanceCostTrend[]>([]);
@@ -58,9 +66,9 @@ const healthScore = computed(() => {
 });
 
 const healthTone = computed(() => {
-  if (healthScore.value >= 88) return '状态很好，家里的设备都挺省心。';
+  if (healthScore.value >= 88) return '状态稳定，暂无高优先级事项。';
   if (healthScore.value >= 75) return '整体稳定，有几件设备小事需要留意。';
-  return '需要重点处理，建议先看红色图钉和维修事项。';
+  return '需要重点处理，建议先看逾期耗材和维修事项。';
 });
 
 const metrics = computed(() => [
@@ -140,9 +148,17 @@ const importantReminderCount = computed(() =>
     0
   )
 );
+const hasNoDevices = computed(() =>
+  dataLoaded.value && !loading.value && (summary.value?.deviceTotal ?? 0) === 0
+);
 
 async function loadData() {
-  if (!familyId.value) return;
+  if (!familyId.value) {
+    dataLoaded.value = false;
+    summary.value = undefined;
+    return;
+  }
+  dataLoaded.value = false;
   loading.value = true;
   try {
     const range = getSelectedMonthRange();
@@ -163,6 +179,7 @@ async function loadData() {
     reminders.value = reminderPage.records;
     maintenance.value = maintenancePage.records;
     devices.value = devicePage.records;
+    dataLoaded.value = true;
     await nextTick();
     renderCharts();
   } finally {
@@ -244,7 +261,7 @@ function renderCharts() {
     categoryChart = categoryChart || echarts.init(categoryChartRef.value);
     categoryChart.setOption({
       tooltip: { trigger: 'item' },
-      color: ['#2f7d68', '#f2a65a', '#5b8def', '#d9534f', '#91c0b1'],
+      color: ['#ff6900', '#3aa6b9', '#6b7280', '#ff9f0a', '#ff3b30'],
       series: [
         {
           type: 'pie',
@@ -262,12 +279,12 @@ function renderCharts() {
       grid: { left: 42, right: 18, top: 34, bottom: 36 },
       xAxis: { type: 'category', data: costs.value.map((item) => item.month) },
       yAxis: { type: 'value' },
-      color: ['#2f7d68'],
+      color: ['#ff6900'],
       series: [
         {
           type: 'line',
           smooth: true,
-          areaStyle: { color: 'rgba(47, 125, 104, 0.12)' },
+          areaStyle: { color: 'rgba(255, 105, 0, 0.14)' },
           data: costs.value.map((item) => item.cost)
         }
       ]
@@ -296,12 +313,12 @@ onUnmounted(() => {
 
 <template>
   <div v-loading="loading" class="page-shell home-shell">
-    <section class="home-hero">
-      <div class="hero-copy">
-        <p class="section-kicker">我的家</p>
+    <section class="home-summary">
+      <div class="summary-copy">
+        <p class="section-kicker">总览</p>
         <h1>{{ familyName }}</h1>
-        <p>像看米家首页一样，先知道哪些设备省心、哪些保修或耗材需要处理。</p>
-        <div class="hero-actions">
+        <p>先看待处理事项，再进入设备、凭证或维修记录补齐信息。</p>
+        <div class="summary-actions">
           <el-button type="primary" :icon="Refresh" @click="loadData">刷新家庭状态</el-button>
           <el-button :icon="Files" @click="router.push('/files')">打开凭证盒</el-button>
         </div>
@@ -319,6 +336,25 @@ onUnmounted(() => {
         <div class="metric-value">{{ item.value }}<small>{{ item.suffix }}</small></div>
       </div>
     </div>
+
+    <section v-if="hasNoDevices" class="first-device-guide" aria-label="新用户设备引导">
+      <div>
+        <p class="section-kicker">开始使用</p>
+        <h2>先添加第一台设备</h2>
+        <p>
+          设备档案会串起保修、耗材、维修和凭证。建好第一台设备后，
+          总览、日历和凭证盒都会围绕它展开。
+        </p>
+      </div>
+      <div class="guide-actions">
+        <el-button type="primary" :icon="Plus" @click="router.push('/devices/create')">
+          添加第一台设备
+        </el-button>
+        <el-button :icon="Files" @click="router.push('/files')">
+          了解凭证盒
+        </el-button>
+      </div>
+    </section>
 
     <div class="home-grid">
       <el-card class="glass-card task-card" shadow="never">
@@ -347,7 +383,7 @@ onUnmounted(() => {
         <template #header>
           <div class="card-title-row">
             <span>房间设备概览</span>
-            <el-button link type="primary" @click="router.push('/devices')">设备护照</el-button>
+            <el-button link type="primary" @click="router.push('/devices')">设备档案</el-button>
           </div>
         </template>
         <el-empty v-if="roomOverview.length === 0" description="还没有设备位置，先给设备设置房间吧" />
@@ -401,8 +437,8 @@ onUnmounted(() => {
               <span class="date-number">{{ cell.day }}</span>
               <span
                 v-if="cell.reminders.length > 0"
-                class="pushpin"
-                :class="`pushpin-${dayPinLevel(cell.reminders)}`"
+                class="status-dot"
+                :class="`status-dot-${dayPinLevel(cell.reminders)}`"
                 aria-hidden="true"
               />
               <div class="cell-reminders">
@@ -424,7 +460,7 @@ onUnmounted(() => {
           <div v-else class="day-reminder-list">
             <article v-for="item in selectedDayReminders" :key="item.id" class="day-reminder-card">
               <div class="day-reminder-title-row">
-                <span class="pushpin pushpin-inline" :class="`pushpin-${reminderLevel(item)}`" aria-hidden="true" />
+                <span class="status-dot status-dot-inline" :class="`status-dot-${reminderLevel(item)}`" aria-hidden="true" />
                 <strong>{{ item.title }}</strong>
               </div>
               <el-tag :type="reminderTagType(item)" effect="plain">
@@ -485,56 +521,65 @@ onUnmounted(() => {
   gap: 22px;
 }
 
-.home-hero {
+.home-summary {
   position: relative;
-  display: grid;
   overflow: hidden;
+  isolation: isolate;
+  display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 24px;
-  padding: clamp(24px, 4vw, 40px);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 38px;
-  background:
-    radial-gradient(circle at 14% 16%, rgba(255, 196, 122, 0.34), transparent 28%),
-    radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.72), transparent 24%),
-    linear-gradient(135deg, #fffdf8 0%, #f7ebd8 52%, #eef3ed 100%);
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass-strong);
   box-shadow: var(--fl-shadow-md);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
 }
 
-.home-hero::after {
+.home-summary::before {
   position: absolute;
-  right: -78px;
-  bottom: -90px;
-  width: 260px;
-  height: 260px;
-  border: 34px solid rgba(255, 138, 31, 0.11);
-  border-radius: 999px;
+  inset: 1px 1px auto;
+  height: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, rgba(255, 209, 179, 0.22), rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    var(--fl-glass-veil);
   content: '';
+  pointer-events: none;
 }
 
-.hero-copy,
+.home-summary::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+}
+
+.summary-copy,
 .health-card {
   position: relative;
   z-index: 1;
 }
 
-.hero-copy h1 {
+.summary-copy h1 {
   margin: 0;
   color: var(--fl-ink);
-  font-size: clamp(38px, 5vw, 64px);
-  font-weight: 950;
-  letter-spacing: -0.08em;
-  line-height: 1;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
 }
 
-.hero-copy p {
+.summary-copy p {
   max-width: 660px;
   color: var(--fl-muted);
-  font-size: 16px;
   line-height: 1.85;
 }
 
-.hero-actions {
+.summary-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -544,28 +589,29 @@ onUnmounted(() => {
 .health-card {
   display: grid;
   align-content: center;
-  min-height: 220px;
-  padding: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 32px;
+  min-height: 170px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 20px;
   background:
-    radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.28), transparent 34%),
-    linear-gradient(145deg, #2f6f59, #4d8f73);
-  color: #fff;
-  box-shadow: 0 22px 48px rgba(45, 104, 82, 0.26);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.62), rgba(255, 244, 235, 0.46)),
+    var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74), 0 14px 34px rgba(255, 105, 0, 0.12);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
 }
 
 .health-card span {
   font-size: 13px;
-  font-weight: 800;
-  opacity: 0.82;
+  font-weight: 700;
 }
 
 .health-card strong {
   margin-top: 8px;
-  font-size: 72px;
-  font-weight: 950;
-  letter-spacing: -0.08em;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -579,6 +625,42 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
   gap: 18px;
+}
+
+.first-device-guide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass);
+  box-shadow: var(--fl-shadow-sm);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.first-device-guide h2 {
+  margin: 0;
+  color: var(--fl-ink);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.first-device-guide p:last-child {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--fl-muted);
+  line-height: 1.7;
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .card-title-row {
@@ -599,9 +681,10 @@ onUnmounted(() => {
   align-items: center;
   gap: 14px;
   padding: 15px;
-  border: 1px solid rgba(39, 46, 42, 0.05);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 18px;
+  background: var(--fl-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66), 0 8px 22px rgba(31, 41, 55, 0.035);
 }
 
 .task-item {
@@ -613,7 +696,7 @@ onUnmounted(() => {
   width: 44px;
   height: 44px;
   place-items: center;
-  border-radius: 17px;
+  border-radius: 10px;
   color: #fff;
 }
 
@@ -628,7 +711,7 @@ onUnmounted(() => {
 .task-item strong,
 .room-item strong {
   color: var(--fl-ink);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .task-item p,
@@ -647,9 +730,9 @@ onUnmounted(() => {
 .room-item span {
   padding: 7px 11px;
   border-radius: 999px;
-  background: rgba(255, 138, 31, 0.1);
-  color: var(--fl-mi-orange-dark);
-  font-weight: 900;
+  background: var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
+  font-weight: 800;
 }
 
 .metric-value small {
@@ -673,19 +756,18 @@ onUnmounted(() => {
 
 .section-kicker {
   margin: 0 0 7px;
-  color: var(--fl-mi-orange-dark);
+  color: var(--fl-primary-strong);
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .calendar-head h2 {
   margin: 0;
   color: var(--fl-ink);
-  font-size: 30px;
-  font-weight: 950;
-  letter-spacing: -0.05em;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .calendar-summary {
@@ -698,10 +780,11 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  border: 1px solid rgba(39, 46, 42, 0.08);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 16px;
+  background: var(--fl-glass-chip);
   color: var(--fl-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .calendar-layout {
@@ -720,7 +803,7 @@ onUnmounted(() => {
   margin-bottom: 8px;
   color: var(--fl-muted);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
   text-align: center;
 }
 
@@ -732,19 +815,19 @@ onUnmounted(() => {
   position: relative;
   min-height: 112px;
   padding: 12px;
-  border: 1px solid rgba(39, 46, 42, 0.07);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.54);
   color: var(--fl-text);
   cursor: pointer;
   text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .calendar-cell:hover {
-  border-color: rgba(255, 138, 31, 0.26);
-  box-shadow: 0 14px 28px rgba(88, 72, 49, 0.08);
-  transform: translateY(-2px);
+  border-color: rgba(255, 105, 0, 0.32);
+  box-shadow: var(--fl-shadow-sm);
 }
 
 .calendar-cell.is-muted {
@@ -753,16 +836,16 @@ onUnmounted(() => {
 }
 
 .calendar-cell.is-today {
-  border-color: rgba(255, 138, 31, 0.42);
+  border-color: rgba(255, 105, 0, 0.42);
 }
 
 .calendar-cell.is-selected {
-  border-color: rgba(255, 138, 31, 0.58);
-  box-shadow: 0 16px 34px rgba(255, 138, 31, 0.14);
+  border-color: rgba(255, 105, 0, 0.58);
+  box-shadow: 0 0 0 3px rgba(255, 105, 0, 0.14), 0 16px 34px rgba(255, 105, 0, 0.1);
 }
 
 .calendar-cell.has-reminders {
-  background: linear-gradient(145deg, rgba(255, 248, 236, 0.95), rgba(255, 255, 255, 0.72));
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.74), rgba(255, 244, 235, 0.54));
 }
 
 .date-number {
@@ -773,76 +856,42 @@ onUnmounted(() => {
   height: 29px;
   border-radius: 50%;
   color: var(--fl-ink);
-  font-weight: 950;
+  font-weight: 800;
 }
 
 .is-today .date-number {
-  background: rgba(255, 138, 31, 0.14);
-  color: var(--fl-mi-orange-dark);
+  background: var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
 }
 
-.pushpin {
-  --pin-color: #df5b4f;
-  --pin-dark: #a73935;
-  --pin-light: #ffaaa6;
+.status-dot {
   position: absolute;
-  top: 10px;
-  right: 13px;
-  width: 24px;
-  height: 30px;
-  filter: drop-shadow(0 8px 8px rgba(88, 44, 34, 0.22));
-  transform: rotate(-14deg);
-}
-
-.pushpin::before {
-  position: absolute;
-  top: 0;
-  left: 2px;
-  width: 20px;
-  height: 20px;
-  border: 1px solid rgba(87, 31, 26, 0.18);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.92) 0 12%, transparent 13%),
-    radial-gradient(circle at 50% 58%, var(--pin-light) 0 12%, var(--pin-color) 43%, var(--pin-dark) 100%);
-  box-shadow:
-    inset -4px -5px 8px rgba(68, 24, 20, 0.26),
-    inset 3px 3px 6px rgba(255, 255, 255, 0.42);
-  content: '';
-}
-
-.pushpin::after {
-  position: absolute;
-  top: 16px;
-  left: 11px;
-  width: 3px;
-  height: 15px;
+  top: 14px;
+  right: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
-  background: linear-gradient(180deg, #f7e6bf 0%, #b88c3b 74%, #7b5a22 100%);
-  box-shadow: 1px 2px 3px rgba(74, 44, 18, 0.32);
-  content: '';
+  background: var(--fl-danger);
+  box-shadow: 0 0 0 4px rgba(194, 65, 59, 0.12);
 }
 
-.pushpin-warning {
-  --pin-color: #f0a83a;
-  --pin-dark: #b86922;
-  --pin-light: #ffd6a1;
+.status-dot-warning {
+  background: var(--fl-warning);
+  box-shadow: 0 0 0 4px rgba(183, 121, 31, 0.14);
 }
 
-.pushpin-danger {
-  --pin-color: #df5b4f;
-  --pin-dark: #9f2e2a;
-  --pin-light: #ffaaa6;
+.status-dot-danger {
+  background: var(--fl-danger);
+  box-shadow: 0 0 0 4px rgba(194, 65, 59, 0.12);
 }
 
-.pushpin-inline {
+.status-dot-inline {
   position: relative;
   top: auto;
   right: auto;
-  flex: 0 0 auto;
-  width: 22px;
-  height: 28px;
-  transform: rotate(-12deg) scale(0.82);
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
 }
 
 .cell-reminders {
@@ -869,18 +918,17 @@ onUnmounted(() => {
 .day-panel {
   min-height: 100%;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 196, 122, 0.2), transparent 32%),
-    rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 18px;
+  background: var(--fl-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64);
 }
 
 .day-panel h3 {
   margin: 0 0 16px;
   color: var(--fl-ink);
-  font-size: 22px;
-  font-weight: 950;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .day-reminder-list {
@@ -892,9 +940,10 @@ onUnmounted(() => {
   display: grid;
   gap: 10px;
   padding: 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 12px 24px rgba(88, 72, 49, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: none;
 }
 
 .day-reminder-title-row {
@@ -905,7 +954,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1180px) {
-  .home-hero,
+  .home-summary,
   .home-grid,
   .calendar-layout {
     grid-template-columns: 1fr;
@@ -913,17 +962,25 @@ onUnmounted(() => {
 }
 
 @media (max-width: 760px) {
-  .home-hero {
+  .home-summary {
     padding: 20px;
   }
 
   .health-card strong {
-    font-size: 52px;
+    font-size: 38px;
   }
 
   .calendar-head {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .first-device-guide {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-actions {
+    justify-content: flex-start;
   }
 
   .calendar-grid {

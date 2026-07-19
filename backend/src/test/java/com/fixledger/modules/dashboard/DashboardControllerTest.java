@@ -77,7 +77,7 @@ class DashboardControllerTest {
         )
             .header(HttpHeaders.AUTHORIZATION, token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.data[0].categoryName").value("厨房设备"))
+        .andExpect(jsonPath("$.data[0].categoryName").value("测试厨房设备"))
         .andExpect(jsonPath("$.data[0].count").value(1));
   }
 
@@ -126,7 +126,7 @@ class DashboardControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+        new CreateDeviceCategoryRequest("测试厨房设备", null, 0)
     ).id();
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

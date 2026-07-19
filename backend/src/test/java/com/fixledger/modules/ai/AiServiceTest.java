@@ -214,7 +214,7 @@ class AiServiceTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", "Kitchen", 1)
+        new CreateDeviceCategoryRequest("测试厨房设备", "Kitchen", 1)
     ).id();
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

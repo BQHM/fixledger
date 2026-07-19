@@ -1,34 +1,105 @@
 <script setup lang="ts">
-import { Plus } from '@element-plus/icons-vue';
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
+import { Delete, Plus, Refresh, UserFilled } from '@element-plus/icons-vue';
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { computed, onMounted, reactive, ref } from 'vue';
 
-import { createFamily, getFamilyMembers, updateFamily } from '@/api/family';
+import {
+  createFamily,
+  getFamilyMembers,
+  inviteFamilyMember,
+  removeFamilyMember,
+  updateFamily,
+  updateFamilyMemberRole
+} from '@/api/family';
+import { getOperationLogs } from '@/api/system';
 import { useAuthStore } from '@/stores/auth';
 import type { FamilyMemberResponse, FamilyResponse } from '@/types/family';
+import type { OperationLogResponse } from '@/types/system';
 
 const auth = useAuthStore();
 const familyId = computed(() => auth.currentFamilyId);
+const currentFamily = computed(() => auth.currentFamily);
+const canManageMembers = computed(() => currentFamily.value?.role === 'OWNER');
 const formRef = ref<FormInstance>();
+const inviteFormRef = ref<FormInstance>();
+const roleFormRef = ref<FormInstance>();
 const dialogVisible = ref(false);
+const inviteDialogVisible = ref(false);
+const roleDialogVisible = ref(false);
 const isEdit = ref(false);
 const loading = ref(false);
+const memberLoading = ref(false);
+const logLoading = ref(false);
 const members = ref<FamilyMemberResponse[]>([]);
+const operationLogs = ref<OperationLogResponse[]>([]);
 const editingFamily = ref<FamilyResponse>();
+const editingMember = ref<FamilyMemberResponse>();
+
+const roleOptions = [
+  { label: '所有者', value: 'OWNER' },
+  { label: '成员', value: 'MEMBER' }
+];
 
 const form = reactive({
   name: '',
   description: ''
 });
 
+const inviteForm = reactive({
+  account: '',
+  role: 'MEMBER'
+});
+
+const roleForm = reactive({
+  role: 'MEMBER'
+});
+
 const rules: FormRules = {
   name: [{ required: true, message: '请输入家庭空间名称', trigger: 'blur' }]
 };
 
+const inviteRules: FormRules = {
+  account: [{ required: true, message: '请输入成员用户名或邮箱', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择成员角色', trigger: 'change' }]
+};
+
+const roleRules: FormRules = {
+  role: [{ required: true, message: '请选择成员角色', trigger: 'change' }]
+};
+
 async function loadData() {
   await auth.loadFamilies();
-  if (familyId.value) {
+  if (!familyId.value) {
+    members.value = [];
+    operationLogs.value = [];
+    return;
+  }
+  await Promise.all([loadMembers(), loadOperationLogs()]);
+}
+
+async function loadMembers() {
+  if (!familyId.value) return;
+  memberLoading.value = true;
+  try {
     members.value = await getFamilyMembers(familyId.value);
+  } finally {
+    memberLoading.value = false;
+  }
+}
+
+async function loadOperationLogs() {
+  if (!familyId.value) return;
+  logLoading.value = true;
+  try {
+    const page = await getOperationLogs({
+      familyId: familyId.value,
+      module: 'FAMILY',
+      pageNum: 1,
+      pageSize: 8
+    });
+    operationLogs.value = page.records;
+  } finally {
+    logLoading.value = false;
   }
 }
 
@@ -44,6 +115,17 @@ function openEdit(family: FamilyResponse) {
   editingFamily.value = family;
   Object.assign(form, { name: family.name, description: family.description || '' });
   dialogVisible.value = true;
+}
+
+function openInvite() {
+  Object.assign(inviteForm, { account: '', role: 'MEMBER' });
+  inviteDialogVisible.value = true;
+}
+
+function openRoleDialog(member: FamilyMemberResponse) {
+  editingMember.value = member;
+  roleForm.role = member.role;
+  roleDialogVisible.value = true;
 }
 
 async function submit() {
@@ -65,6 +147,59 @@ async function submit() {
   }
 }
 
+async function submitInvite() {
+  await inviteFormRef.value?.validate();
+  if (!familyId.value) return;
+  loading.value = true;
+  try {
+    await inviteFamilyMember(familyId.value, inviteForm);
+    ElMessage.success('成员已加入家庭空间');
+    inviteDialogVisible.value = false;
+    await loadData();
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function submitRole() {
+  await roleFormRef.value?.validate();
+  if (!familyId.value || !editingMember.value) return;
+  loading.value = true;
+  try {
+    await updateFamilyMemberRole(familyId.value, editingMember.value.id, roleForm);
+    ElMessage.success('成员角色已更新');
+    roleDialogVisible.value = false;
+    await loadData();
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleRemoveMember(member: FamilyMemberResponse) {
+  if (!familyId.value) return;
+  await ElMessageBox.confirm(
+    `确认将「${member.nickname || member.username}」移出当前家庭吗？`,
+    '移除成员',
+    { type: 'warning' }
+  );
+  await removeFamilyMember(familyId.value, member.id);
+  ElMessage.success('成员已移除');
+  await loadData();
+}
+
+function roleLabel(role: string) {
+  return roleOptions.find((item) => item.value === role)?.label ?? role;
+}
+
+function logActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    INVITE_MEMBER: '邀请成员',
+    UPDATE_MEMBER_ROLE: '调整角色',
+    REMOVE_MEMBER: '移除成员'
+  };
+  return labels[action] ?? action;
+}
+
 onMounted(loadData);
 </script>
 
@@ -73,9 +208,12 @@ onMounted(loadData);
     <div class="page-header">
       <div>
         <h1 class="page-title">家庭设置</h1>
-        <p class="page-subtitle">家庭空间是 FixLedger 的数据隔离边界，设备、提醒和附件都归属于某个家庭。</p>
+        <p class="page-subtitle">家庭空间是数据隔离边界，也是一家人共同维护设备档案的协作入口。</p>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openCreate">创建家庭空间</el-button>
+      <div class="header-actions">
+        <el-button :icon="Refresh" @click="loadData">刷新</el-button>
+        <el-button type="primary" :icon="Plus" @click="openCreate">创建家庭空间</el-button>
+      </div>
     </div>
 
     <div class="section-grid">
@@ -91,7 +229,7 @@ onMounted(loadData);
             <div>
               <h3>{{ family.name }}</h3>
               <p>{{ family.description || '暂无描述' }}</p>
-              <el-tag effect="plain">{{ family.role }}</el-tag>
+              <el-tag effect="plain">{{ roleLabel(family.role) }}</el-tag>
             </div>
             <div class="family-actions">
               <el-button v-if="family.id !== auth.currentFamilyId" @click="auth.setCurrentFamily(family.id)">
@@ -104,15 +242,60 @@ onMounted(loadData);
       </el-card>
 
       <el-card class="glass-card" shadow="never">
-        <template #header>成员列表</template>
-        <el-table :data="members">
-          <el-table-column prop="username" label="账号" />
-          <el-table-column prop="nickname" label="昵称" />
-          <el-table-column prop="role" label="角色" width="110" />
+        <template #header>
+          <div class="card-header-row">
+            <span>成员协作</span>
+            <el-button
+              v-if="canManageMembers"
+              type="primary"
+              plain
+              :icon="UserFilled"
+              @click="openInvite"
+            >
+              邀请成员
+            </el-button>
+          </div>
+        </template>
+        <el-alert
+          v-if="!canManageMembers"
+          class="member-tip"
+          title="当前账号不是该家庭所有者，只能查看成员列表。"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+        <el-table v-loading="memberLoading" :data="members">
+          <el-table-column prop="username" label="账号" min-width="120" />
+          <el-table-column prop="nickname" label="昵称" min-width="120" />
+          <el-table-column label="角色" width="120">
+            <template #default="{ row }">
+              <el-tag :type="row.role === 'OWNER' ? 'warning' : 'info'" effect="light">
+                {{ roleLabel(row.role) }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="joinedAt" label="加入时间" width="170" />
+          <el-table-column v-if="canManageMembers" label="操作" width="190" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openRoleDialog(row)">角色</el-button>
+              <el-button link type="danger" :icon="Delete" @click="handleRemoveMember(row)">移除</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
     </div>
+
+    <el-card class="glass-card" shadow="never">
+      <template #header>最近协作日志</template>
+      <el-table v-loading="logLoading" :data="operationLogs">
+        <el-table-column label="动作" width="140">
+          <template #default="{ row }">{{ logActionLabel(row.action) }}</template>
+        </el-table-column>
+        <el-table-column prop="requestMethod" label="方法" width="92" />
+        <el-table-column prop="requestUri" label="接口" min-width="220" />
+        <el-table-column prop="createdAt" label="时间" width="180" />
+      </el-table>
+    </el-card>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑家庭空间' : '创建家庭空间'" width="520px">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
@@ -128,10 +311,53 @@ onMounted(loadData);
         <el-button type="primary" :loading="loading" @click="submit">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="inviteDialogVisible" title="邀请家庭成员" width="480px">
+      <el-form ref="inviteFormRef" :model="inviteForm" :rules="inviteRules" label-position="top">
+        <el-form-item label="用户名或邮箱" prop="account">
+          <el-input v-model="inviteForm.account" placeholder="输入已注册账号或邮箱" />
+        </el-form-item>
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="inviteForm.role">
+            <el-option v-for="item in roleOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="inviteDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="submitInvite">邀请加入</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="roleDialogVisible" title="调整成员角色" width="420px">
+      <el-form ref="roleFormRef" :model="roleForm" :rules="roleRules" label-position="top">
+        <el-form-item label="角色" prop="role">
+          <el-select v-model="roleForm.role">
+            <el-option v-for="item in roleOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="loading" @click="submitRole">保存角色</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
+.header-actions,
+.card-header-row,
+.family-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-header-row {
+  justify-content: space-between;
+}
+
 .family-list {
   display: grid;
   gap: 14px;
@@ -143,19 +369,22 @@ onMounted(loadData);
   justify-content: space-between;
   gap: 16px;
   padding: 18px;
-  border: 1px solid rgba(47, 125, 104, 0.12);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-glass-chip);
+  box-shadow: var(--fl-shadow-sm);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
 }
 
 .family-card.active {
-  border-color: var(--fl-green);
-  box-shadow: inset 0 0 0 1px var(--fl-green);
+  border-color: rgba(255, 105, 0, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(255, 105, 0, 0.16), 0 16px 34px rgba(255, 105, 0, 0.1);
 }
 
 .family-card h3 {
   margin: 0 0 8px;
-  color: var(--fl-green-dark);
+  color: var(--fl-ink);
 }
 
 .family-card p {
@@ -163,8 +392,16 @@ onMounted(loadData);
   color: var(--fl-muted);
 }
 
-.family-actions {
-  display: flex;
-  gap: 8px;
+.member-tip {
+  margin-bottom: 14px;
+  border-radius: var(--fl-radius-md);
+}
+
+@media (max-width: 760px) {
+  .family-card,
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

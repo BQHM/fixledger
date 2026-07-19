@@ -255,13 +255,14 @@ onMounted(loadData);
 .ai-box {
   margin-top: 18px;
   padding: 16px;
-  border-radius: 18px;
-  background: rgba(47, 125, 104, 0.08);
+  border: 1px solid var(--fl-line);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-bg-soft);
 }
 
 .ai-box h3 {
   margin: 0 0 12px;
-  color: var(--fl-green-dark);
+  color: var(--fl-primary-strong);
 }
 
 .ai-box li {

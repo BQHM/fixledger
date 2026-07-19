@@ -208,7 +208,7 @@ CREATE TABLE sys_user_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-## 4.4 sys_operation_log 操作日志表（二期规划）
+## 4.4 sys_operation_log 操作日志表
 
 ```sql
 CREATE TABLE sys_operation_log (
@@ -231,6 +231,12 @@ CREATE TABLE sys_operation_log (
   KEY idx_sys_operation_log_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+说明：
+
+- P22 起该表进入当前实现，优先记录家庭成员邀请、角色调整、移除等关键协作操作。
+- `request_uri` 只记录路径和方法，不保存请求体，避免敏感字段落入日志。
+- 查询接口按当前用户家庭成员关系做数据隔离，不提供跨家庭全局后台视图。
 
 ## 4.5 fl_family_space 家庭空间表
 
@@ -648,7 +654,7 @@ erDiagram
 
 ### 9.2 默认设备分类
 
-规划中每个家庭空间创建后初始化；当前演示数据已为 `family_id=1` 初始化厨房设备、清洁设备和数码设备，新家庭自动初始化默认分类待增强：
+每个家庭空间创建后都会初始化默认设备分类；演示数据也会保持同名分类可重复初始化：
 
 - 数码设备。
 - 大家电。
@@ -715,7 +721,7 @@ P14 在不改变表结构的前提下，把现有演示数据整理成可讲解�
 
 ### 11.3 fl_export_record 导出记录表
 
-用于导出家庭设备清单和维修费用报表。
+用于异步导出家庭设备清单和维修费用报表。P24 先实现同步 CSV 下载，不新建该表；如果后续需要大文件、导出历史、失败重试或后台任务，再落该表。
 
 ## 12. P10.3 当前表结构对齐说明
 
@@ -735,12 +741,15 @@ P14 在不改变表结构的前提下，把现有演示数据整理成可讲解�
 - `fl_reminder_task`
 - `fl_notification_record`
 - `fl_ai_analysis`
+- `sys_operation_log`
 
 当前暂未实现的规划表：
 
 - `sys_role`
 - `sys_user_role`
-- `sys_operation_log`
+- `fl_device_qrcode`
+- `fl_webhook_config`
+- `fl_export_record`
 
 说明：这些表在文档中保留为二期 RBAC、操作审计和系统管理扩展，不属于当前 `schema.sql` 已创建表。
 

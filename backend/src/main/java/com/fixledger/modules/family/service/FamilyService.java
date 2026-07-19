@@ -1,6 +1,8 @@
 package com.fixledger.modules.family.service;
 
 import com.fixledger.modules.family.request.CreateFamilyRequest;
+import com.fixledger.modules.family.request.InviteFamilyMemberRequest;
+import com.fixledger.modules.family.request.UpdateFamilyMemberRoleRequest;
 import com.fixledger.modules.family.request.UpdateFamilyRequest;
 import com.fixledger.modules.family.response.FamilyMemberResponse;
 import com.fixledger.modules.family.response.FamilyResponse;
@@ -55,6 +57,45 @@ public interface FamilyService {
    * @return 家庭成员列表
    */
   List<FamilyMemberResponse> listMembers(Long userId, Long familyId);
+
+  /**
+   * 邀请已注册用户加入家庭空间，当前仅家庭所有者可操作。
+   *
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param request 邀请请求
+   * @return 新增家庭成员
+   */
+  FamilyMemberResponse inviteMember(
+      Long userId,
+      Long familyId,
+      InviteFamilyMemberRequest request
+  );
+
+  /**
+   * 调整家庭成员角色，当前仅家庭所有者可操作。
+   *
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param memberId 家庭成员 ID
+   * @param request 角色请求
+   * @return 更新后的家庭成员
+   */
+  FamilyMemberResponse updateMemberRole(
+      Long userId,
+      Long familyId,
+      Long memberId,
+      UpdateFamilyMemberRoleRequest request
+  );
+
+  /**
+   * 移除家庭成员，当前仅家庭所有者可操作。
+   *
+   * @param userId 当前用户 ID
+   * @param familyId 家庭空间 ID
+   * @param memberId 家庭成员 ID
+   */
+  void removeMember(Long userId, Long familyId, Long memberId);
 
   /**
    * 校验用户是否属于指定家庭空间。

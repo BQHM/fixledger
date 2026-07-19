@@ -74,7 +74,7 @@ class DeviceAssetControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+        new CreateDeviceCategoryRequest("测试厨房设备", null, 0)
     ).id();
     LoginResponse login = authService.login(new LoginRequest("deviceapi", "123456"));
     CreateDeviceRequest request = new CreateDeviceRequest(
@@ -151,7 +151,7 @@ class DeviceAssetControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         owner.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+        new CreateDeviceCategoryRequest("测试厨房设备", null, 0)
     ).id();
     authService.register(new RegisterRequest(
         "deviceotherapi",
@@ -201,7 +201,7 @@ class DeviceAssetControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+        new CreateDeviceCategoryRequest("测试厨房设备", null, 0)
     ).id();
     LoginResponse login = authService.login(new LoginRequest("devicepricedigits", "123456"));
     CreateDeviceRequest request = new CreateDeviceRequest(

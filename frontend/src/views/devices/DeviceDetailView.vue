@@ -166,25 +166,25 @@ onMounted(loadData);
 
 <template>
   <div v-loading="loading" class="page-shell">
-    <section class="device-cover">
-      <div class="cover-copy">
-        <button class="back-link" type="button" @click="router.push('/devices')">返回设备护照</button>
-        <div class="cover-kicker">设备护照 / {{ detail?.location || '未设置房间' }}</div>
+    <section class="device-detail-head">
+      <div class="device-head-copy">
+        <button class="back-link" type="button" @click="router.push('/devices')">返回设备档案</button>
+        <div class="device-head-kicker">设备档案 / {{ detail?.location || '未设置房间' }}</div>
         <h1>{{ detail?.name || '设备详情' }}</h1>
         <p>{{ deviceMeta }} · {{ detail?.purchaseDate || '购买日期待补充' }}</p>
-        <div class="cover-actions">
+        <div class="device-head-actions">
           <el-tag size="large" :type="statusType(detail?.status)">
             {{ labelOf(deviceStatusOptions, detail?.status) }}
           </el-tag>
           <el-button type="primary" @click="router.push(`/devices/${deviceId}/edit`)">编辑设备</el-button>
         </div>
       </div>
-      <div class="device-orb" aria-hidden="true">
+      <div class="device-initial" aria-hidden="true">
         <span>{{ deviceInitial }}</span>
       </div>
     </section>
 
-    <div class="detail-hero">
+    <div class="detail-grid">
       <el-card class="glass-card device-profile-card" shadow="never">
         <div class="device-title-row">
           <div>
@@ -318,37 +318,46 @@ onMounted(loadData);
 </template>
 
 <style scoped>
-.device-cover {
+.device-detail-head {
   position: relative;
-  display: grid;
   overflow: hidden;
-  grid-template-columns: minmax(0, 1fr) 260px;
-  gap: 24px;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 18px;
   align-items: center;
-  min-height: 300px;
-  padding: clamp(24px, 4vw, 42px);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 38px;
-  background:
-    radial-gradient(circle at 16% 14%, rgba(255, 196, 122, 0.34), transparent 30%),
-    radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.72), transparent 24%),
-    linear-gradient(135deg, #fffdf8 0%, #f7ecd9 52%, #edf2eb 100%);
+  min-height: 176px;
+  padding: 20px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass-strong);
   box-shadow: var(--fl-shadow-md);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
 }
 
-.device-cover::after {
+.device-detail-head::before {
   position: absolute;
-  right: -88px;
-  bottom: -104px;
-  width: 280px;
-  height: 280px;
-  border: 36px solid rgba(255, 138, 31, 0.1);
-  border-radius: 999px;
+  inset: 1px 1px auto;
+  height: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, rgba(255, 209, 179, 0.22), rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    var(--fl-glass-veil);
   content: '';
+  pointer-events: none;
 }
 
-.cover-copy,
-.device-orb {
+.device-detail-head::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+}
+
+.device-detail-head > * {
   position: relative;
   z-index: 1;
 }
@@ -358,70 +367,61 @@ onMounted(loadData);
   border: none;
   margin-bottom: 18px;
   background: transparent;
-  color: var(--fl-mi-orange-dark);
+  color: var(--fl-primary-strong);
   cursor: pointer;
-  font-weight: 900;
+  font-weight: 800;
 }
 
-.cover-kicker {
+.device-head-kicker {
   display: inline-flex;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: rgba(255, 138, 31, 0.12);
-  color: var(--fl-mi-orange-dark);
+  color: var(--fl-muted);
   font-size: 12px;
-  font-weight: 950;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
-.device-cover h1 {
+.device-detail-head h1 {
   max-width: 760px;
-  margin: 18px 0 12px;
+  margin: 10px 0 12px;
   color: var(--fl-ink);
-  font-size: clamp(38px, 6vw, 72px);
-  font-weight: 950;
-  letter-spacing: -0.08em;
-  line-height: 0.98;
+  font-size: clamp(24px, 2.6vw, 32px);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.2;
 }
 
-.device-cover p {
+.device-detail-head p {
   margin: 0;
   color: var(--fl-muted);
-  font-size: 16px;
 }
 
-.cover-actions {
+.device-head-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
-.device-orb {
+.device-initial {
   display: grid;
-  width: 220px;
-  height: 220px;
+  width: 118px;
+  height: 118px;
   place-items: center;
   justify-self: end;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 54px;
-  background:
-    radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.82), transparent 30%),
-    linear-gradient(145deg, #ff9b2f, #ffd18a);
-  box-shadow: 0 28px 68px rgba(255, 138, 31, 0.24);
-  transform: rotate(-7deg);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 24px;
+  background: var(--fl-glass-tint);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 16px 34px rgba(255, 105, 0, 0.12);
 }
 
-.device-orb span {
-  color: #fff;
-  font-size: 78px;
-  font-weight: 950;
-  text-shadow: 0 8px 18px rgba(132, 72, 10, 0.2);
-  transform: rotate(7deg);
+.device-initial span {
+  color: var(--fl-primary-strong);
+  font-size: 38px;
+  font-weight: 800;
 }
 
-.detail-hero {
+.detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 18px;
@@ -440,9 +440,9 @@ onMounted(loadData);
 
 .device-name {
   color: var(--fl-ink);
-  font-size: 25px;
-  font-weight: 950;
-  letter-spacing: -0.04em;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .device-subtitle {
@@ -459,29 +459,31 @@ onMounted(loadData);
   display: grid;
   gap: 4px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 26px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 14px 32px rgba(88, 72, 49, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 20px;
+  background: var(--fl-glass-chip);
+  box-shadow: var(--fl-shadow-sm);
+  backdrop-filter: blur(20px) saturate(175%);
+  -webkit-backdrop-filter: blur(20px) saturate(175%);
 }
 
 .mini-card span {
   color: var(--fl-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .mini-card strong {
   color: var(--fl-ink);
-  font-size: 36px;
-  font-weight: 950;
-  letter-spacing: -0.06em;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0;
   line-height: 1;
 }
 
 .mini-card small {
   overflow: hidden;
-  color: var(--fl-mi-orange-dark);
+  color: var(--fl-primary-strong);
   font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -494,7 +496,7 @@ onMounted(loadData);
 }
 
 :deep(.el-tabs__item) {
-  font-weight: 900;
+  font-weight: 800;
 }
 
 :deep(.el-descriptions__label) {
@@ -508,29 +510,29 @@ onMounted(loadData);
 }
 
 @media (max-width: 1080px) {
-  .device-cover,
-  .detail-hero {
+  .device-detail-head,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .device-orb {
+  .device-initial {
     justify-self: start;
   }
 }
 
 @media (max-width: 720px) {
-  .device-cover {
-    border-radius: 26px;
+  .device-detail-head {
+    border-radius: var(--fl-radius-lg);
   }
 
-  .device-orb {
-    width: 150px;
-    height: 150px;
-    border-radius: 38px;
+  .device-initial {
+    width: 96px;
+    height: 96px;
+    border-radius: 14px;
   }
 
-  .device-orb span {
-    font-size: 54px;
+  .device-initial span {
+    font-size: 38px;
   }
 }
 </style>

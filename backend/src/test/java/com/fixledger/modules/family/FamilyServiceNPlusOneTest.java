@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fixledger.modules.asset.mapper.DeviceCategoryMapper;
 import com.fixledger.modules.family.entity.FamilyMemberEntity;
 import com.fixledger.modules.family.entity.FamilySpaceEntity;
 import com.fixledger.modules.family.enums.FamilyMemberRole;
@@ -15,6 +16,7 @@ import com.fixledger.modules.family.mapper.FamilyMemberMapper;
 import com.fixledger.modules.family.mapper.FamilySpaceMapper;
 import com.fixledger.modules.family.response.FamilyResponse;
 import com.fixledger.modules.family.service.FamilyServiceImpl;
+import com.fixledger.modules.system.service.OperationLogService;
 import com.fixledger.modules.user.mapper.UserMapper;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,10 +31,14 @@ class FamilyServiceNPlusOneTest {
     FamilySpaceMapper familySpaceMapper = mock(FamilySpaceMapper.class);
     FamilyMemberMapper familyMemberMapper = mock(FamilyMemberMapper.class);
     UserMapper userMapper = mock(UserMapper.class);
+    DeviceCategoryMapper deviceCategoryMapper = mock(DeviceCategoryMapper.class);
+    OperationLogService operationLogService = mock(OperationLogService.class);
     FamilyServiceImpl service = new FamilyServiceImpl(
         familySpaceMapper,
         familyMemberMapper,
-        userMapper
+        userMapper,
+        deviceCategoryMapper,
+        operationLogService
     );
     FamilyMemberEntity first = member(1L, 10L, 100L);
     FamilyMemberEntity second = member(2L, 11L, 100L);

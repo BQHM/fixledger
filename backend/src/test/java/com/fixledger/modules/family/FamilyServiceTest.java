@@ -9,6 +9,8 @@ import com.fixledger.modules.auth.request.RegisterRequest;
 import com.fixledger.modules.auth.response.RegisterResponse;
 import com.fixledger.modules.auth.service.AuthService;
 import com.fixledger.modules.family.request.CreateFamilyRequest;
+import com.fixledger.modules.family.request.InviteFamilyMemberRequest;
+import com.fixledger.modules.family.request.UpdateFamilyMemberRoleRequest;
 import com.fixledger.modules.family.request.UpdateFamilyRequest;
 import com.fixledger.modules.family.response.FamilyMemberResponse;
 import com.fixledger.modules.family.response.FamilyResponse;
@@ -100,6 +102,136 @@ class FamilyServiceTest {
     assertThat(updated.description()).isEqualTo("杭州住处设备");
     assertThat(members).hasSize(1);
     assertThat(members.getFirst().role()).isEqualTo("OWNER");
+  }
+
+  @Test
+  @DisplayName("家庭所有者可以邀请已注册用户加入家庭")
+  void ownerCanInviteRegisteredUser() {
+    RegisterResponse owner = authService.register(new RegisterRequest(
+        "familyowner",
+        null,
+        "123456",
+        "Owner"
+    ));
+    RegisterResponse member = authService.register(new RegisterRequest(
+        "familymember",
+        "member@example.com",
+        "123456",
+        "Member"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(owner.userId());
+
+    FamilyMemberResponse invited = familyService.inviteMember(
+        owner.userId(),
+        familyId,
+        new InviteFamilyMemberRequest("member@example.com", "MEMBER")
+    );
+    List<FamilyResponse> joinedFamilies = familyService.listFamilies(member.userId());
+
+    assertThat(invited.userId()).isEqualTo(member.userId());
+    assertThat(invited.role()).isEqualTo("MEMBER");
+    assertThat(joinedFamilies).extracting(FamilyResponse::id).contains(familyId);
+  }
+
+  @Test
+  @DisplayName("普通成员不能邀请其他用户")
+  void memberCannotInviteUser() {
+    RegisterResponse owner = authService.register(new RegisterRequest(
+        "familyowner2",
+        null,
+        "123456",
+        "Owner"
+    ));
+    RegisterResponse member = authService.register(new RegisterRequest(
+        "familymember2",
+        null,
+        "123456",
+        "Member"
+    ));
+    RegisterResponse other = authService.register(new RegisterRequest(
+        "familyother2",
+        null,
+        "123456",
+        "Other"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(owner.userId());
+    familyService.inviteMember(
+        owner.userId(),
+        familyId,
+        new InviteFamilyMemberRequest("familymember2", "MEMBER")
+    );
+
+    assertThatThrownBy(() -> familyService.inviteMember(
+        member.userId(),
+        familyId,
+        new InviteFamilyMemberRequest(other.username(), "MEMBER")
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.FORBIDDEN));
+  }
+
+  @Test
+  @DisplayName("家庭所有者可以调整成员角色并移除成员")
+  void ownerCanUpdateRoleAndRemoveMember() {
+    RegisterResponse owner = authService.register(new RegisterRequest(
+        "familyowner3",
+        null,
+        "123456",
+        "Owner"
+    ));
+    authService.register(new RegisterRequest(
+        "familymember3",
+        null,
+        "123456",
+        "Member"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(owner.userId());
+    FamilyMemberResponse member = familyService.inviteMember(
+        owner.userId(),
+        familyId,
+        new InviteFamilyMemberRequest("familymember3", "MEMBER")
+    );
+
+    FamilyMemberResponse ownerRole = familyService.updateMemberRole(
+        owner.userId(),
+        familyId,
+        member.id(),
+        new UpdateFamilyMemberRoleRequest("OWNER")
+    );
+    familyService.removeMember(owner.userId(), familyId, member.id());
+    List<FamilyMemberResponse> members = familyService.listMembers(owner.userId(), familyId);
+
+    assertThat(ownerRole.role()).isEqualTo("OWNER");
+    assertThat(members).extracting(FamilyMemberResponse::id).doesNotContain(member.id());
+  }
+
+  @Test
+  @DisplayName("不能移除或降级最后一个家庭所有者")
+  void cannotRemoveOrDowngradeLastOwner() {
+    RegisterResponse owner = authService.register(new RegisterRequest(
+        "familyowner4",
+        null,
+        "123456",
+        "Owner"
+    ));
+    Long familyId = familyService.getDefaultFamilyId(owner.userId());
+    FamilyMemberResponse ownerMember = familyService
+        .listMembers(owner.userId(), familyId)
+        .getFirst();
+
+    assertThatThrownBy(() -> familyService.updateMemberRole(
+        owner.userId(),
+        familyId,
+        ownerMember.id(),
+        new UpdateFamilyMemberRoleRequest("MEMBER")
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST));
+
+    assertThatThrownBy(() -> familyService.removeMember(
+        owner.userId(),
+        familyId,
+        ownerMember.id()
+    )).isInstanceOfSatisfying(BusinessException.class, e ->
+        assertThat(e.getErrorCode()).isEqualTo(ErrorCode.BAD_REQUEST));
   }
 }
 

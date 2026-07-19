@@ -160,7 +160,7 @@ class DashboardServiceTest {
         today
     );
 
-    assertThat(distribution).extracting("categoryName").contains("厨房设备");
+    assertThat(distribution).extracting("categoryName").contains("测试厨房设备");
     assertThat(trend).hasSize(1);
     assertThat(trend.getFirst().cost()).isEqualByComparingTo(BigDecimal.valueOf(120));
     assertThat(calendar).hasSize(1);
@@ -217,7 +217,7 @@ class DashboardServiceTest {
     DeviceCategoryResponse category = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", "Kitchen", 1)
+        new CreateDeviceCategoryRequest("测试厨房设备", "Kitchen", 1)
     );
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

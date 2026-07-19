@@ -3,6 +3,8 @@ package com.fixledger.modules.family.controller;
 import com.fixledger.common.result.Result;
 import com.fixledger.common.security.CurrentUserContext;
 import com.fixledger.modules.family.request.CreateFamilyRequest;
+import com.fixledger.modules.family.request.InviteFamilyMemberRequest;
+import com.fixledger.modules.family.request.UpdateFamilyMemberRoleRequest;
 import com.fixledger.modules.family.request.UpdateFamilyRequest;
 import com.fixledger.modules.family.response.FamilyMemberResponse;
 import com.fixledger.modules.family.response.FamilyResponse;
@@ -10,6 +12,7 @@ import com.fixledger.modules.family.service.FamilyService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -89,5 +92,35 @@ public class FamilyController {
   @GetMapping("/{familyId}/members")
   public Result<List<FamilyMemberResponse>> listMembers(@PathVariable Long familyId) {
     return Result.success(familyService.listMembers(CurrentUserContext.getUserId(), familyId));
+  }
+
+  @PostMapping("/{familyId}/members")
+  public Result<FamilyMemberResponse> inviteMember(
+      @PathVariable Long familyId,
+      @Valid @RequestBody InviteFamilyMemberRequest request
+  ) {
+    return Result.success(
+        familyService.inviteMember(CurrentUserContext.getUserId(), familyId, request)
+    );
+  }
+
+  @PutMapping("/{familyId}/members/{memberId}/role")
+  public Result<FamilyMemberResponse> updateMemberRole(
+      @PathVariable Long familyId,
+      @PathVariable Long memberId,
+      @Valid @RequestBody UpdateFamilyMemberRoleRequest request
+  ) {
+    return Result.success(
+        familyService.updateMemberRole(CurrentUserContext.getUserId(), familyId, memberId, request)
+    );
+  }
+
+  @DeleteMapping("/{familyId}/members/{memberId}")
+  public Result<Boolean> removeMember(
+      @PathVariable Long familyId,
+      @PathVariable Long memberId
+  ) {
+    familyService.removeMember(CurrentUserContext.getUserId(), familyId, memberId);
+    return Result.success(true);
   }
 }

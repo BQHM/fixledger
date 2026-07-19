@@ -162,7 +162,7 @@ class WarrantyControllerTest {
     Long categoryId = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", null, 0)
+        new CreateDeviceCategoryRequest("测试厨房设备", null, 0)
     ).id();
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

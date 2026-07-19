@@ -60,7 +60,7 @@ class DeviceAssetServiceTest {
     );
 
     assertThat(detail.name()).isEqualTo("小米净水器");
-    assertThat(detail.categoryName()).isEqualTo("厨房设备");
+    assertThat(detail.categoryName()).isEqualTo("测试厨房设备");
     assertThat(detail.status()).isEqualTo(DeviceStatus.NORMAL.getCode());
   }
 
@@ -152,7 +152,7 @@ class DeviceAssetServiceTest {
     DeviceCategoryResponse category = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", "Kitchen", 1)
+        new CreateDeviceCategoryRequest("测试厨房设备", "Kitchen", 1)
     );
     return new TestFixture(user.userId(), familyId, category.id());
   }

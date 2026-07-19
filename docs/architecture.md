@@ -7,10 +7,10 @@ FixLedger 采用前后端分离架构，目标是用相对标准的 Java Web 技
 架构设计重点：
 
 - 业务定位清晰：围绕家庭设备生命周期管理。
-- 模块边界清晰：设备、保修、耗材、维修、提醒、附件、AI 分离。
+- 模块边界清晰：设备、保修、耗材、维修、提醒、附件、导出、AI 分离。
 - 核心业务稳定：AI、通知、文件存储等外部能力不能影响核心数据保存。
 - 适合简历展示：覆盖 Spring Boot、MyBatis Plus、MySQL、Redis、Vue3、定时任务、文件上传、AI 辅助。
-- 适合逐步实现：先完成 MVP，再系统性完善 Redis、对象存储、AI、通知、测试和安全能力。
+- 适合逐步实现：先完成 MVP，再系统性完善 Redis、对象存储、AI、通知、测试、安全和数据导出能力。
 
 
 ## 1.1 架构文档与 ADR 关系
@@ -41,6 +41,7 @@ flowchart LR
     Gateway --> Reminder["提醒任务"]
     Gateway --> File["附件管理"]
     Gateway --> Dashboard["统计看板"]
+    Gateway --> Export["家庭数据导出"]
     Gateway --> AiModule["AI 辅助"]
 
     Auth --> MySQL[("MySQL")]
@@ -52,6 +53,7 @@ flowchart LR
     Reminder --> MySQL
     File --> MySQL
     Dashboard --> MySQL
+    Export --> MySQL
     AiModule --> MySQL
 
     Gateway --> Redis[("Redis")]
@@ -189,8 +191,9 @@ modules.consumable
 modules.maintenance
 modules.reminder
 modules.dashboard
+modules.exporter
 modules.ai
-modules.system（规划中）
+modules.system
 ```
 
 ### 5.1 common
@@ -211,8 +214,8 @@ modules.system（规划中）
 - `RedisService`。
 - `FileStorageService`。
 - `AiClient`。
+- `NotificationService`。
 - `ReminderScheduler`。
-- 通知基础设施为后续扩展；当前站内通知由提醒模块的 `ReminderCreationService` 落库。
 
 ### 5.3 auth
 
@@ -293,7 +296,18 @@ modules.system（规划中）
 - 费用统计。
 - 提醒日历。
 
-### 5.12 ai
+### 5.12 exporter
+
+家庭数据导出模块：
+
+- 设备资产清单 CSV。
+- 维修费用报表 CSV。
+- 家庭成员权限校验。
+- CSV 转义和公式注入防护。
+
+当前第一版为同步下载，适合普通家庭数据规模；如果后续需要大文件、导出历史、失败重试或后台任务，再引入 `fl_export_record` 异步导出。
+
+### 5.13 ai
 
 AI 辅助模块：
 
@@ -302,9 +316,9 @@ AI 辅助模块：
 - 维修总结。
 - AI 结果记录。
 
-### 5.13 system（规划中）
+### 5.14 system
 
-系统模块当前为规划方向，暂未实现独立代码包。后续可扩展：
+系统模块当前已实现操作日志基础能力，后续可扩展字典和系统参数：
 
 - 操作日志。
 - 字典配置。
@@ -500,7 +514,8 @@ Redis 使用场景：
 - 保修提醒覆盖即将过保和已过保。
 - 耗材提醒覆盖即将更换和已逾期。
 - Redis 先做短期去重，数据库再兜底校验同一业务对象同一天同一类型不重复。
-- 提醒任务和站内通知由 `ReminderCreationService` 在同一事务内写入。
+- 提醒任务由 `ReminderCreationService` 写入，站内通知通过 `NotificationService`
+  收敛创建；当前实现只落站内通知记录，真实邮件/Webhook 后续在该基础设施边界扩展。
 
 ### 10.2 维修待跟进扫描（二期）
 
@@ -591,6 +606,18 @@ Redis
 RustFS
 ```
 
+CI/CD 门禁：
+
+```text
+GitHub Actions
+  ├── Backend Tests: JDK 21 + mvn -q test
+  ├── Frontend Build: vue-tsc + vite dist-ci build + smoke + critical audit
+  └── Compose Check: docker compose config + health dry-run + production readiness
+```
+
+`scripts/check-production-readiness.ps1` 负责检查 Docker Compose、`.env.example`、
+CI 工作流、前端脚本、JDK 21 配置和关键环境变量模板，避免生产准备项散落在口头说明里。
+
 ## 14. 关键设计取舍
 
 ### 14.1 为什么不直接做企业资产系统
@@ -638,10 +665,11 @@ Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/
 
 ### 阶段 4：体验增强
 
+- PDF 说明书搜索。
+- 家庭数据导出（当前已完成设备清单和维修费用 CSV）。
 - 移动端适配。
 - 二维码标签。
-- PDF 说明书搜索。
-- 家庭设备清单导出。
+- OCR 与智能归档。
 
 ## 16. P10.2 当前工程实现对齐
 
@@ -652,13 +680,58 @@ Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/
 - Docker Compose 默认编排 `mysql`、`redis`、`rustfs`、`backend`、`frontend` 五个服务，前端 Nginx 代理 `/api` 到后端。
 - 数据库初始化脚本位于 `backend/src/main/resources/db/schema.sql`，演示数据位于 `backend/src/main/resources/db/demo-data.sql`。
 - Prompt 模板位于 `backend/src/main/resources/prompts/`，当前包含票据提取、故障排查和维修总结三个模板。
-- 当前没有独立 `modules.system` 实现，系统管理、操作日志、字典配置保留为后续扩展。
+- 当前已新增 `modules.system` 的操作日志基础能力，包括 `sys_operation_log`、
+  实体、Mapper、Service 和 `/api/system/operation-logs` 分页查询接口；字典配置仍为后续扩展。
 - 当前文件存储新增 `S3FileStorageService`，Docker 默认对接 RustFS；`LocalFileStorageService` 保留为测试和兜底。
 - P15 凭证盒已支持图片/PDF 在线预览，但预览数据仍通过后端鉴权接口转发，未把 RustFS/MinIO 对象 Key 或临时 URL 暴露给浏览器。
 - 当前登录退出已实现 Redis Token 黑名单，Refresh Token 和多端会话机制保留为后续增强。
 - 当前定时任务为 `ReminderScheduler` 单一 cron 入口，扫描所有家庭的保修和耗材提醒；维修待跟进扫描仍是后续增强。
-- 当前没有独立 `NotificationService` 基础设施，站内通知由 `ReminderCreationService` 与提醒任务同事务写入，邮件和 Webhook 通过后续通知基础设施扩展。
+- 当前已新增 `NotificationService` 基础设施，提醒站内通知写入由该服务统一处理；
+  `EMAIL` 和 `WEBHOOK` 作为枚举扩展点保留，真实外部投递不在当前代码中硬编码密钥或服务地址。
+- 当前已新增 `modules.exporter` 家庭数据导出能力，设备资产清单和维修费用报表以同步 CSV 下载方式提供；导出接口仍走认证和家庭成员权限校验，并批量补齐分类名/设备名，避免 N+1 查询。
 - 当前首页 Redis Key 作为刷新标记和缓存钩子使用，尚未把完整首页统计结果缓存到 Redis。
+
+## 18. P22 操作日志与通知抽象
+
+P22 后，家庭协作操作开始具备最小审计闭环：
+
+```text
+FamilyController
+  ↓
+FamilyService
+  ↓
+OperationLogService
+  ↓
+sys_operation_log
+```
+
+当前记录范围：
+
+- 邀请已注册用户加入家庭。
+- 调整家庭成员角色。
+- 移除家庭成员。
+
+操作日志查询规则：
+
+- 默认只返回当前登录用户所属家庭的日志。
+- 显式传入 `familyId` 时，先校验当前用户是否属于该家庭。
+- 查询接口使用统一分页查询对象和 `PageResponse<T>`，避免散落分页参数。
+
+通知抽象当前只处理站内通知：
+
+```text
+ReminderCreationService
+  ↓
+NotificationService
+  ↓
+fl_notification_record
+```
+
+真实邮件和 Webhook 后续可在 `NotificationService` 后增加实现，但必须继续遵守：
+
+- 不在代码中硬编码密钥、Webhook 地址或生产域名。
+- 外部投递失败不能回滚提醒任务核心数据。
+- 外部渠道调用不能扩大核心数据库事务范围。
 
 ## 17. RustFS 文件存储接入设计
 

@@ -241,7 +241,7 @@ class WarrantyServiceTest {
     DeviceCategoryResponse category = deviceCategoryService.createCategory(
         user.userId(),
         familyId,
-        new CreateDeviceCategoryRequest("厨房设备", "Kitchen", 1)
+        new CreateDeviceCategoryRequest("测试厨房设备", "Kitchen", 1)
     );
     CreateDeviceResponse device = deviceAssetService.createDevice(
         user.userId(),

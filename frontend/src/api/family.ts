@@ -1,5 +1,11 @@
 import { request } from './request';
-import type { FamilyForm, FamilyMemberResponse, FamilyResponse } from '@/types/family';
+import type {
+  FamilyForm,
+  FamilyMemberResponse,
+  FamilyResponse,
+  InviteFamilyMemberRequest,
+  UpdateFamilyMemberRoleRequest
+} from '@/types/family';
 /**
  * 功能说明：查询家庭空间数据。
  * @returns 请求结果或格式化后的展示数据
@@ -33,5 +39,32 @@ export function getFamilyMembers(familyId: number) {
   return request<FamilyMemberResponse[]>({
     url: `/api/families/${familyId}/members`,
     method: 'get'
+  });
+}
+
+export function inviteFamilyMember(familyId: number, data: InviteFamilyMemberRequest) {
+  return request<FamilyMemberResponse>({
+    url: `/api/families/${familyId}/members`,
+    method: 'post',
+    data
+  });
+}
+
+export function updateFamilyMemberRole(
+  familyId: number,
+  memberId: number,
+  data: UpdateFamilyMemberRoleRequest
+) {
+  return request<FamilyMemberResponse>({
+    url: `/api/families/${familyId}/members/${memberId}/role`,
+    method: 'put',
+    data
+  });
+}
+
+export function removeFamilyMember(familyId: number, memberId: number) {
+  return request<boolean>({
+    url: `/api/families/${familyId}/members/${memberId}`,
+    method: 'delete'
   });
 }

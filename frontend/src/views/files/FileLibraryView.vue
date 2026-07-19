@@ -5,12 +5,14 @@ import {
   Download,
   Files,
   Picture,
+  Plus,
   Search,
   UploadFilled,
   View
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 import { getDevicePage } from '@/api/device';
 import {
@@ -79,9 +81,11 @@ const defaultCredentialGroups: DefaultCredentialGroup[] = [
 ];
 
 const auth = useAuthStore();
+const router = useRouter();
 const familyId = computed(() => auth.currentFamilyId);
 const loading = ref(false);
 const deviceLoading = ref(false);
+const devicesLoaded = ref(false);
 const credentialBox = ref<CredentialBox>();
 const devices = ref<DeviceListItem[]>([]);
 const selectedDeviceId = ref<number>();
@@ -148,6 +152,22 @@ const previewSupported = computed(() => {
   const contentType = previewTarget.value?.contentType ?? '';
   return contentType.startsWith('image/') || contentType === 'application/pdf';
 });
+const hasDeviceSearchKeyword = computed(() => query.keyword.trim().length > 0);
+const hasNoDevices = computed(() =>
+  Boolean(familyId.value)
+  && devicesLoaded.value
+  && !deviceLoading.value
+  && devices.value.length === 0
+  && !hasDeviceSearchKeyword.value
+);
+const hasNoDeviceMatches = computed(() =>
+  Boolean(familyId.value)
+  && devicesLoaded.value
+  && !deviceLoading.value
+  && devices.value.length === 0
+  && hasDeviceSearchKeyword.value
+);
+const hasDevices = computed(() => devicesLoaded.value && devices.value.length > 0);
 
 function hasCredential(bizType: string) {
   return credentialGroups.value.some(
@@ -186,7 +206,12 @@ function syncSelectedTarget() {
 }
 
 async function loadDevices() {
-  if (!familyId.value) return false;
+  if (!familyId.value) {
+    devices.value = [];
+    selectedDeviceId.value = undefined;
+    devicesLoaded.value = false;
+    return false;
+  }
   deviceLoading.value = true;
   const previousDeviceId = selectedDeviceId.value;
   try {
@@ -202,6 +227,7 @@ async function loadDevices() {
     if (selectedDeviceId.value && !devices.value.some((item) => item.id === selectedDeviceId.value)) {
       selectedDeviceId.value = devices.value[0]?.id;
     }
+    devicesLoaded.value = true;
     return previousDeviceId !== selectedDeviceId.value;
   } finally {
     deviceLoading.value = false;
@@ -227,6 +253,11 @@ async function handleSearchDevices() {
   if (!selectionChanged) {
     await loadData();
   }
+}
+
+async function clearDeviceSearch() {
+  query.keyword = '';
+  await handleSearchDevices();
 }
 
 async function handleUpload(options: { file: File }) {
@@ -318,6 +349,8 @@ watch(selectedDeviceId, () => {
 watch(activeBizType, syncSelectedTarget);
 
 watch(familyId, async () => {
+  devicesLoaded.value = false;
+  devices.value = [];
   selectedDeviceId.value = undefined;
   selectedTargetId.value = undefined;
   credentialBox.value = undefined;
@@ -344,16 +377,21 @@ onBeforeUnmount(revokePreviewUrl);
         <h1 class="page-title">凭证盒</h1>
         <p class="page-subtitle">按设备整理发票、说明书、保修卡、维修单和耗材凭证；预览和下载仍由后端鉴权。</p>
       </div>
-      <el-upload :http-request="handleUpload" :show-file-list="false" :disabled="!canUpload">
+      <el-upload
+        v-if="hasDevices"
+        :http-request="handleUpload"
+        :show-file-list="false"
+        :disabled="!canUpload"
+      >
         <el-button type="primary" :icon="UploadFilled" :disabled="!canUpload">上传当前凭证</el-button>
       </el-upload>
     </div>
 
-    <section class="file-hero">
+    <section class="file-summary">
       <div>
-        <p class="file-kicker">Home Credential Box</p>
+        <p class="section-kicker">凭证概况</p>
         <h2>{{ selectedDevice?.name || '选择一台设备开始整理凭证' }}</h2>
-        <p>{{ selectedDevice ? selectedDeviceLabel(selectedDevice) : '设备护照、凭证盒和家庭日历会围绕同一台设备串起来。' }}</p>
+        <p>{{ selectedDevice ? selectedDeviceLabel(selectedDevice) : '设备档案、凭证盒和家庭日历会围绕同一台设备串起来。' }}</p>
       </div>
       <div class="file-score">
         <span>凭证完整度</span>
@@ -362,7 +400,11 @@ onBeforeUnmount(revokePreviewUrl);
       </div>
     </section>
 
-    <el-card class="glass-card file-toolbar" shadow="never">
+    <el-card
+      v-if="devicesLoaded && (hasDevices || hasDeviceSearchKeyword)"
+      class="glass-card file-toolbar"
+      shadow="never"
+    >
       <div class="device-picker">
         <el-select
           v-model="selectedDeviceId"
@@ -384,23 +426,44 @@ onBeforeUnmount(revokePreviewUrl);
       </div>
     </el-card>
 
-    <div class="credential-grid">
-      <button
-        v-for="item in credentialGroups"
-        :key="item.bizType"
-        class="credential-card"
-        :class="{ active: activeBizType === item.bizType, archived: hasCredential(item.bizType) }"
-        type="button"
-        @click="activeBizType = item.bizType"
-      >
-        <span class="credential-icon"><el-icon><Collection /></el-icon></span>
-        <strong>{{ item.shortTitle }}</strong>
-        <small>{{ credentialState(item) }}</small>
-        <em>{{ credentialHint(item) }}</em>
-      </button>
-    </div>
+    <section v-if="hasNoDevices" class="credential-empty-guide" aria-label="凭证盒空数据引导">
+      <div>
+        <p class="section-kicker">还没有设备</p>
+        <h2>先创建设备档案，再归档发票和说明书</h2>
+        <p>
+          凭证盒会按设备整理发票、保修卡、说明书、维修单和耗材凭证。
+          添加第一台设备后，就可以上传对应材料。
+        </p>
+      </div>
+      <el-button type="primary" :icon="Plus" @click="router.push('/devices/create')">
+        添加第一台设备
+      </el-button>
+    </section>
 
-    <el-card class="glass-card" shadow="never">
+    <section v-else-if="hasNoDeviceMatches" class="credential-search-empty" aria-label="设备搜索无结果">
+      <el-empty :description="`没有匹配“${query.keyword.trim()}”的设备`">
+        <el-button @click="clearDeviceSearch">清空搜索</el-button>
+      </el-empty>
+    </section>
+
+    <template v-else-if="hasDevices">
+      <div class="credential-grid">
+        <button
+          v-for="item in credentialGroups"
+          :key="item.bizType"
+          class="credential-card"
+          :class="{ active: activeBizType === item.bizType, archived: hasCredential(item.bizType) }"
+          type="button"
+          @click="activeBizType = item.bizType"
+        >
+          <span class="credential-icon"><el-icon><Collection /></el-icon></span>
+          <strong>{{ item.shortTitle }}</strong>
+          <small>{{ credentialState(item) }}</small>
+          <em>{{ credentialHint(item) }}</em>
+        </button>
+      </div>
+
+      <el-card class="glass-card" shadow="never">
       <template #header>
         <div class="file-card-header">
           <div>
@@ -530,7 +593,8 @@ onBeforeUnmount(revokePreviewUrl);
           </el-upload>
         </el-empty>
       </div>
-    </el-card>
+      </el-card>
+    </template>
 
     <el-drawer v-model="previewVisible" size="60%" title="凭证预览" @closed="closePreview">
       <div class="preview-shell">
@@ -555,56 +619,86 @@ onBeforeUnmount(revokePreviewUrl);
 
 <style scoped>
 .file-box-page {
-  gap: 22px;
+  gap: 18px;
 }
 
-.file-hero {
-  display: flex;
+.file-summary {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
   align-items: stretch;
-  justify-content: space-between;
-  gap: 20px;
-  padding: clamp(24px, 4vw, 42px);
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 32px;
-  background:
-    radial-gradient(circle at 80% 18%, rgba(255, 194, 122, 0.34), transparent 34%),
-    linear-gradient(145deg, #fffdf8 0%, #f6efe1 100%);
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass-strong);
   box-shadow: var(--fl-shadow-md);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
 }
 
-.file-kicker {
-  margin: 0 0 8px;
-  color: var(--fl-mi-orange-dark);
+.file-summary::before {
+  position: absolute;
+  inset: 1px 1px auto;
+  height: 42%;
+  border-radius: inherit;
+  background:
+    linear-gradient(110deg, rgba(255, 209, 179, 0.22), rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0)),
+    var(--fl-glass-veil);
+  content: '';
+  pointer-events: none;
+}
+
+.file-summary::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: inherit;
+  content: '';
+  pointer-events: none;
+}
+
+.file-summary > * {
+  position: relative;
+  z-index: 1;
+}
+
+.section-kicker {
+  margin: 0 0 6px;
+  color: var(--fl-primary-strong);
   font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-weight: 800;
 }
 
-.file-hero h2 {
+.file-summary h2 {
   max-width: 680px;
   margin: 0;
   color: var(--fl-ink);
-  font-size: clamp(28px, 4vw, 46px);
-  font-weight: 950;
-  letter-spacing: -0.05em;
+  font-size: clamp(22px, 2.4vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.25;
 }
 
-.file-hero p {
+.file-summary p {
   max-width: 640px;
-  margin: 12px 0 0;
+  margin: 10px 0 0;
   color: var(--fl-muted);
-  line-height: 1.8;
+  line-height: 1.7;
 }
 
 .file-score {
   display: grid;
-  min-width: 210px;
-  padding: 22px;
-  place-items: center;
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.72);
-  text-align: center;
+  min-width: 200px;
+  padding: 18px;
+  place-items: start;
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  border-radius: 20px;
+  background: var(--fl-glass-chip);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66), 0 8px 22px rgba(31, 41, 55, 0.035);
+  text-align: left;
 }
 
 .file-score span,
@@ -618,9 +712,9 @@ onBeforeUnmount(revokePreviewUrl);
 
 .file-score strong {
   color: var(--fl-ink);
-  font-size: 44px;
-  font-weight: 950;
-  letter-spacing: -0.06em;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0;
 }
 
 .file-toolbar {
@@ -639,55 +733,91 @@ onBeforeUnmount(revokePreviewUrl);
   gap: 14px;
 }
 
+.credential-empty-guide,
+.credential-search-empty {
+  display: grid;
+  align-items: center;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-lg);
+  background: var(--fl-glass);
+  box-shadow: var(--fl-shadow-sm);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.credential-empty-guide {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.credential-search-empty {
+  justify-items: center;
+}
+
+.credential-empty-guide h2 {
+  margin: 0;
+  color: var(--fl-ink);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.credential-empty-guide p:last-child {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--fl-muted);
+  line-height: 1.7;
+}
+
 .credential-card {
   display: flex;
-  min-height: 156px;
+  min-height: 142px;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 26px;
-  background: rgba(255, 253, 248, 0.78);
-  box-shadow: 0 12px 28px rgba(88, 72, 49, 0.07);
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 20px;
+  background: var(--fl-glass-chip);
+  box-shadow: var(--fl-shadow-sm);
   color: inherit;
   cursor: pointer;
   text-align: left;
+  backdrop-filter: blur(20px) saturate(175%);
+  -webkit-backdrop-filter: blur(20px) saturate(175%);
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .credential-card:hover,
 .credential-card.active {
-  border-color: rgba(255, 138, 31, 0.34);
-  box-shadow: 0 18px 42px rgba(88, 72, 49, 0.1);
-  transform: translateY(-2px);
+  border-color: rgba(255, 105, 0, 0.32);
+  box-shadow: var(--fl-shadow-sm);
 }
 
 .credential-card.archived .credential-icon {
-  background: rgba(77, 143, 115, 0.12);
-  color: var(--fl-green-dark);
+  background: var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
 }
 
 .credential-card.active {
-  background:
-    radial-gradient(circle at 84% 16%, rgba(255, 216, 157, 0.36), transparent 32%),
-    rgba(255, 252, 246, 0.94);
+  background: var(--fl-glass-tint);
 }
 
 .credential-icon {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   place-items: center;
-  border-radius: 16px;
-  background: rgba(255, 138, 31, 0.12);
-  color: var(--fl-mi-orange-dark);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.7), rgba(255, 244, 235, 0.5));
+  color: var(--fl-primary-strong);
 }
 
 .credential-card strong {
   color: var(--fl-ink);
-  font-size: 18px;
-  font-weight: 900;
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .credential-card em {
@@ -733,9 +863,9 @@ onBeforeUnmount(revokePreviewUrl);
   gap: 14px;
   margin-bottom: 18px;
   padding: 16px;
-  border: 1px solid rgba(255, 138, 31, 0.16);
-  border-radius: 20px;
-  background: rgba(255, 248, 238, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-glass-chip);
 }
 
 .manual-search-copy strong,
@@ -746,7 +876,7 @@ onBeforeUnmount(revokePreviewUrl);
 .manual-search-copy strong {
   color: var(--fl-ink);
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .manual-search-copy span,
@@ -778,9 +908,9 @@ onBeforeUnmount(revokePreviewUrl);
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border: 1px solid rgba(39, 46, 42, 0.07);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: var(--fl-radius-md);
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .manual-result-item strong,
@@ -792,7 +922,7 @@ onBeforeUnmount(revokePreviewUrl);
 .manual-result-item strong {
   overflow: hidden;
   color: var(--fl-ink);
-  font-weight: 900;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -814,19 +944,20 @@ onBeforeUnmount(revokePreviewUrl);
   align-items: center;
   gap: 14px;
   padding: 14px;
-  border: 1px solid rgba(39, 46, 42, 0.07);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: var(--fl-radius-md);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.56);
 }
 
 .file-thumb {
   display: grid;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 18px;
-  background: #fff4e6;
-  color: var(--fl-mi-orange-dark);
+  border-radius: 10px;
+  background: var(--fl-glass-tint);
+  color: var(--fl-primary-strong);
   font-size: 22px;
 }
 
@@ -844,7 +975,7 @@ onBeforeUnmount(revokePreviewUrl);
 
 .file-meta strong {
   color: var(--fl-ink);
-  font-weight: 900;
+  font-weight: 800;
 }
 
 .file-actions {
@@ -870,8 +1001,8 @@ onBeforeUnmount(revokePreviewUrl);
   flex: 1;
   min-height: 60vh;
   border: none;
-  border-radius: 20px;
-  background: #fff;
+  border-radius: var(--fl-radius-md);
+  background: rgba(255, 255, 255, 0.68);
   object-fit: contain;
 }
 
@@ -882,7 +1013,10 @@ onBeforeUnmount(revokePreviewUrl);
 }
 
 @media (max-width: 820px) {
-  .file-hero,
+  .file-summary {
+    grid-template-columns: 1fr;
+  }
+
   .file-card-header {
     flex-direction: column;
     align-items: flex-start;
@@ -890,6 +1024,8 @@ onBeforeUnmount(revokePreviewUrl);
 
   .device-picker,
   .credential-grid,
+  .credential-empty-guide,
+  .credential-search-empty,
   .manual-search-controls,
   .manual-result-item,
   .target-picker {

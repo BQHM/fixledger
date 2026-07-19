@@ -18,6 +18,19 @@ interface AuthState {
 const TOKEN_KEY = 'fixledger_token';
 const FAMILY_KEY = 'fixledger_family_id';
 
+export function resolveCurrentFamilyId(
+  currentFamilyId: number | undefined,
+  families: FamilyResponse[]
+) {
+  if (
+    currentFamilyId !== undefined
+    && families.some((family) => family.id === currentFamilyId)
+  ) {
+    return currentFamilyId;
+  }
+  return families[0]?.id;
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: localStorage.getItem(TOKEN_KEY) || '',
@@ -42,6 +55,8 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem(TOKEN_KEY, response.accessToken);
       if (response.currentFamilyId) {
         localStorage.setItem(FAMILY_KEY, String(response.currentFamilyId));
+      } else {
+        localStorage.removeItem(FAMILY_KEY);
       }
       await this.loadFamilies();
     },
@@ -72,8 +87,11 @@ export const useAuthStore = defineStore('auth', {
      */
     async loadFamilies() {
       this.families = await getFamilies();
-      if (!this.currentFamilyId && this.families.length > 0) {
-        this.setCurrentFamily(this.families[0].id);
+      const nextFamilyId = resolveCurrentFamilyId(this.currentFamilyId, this.families);
+      if (nextFamilyId !== undefined) {
+        this.setCurrentFamily(nextFamilyId);
+      } else {
+        this.clearCurrentFamily();
       }
     },
     /**
@@ -83,6 +101,13 @@ export const useAuthStore = defineStore('auth', {
     setCurrentFamily(familyId: number) {
       this.currentFamilyId = familyId;
       localStorage.setItem(FAMILY_KEY, String(familyId));
+    },
+    /**
+     * 功能说明：清理失效的当前家庭上下文，避免业务页继续使用脏 ID。
+     */
+    clearCurrentFamily() {
+      this.currentFamilyId = undefined;
+      localStorage.removeItem(FAMILY_KEY);
     },
     /**
      * 功能说明：退出登录并清理本地会话。
@@ -100,9 +125,8 @@ export const useAuthStore = defineStore('auth', {
       this.token = '';
       this.user = undefined;
       this.families = [];
-      this.currentFamilyId = undefined;
       localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(FAMILY_KEY);
+      this.clearCurrentFamily();
     }
   }
 });

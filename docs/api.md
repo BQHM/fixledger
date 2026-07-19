@@ -273,20 +273,56 @@ PUT /api/families/{familyId}
 GET /api/families/{familyId}/members
 ```
 
-### 6.5 邀请家庭成员（二期）
+### 6.5 邀请家庭成员
 
 ```http
-POST /api/families/{familyId}/members/invite
+POST /api/families/{familyId}/members
 ```
 
 请求：
 
 ```json
 {
-  "email": "member@example.com",
+  "account": "member@example.com",
   "role": "MEMBER"
 }
 ```
+
+说明：
+
+- `account` 支持已注册用户的用户名或邮箱。
+- 仅家庭所有者可以邀请成员。
+- 重复邀请同一用户返回 `BAD_REQUEST`。
+
+### 6.6 调整家庭成员角色
+
+```http
+PUT /api/families/{familyId}/members/{memberId}/role
+```
+
+请求：
+
+```json
+{
+  "role": "OWNER"
+}
+```
+
+说明：
+
+- 仅家庭所有者可以调整角色。
+- 不能把家庭空间最后一个所有者降级为普通成员。
+
+### 6.7 移除家庭成员
+
+```http
+DELETE /api/families/{familyId}/members/{memberId}
+```
+
+说明：
+
+- 仅家庭所有者可以移除成员。
+- 所有者不能移除自己，不能移除家庭空间最后一个所有者。
 
 ## 7. Device Category 设备分类接口
 
@@ -340,6 +376,8 @@ DELETE /api/families/{familyId}/device-categories/{categoryId}
 
 规则：
 
+- 注册默认家庭空间和手动创建家庭空间后，后端会自动初始化常用设备分类。
+- 系统默认分类 `systemDefault=true`，不允许删除。
 - 分类下存在设备时不允许删除。
 
 ## 8. Device 设备档案接口
@@ -1101,17 +1139,101 @@ POST /api/families/{familyId}/ai/maintenance-summary
 }
 ```
 
-## 16. System 系统接口（二期规划）
+## 16. Export 导出接口
 
-### 16.1 查询操作日志
+导出接口是文件下载型接口，不使用 `Result<T>` JSON 包装。所有导出接口仍然需要认证，并且必须校验当前用户属于对应家庭空间。
+
+### 16.1 导出设备资产清单
 
 ```http
-GET /api/system/operation-logs?pageNum=1&pageSize=10&module=DEVICE
+GET /api/families/{familyId}/exports/devices.csv
 ```
 
-需要管理员权限；当前版本暂未实现系统管理 Controller。
+响应：
 
-### 16.2 查询系统字典（二期规划）
+```text
+Content-Type: text/csv;charset=UTF-8
+Content-Disposition: attachment; filename*=UTF-8''fixledger-devices-1.csv
+```
+
+CSV 字段：
+
+```text
+设备ID,设备名称,品牌,型号,序列号,分类,状态,购买日期,购买渠道,购买价格,位置,备注
+```
+
+说明：
+
+- 当前同步导出最多返回 5000 行，家庭设备场景下足够覆盖本地演示和普通家庭使用。
+- 分类名称由后端批量查询补齐，避免按设备循环查询分类。
+- CSV 单元格会统一转义，并对可能被表格软件当成公式执行的内容加前缀保护。
+
+### 16.2 导出维修费用报表
+
+```http
+GET /api/families/{familyId}/exports/maintenance-costs.csv?startDate=2026-01-01&endDate=2026-12-31
+```
+
+响应：
+
+```text
+Content-Type: text/csv;charset=UTF-8
+Content-Disposition: attachment; filename*=UTF-8''fixledger-maintenance-costs-1.csv
+```
+
+CSV 字段：
+
+```text
+维修ID,设备名称,维修标题,状态,发生时间,完成时间,维修渠道,维修费用,处理结果
+```
+
+说明：
+
+- 日期筛选使用完成时间 `completedAt`，`endDate` 按当天结束前包含。
+- 导出口径与维修费用统计一致：排除已取消记录，只导出有实际维修费用的记录。
+- 设备名称由后端批量查询补齐，避免 N+1。
+
+## 17. System 系统接口
+
+### 17.1 查询操作日志
+
+```http
+GET /api/system/operation-logs?pageNum=1&pageSize=10&familyId=1&module=FAMILY
+```
+
+响应：
+
+```json
+{
+  "records": [
+    {
+      "id": 1,
+      "userId": 1,
+      "familyId": 1,
+      "module": "FAMILY",
+      "action": "INVITE_MEMBER",
+      "bizType": "FAMILY_MEMBER",
+      "bizId": 3,
+      "requestMethod": "POST",
+      "requestUri": "/api/families/1/members",
+      "success": true,
+      "errorMessage": null,
+      "createdAt": "2026-07-17T17:30:00"
+    }
+  ],
+  "total": 1,
+  "pageNum": 1,
+  "pageSize": 10
+}
+```
+
+说明：
+
+- 当前版本先提供登录用户可访问家庭范围内的操作日志查询。
+- 如果传入 `familyId`，后端会校验当前用户是该家庭成员。
+- 不返回请求体、密码、Token、API Key 等敏感信息。
+
+### 17.2 查询系统字典（二期规划）
 
 ```http
 GET /api/system/dictionaries?type=device_status
@@ -1128,9 +1250,9 @@ GET /api/system/dictionaries?type=device_status
 ]
 ```
 
-## 17. 接口优先级
+## 18. 接口优先级
 
-### 17.1 MVP 必须实现
+### 18.1 MVP 必须实现
 
 - Auth 认证接口。
 - Family 家庭空间接口。
@@ -1144,15 +1266,16 @@ GET /api/system/dictionaries?type=device_status
 - File 上传和查询接口。
 - AI Mock 接口。
 
-### 17.2 二期实现
+### 18.2 二期实现
 
-- 家庭成员邀请。
 - 邮件通知。
-- 操作日志查询和系统字典接口。
+- 系统字典接口。
 - AI 真实 Provider。
 - 对象存储临时访问 URL（可选，当前 RustFS 下载仍由后端鉴权后转发对象流）。
+- 设备二维码标签。
+- Webhook 配置和异步导出记录。
 
-## 18. 接口安全要求
+## 19. 接口安全要求
 
 - 除登录注册外，接口必须认证。
 - 所有带 `familyId` 的接口必须校验用户是否属于该家庭空间。
@@ -1161,7 +1284,7 @@ GET /api/system/dictionaries?type=device_status
 - 管理接口必须限制角色。
 - AI 接口返回内容需要做长度限制和空值兜底，不能让 AI 结果自动覆盖用户数据。
 
-## 19. P7 本地演示与 OpenAPI
+## 20. P7 本地演示与 OpenAPI
 
 P7 提供 Docker Compose 后端演示环境。启动后可以通过以下地址查看服务状态和接口文档：
 
@@ -1189,7 +1312,7 @@ familyId: 1
 6. `POST /api/families/1/ai/troubleshooting` 演示 Mock AI 故障建议。
 
 演示数据只用于本地和面试展示，生产环境不要启用 `SQL_INIT_MODE=always`。
-## 20. P10.3 当前接口实现对齐说明
+## 21. P10.3 当前接口实现对齐说明
 
 截至 P10.3 接口复核，当前后端 Controller 已实现的接口范围如下：
 
@@ -1204,14 +1327,16 @@ familyId: 1
 - `FileResourceController`：附件上传、查询、下载、逻辑删除。
 - `DashboardController`：我的家总览、分类分布、维修费用趋势、提醒日历。
 - `AiController`：票据文本提取、故障排查建议、维修总结。
+- `FamilyExportController`：设备资产清单 CSV、维修费用报表 CSV。
+- `SystemController`：操作日志分页查询。
 
 当前暂未实现的接口能力：
 
-- 家庭成员邀请、移除和角色调整。
-- 系统操作日志、系统字典和管理员接口。
+- 系统字典和管理员接口。
 - 邮件、Webhook 等外部通知接口。
 - 对象存储临时访问 URL（当前 RustFS 下载仍由后端鉴权后转发对象流）。
 - Refresh Token 和多端会话管理接口。
+- 设备二维码标签接口。
 
 接口分页统一遵守 `pageNum >= 1`、`1 <= pageSize <= 100`，前端 Axios 请求拦截器也会对分页参数做兜底修正。
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Money, Plus, Search } from '@element-plus/icons-vue';
+import { Download, Money, Plus, Search } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus';
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 import {
   createMaintenance,
   deleteMaintenance,
+  exportMaintenanceCostCsv,
   getMaintenanceCostSummary,
   getMaintenancePage,
   updateMaintenanceStatus,
@@ -23,6 +24,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const familyId = computed(() => auth.currentFamilyId);
 const loading = ref(false);
+const exportLoading = ref(false);
 const dialogVisible = ref(false);
 const statusDialogVisible = ref(false);
 const formRef = ref<FormInstance>();
@@ -39,6 +41,7 @@ const query = reactive({
   deviceId: undefined as number | undefined,
   status: ''
 });
+const exportDateRange = ref<[string, string] | null>(null);
 
 const form = reactive<MaintenanceForm & { deviceId?: number }>({
   deviceId: undefined,
@@ -140,6 +143,20 @@ async function handleDelete(row: MaintenanceRecord) {
   await loadData();
 }
 
+async function handleExportCosts() {
+  if (!familyId.value) return;
+  const [startDate, endDate] = Array.isArray(exportDateRange.value)
+    ? exportDateRange.value
+    : [undefined, undefined];
+  exportLoading.value = true;
+  try {
+    await exportMaintenanceCostCsv(familyId.value, { startDate, endDate });
+    ElMessage.success('维修费用报表已开始下载');
+  } finally {
+    exportLoading.value = false;
+  }
+}
+
 onMounted(() => {
   loadData();
   window.addEventListener('family-changed', loadData);
@@ -157,7 +174,18 @@ onUnmounted(() => {
         <h1 class="page-title">维修记录</h1>
         <p class="page-subtitle">跟踪故障、报修、维修中到完成的状态流转，并沉淀维修费用。</p>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openCreate">新增维修</el-button>
+      <div class="page-actions">
+        <el-button
+          plain
+          :icon="Download"
+          :disabled="!familyId"
+          :loading="exportLoading"
+          @click="handleExportCosts"
+        >
+          导出费用报表
+        </el-button>
+        <el-button type="primary" :icon="Plus" @click="openCreate">新增维修</el-button>
+      </div>
     </div>
 
     <div class="metric-grid compact-grid">
@@ -182,6 +210,16 @@ onUnmounted(() => {
           <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 150px">
             <el-option v-for="item in maintenanceStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="费用日期">
+          <el-date-picker
+            v-model="exportDateRange"
+            type="daterange"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 250px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :icon="Search" @click="loadData">查询</el-button>
@@ -291,6 +329,16 @@ onUnmounted(() => {
 <style scoped>
 .compact-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.page-actions :deep(.el-button) {
+  margin-left: 0;
 }
 
 .metric-value {

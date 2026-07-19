@@ -1,6 +1,7 @@
-import { request } from './request';
+import { axiosInstance, request } from './request';
 import type { PageResponse } from '@/types/common';
 import type { DeviceCategory, DeviceDetail, DeviceForm, DeviceListItem } from '@/types/device';
+import { saveBlob } from '@/utils/download';
 
 export interface DeviceQuery {
   pageNum?: number;
@@ -11,7 +12,7 @@ export interface DeviceQuery {
   brand?: string;
 }
 /**
- * 功能说明：查询设备护照数据。
+ * 功能说明：查询设备档案数据。
  * @param familyId 家庭空间 ID
  * @returns 请求结果或格式化后的展示数据
  */
@@ -22,7 +23,7 @@ export function getDeviceCategories(familyId: number) {
   });
 }
 /**
- * 功能说明：创建设备护照数据。
+ * 功能说明：创建设备档案数据。
  * @param familyId 家庭空间 ID
  * @param data 请求数据
  * @returns 请求结果或格式化后的展示数据
@@ -35,7 +36,7 @@ export function createDeviceCategory(familyId: number, data: Partial<DeviceCateg
   });
 }
 /**
- * 功能说明：查询设备护照数据。
+ * 功能说明：查询设备档案数据。
  * @param familyId 家庭空间 ID
  * @param params 查询参数
  * @returns 请求结果或格式化后的展示数据
@@ -48,7 +49,7 @@ export function getDevicePage(familyId: number, params: DeviceQuery) {
   });
 }
 /**
- * 功能说明：创建设备护照数据。
+ * 功能说明：创建设备档案数据。
  * @param familyId 家庭空间 ID
  * @param data 请求数据
  * @returns 请求结果或格式化后的展示数据
@@ -61,7 +62,7 @@ export function createDevice(familyId: number, data: DeviceForm) {
   });
 }
 /**
- * 功能说明：查询设备护照数据。
+ * 功能说明：查询设备档案数据。
  * @param familyId 家庭空间 ID
  * @param deviceId 设备 ID
  * @returns 请求结果或格式化后的展示数据
@@ -73,7 +74,7 @@ export function getDeviceDetail(familyId: number, deviceId: number) {
   });
 }
 /**
- * 功能说明：更新设备护照数据。
+ * 功能说明：更新设备档案数据。
  * @param familyId 家庭空间 ID
  * @param deviceId 设备 ID
  * @param data 请求数据
@@ -87,7 +88,7 @@ export function updateDevice(familyId: number, deviceId: number, data: DeviceFor
   });
 }
 /**
- * 功能说明：删除设备护照数据。
+ * 功能说明：删除设备档案数据。
  * @param familyId 家庭空间 ID
  * @param deviceId 设备 ID
  * @returns 请求结果或格式化后的展示数据
@@ -99,7 +100,7 @@ export function deleteDevice(familyId: number, deviceId: number) {
   });
 }
 /**
- * 功能说明：更新设备护照数据。
+ * 功能说明：更新设备档案数据。
  * @param familyId 家庭空间 ID
  * @param deviceId 设备 ID
  * @param status 目标状态
@@ -111,4 +112,17 @@ export function updateDeviceStatus(familyId: number, deviceId: number, status: s
     method: 'patch',
     data: { status }
   });
+}
+
+/**
+ * 功能说明：导出家庭设备资产清单 CSV。
+ * @param familyId 家庭空间 ID
+ * @returns 下载完成后的空结果
+ */
+export async function exportDeviceCsv(familyId: number) {
+  const response = await axiosInstance.get(`/api/families/${familyId}/exports/devices.csv`, {
+    responseType: 'blob'
+  });
+  const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+  saveBlob(blob, `fixledger-devices-${familyId}.csv`);
 }

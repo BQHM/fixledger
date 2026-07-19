@@ -9,7 +9,9 @@ package com.fixledger.modules.reminder.enums;
  */
 public enum NotificationChannel {
 
-  IN_APP("IN_APP", "站内通知");
+  IN_APP("IN_APP", "站内通知"),
+  EMAIL("EMAIL", "邮件"),
+  WEBHOOK("WEBHOOK", "Webhook");
 
   private final String code;
   private final String description;

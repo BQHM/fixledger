@@ -77,6 +77,9 @@ function fillDeviceForm() {
   if (invoiceResult.value.purchaseDate) params.set('purchaseDate', invoiceResult.value.purchaseDate);
   if (invoiceResult.value.price) params.set('purchasePrice', String(invoiceResult.value.price));
   if (invoiceResult.value.seller) params.set('purchaseChannel', invoiceResult.value.seller);
+  if (invoiceResult.value.suggestedCategory) {
+    params.set('categoryName', invoiceResult.value.suggestedCategory);
+  }
   ElMessage.warning('AI 结果仅供参考，跳转后请确认再保存');
   router.push(`/devices/create?${params.toString()}`);
 }
@@ -114,15 +117,15 @@ onMounted(loadDevices);
   <div class="page-shell">
     <div class="page-header">
       <div>
-        <h1 class="page-title">AI 助手</h1>
-        <p class="page-subtitle">AI 是辅助录入和分析工具，结果必须由用户确认后才进入核心业务数据。</p>
+        <h1 class="page-title">辅助工具</h1>
+        <p class="page-subtitle">用于票据录入、故障排查和维修总结；生成内容需要确认后再进入设备档案。</p>
       </div>
     </div>
 
     <el-alert
       class="ai-rule"
-      title="项目定位：AI 失败不能影响设备创建、维修记录保存和提醒生成。"
-      type="warning"
+      title="辅助结果不会自动覆盖核心业务数据，保存前请核对。"
+      type="info"
       :closable="false"
       show-icon
     />
@@ -207,7 +210,7 @@ onMounted(loadDevices);
 
 <style scoped>
 .ai-rule {
-  border-radius: 16px;
+  border-radius: var(--fl-radius-md);
 }
 
 .ai-tool-grid {
@@ -220,16 +223,17 @@ onMounted(loadDevices);
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--fl-green-dark);
-  font-weight: 900;
+  color: var(--fl-primary-strong);
+  font-weight: 800;
 }
 
 .result-box,
 .summary-box {
   margin-top: 18px;
   padding: 16px;
-  border-radius: 18px;
-  background: rgba(47, 125, 104, 0.08);
+  border: 1px solid var(--fl-line);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-bg-soft);
 }
 
 .result-action {
@@ -239,7 +243,7 @@ onMounted(loadDevices);
 .result-box h3,
 .summary-box h3 {
   margin: 0 0 12px;
-  color: var(--fl-green-dark);
+  color: var(--fl-primary-strong);
 }
 
 .result-box li,

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fixledger.modules.asset.mapper.DeviceCategoryMapper">
+
+  <insert id="insertBatch">
+    INSERT INTO fl_device_category (
+      family_id,
+      name,
+      icon,
+      sort_order,
+      system_default,
+      created_at,
+      updated_at,
+      deleted
+    ) VALUES
+    <foreach collection="categories" item="category" separator=",">
+      (
+        #{category.familyId},
+        #{category.name},
+        #{category.icon},
+        #{category.sortOrder},
+        #{category.systemDefault},
+        #{category.createdAt},
+        #{category.updatedAt},
+        0
+      )
+    </foreach>
+  </insert>
+</mapper>

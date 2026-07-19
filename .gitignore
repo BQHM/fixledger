@@ -27,6 +27,7 @@ build/
 node_modules/
 .npm-cache/
 dist/
+dist-ci/
 .vite/
 
 # Uploads
@@ -37,4 +38,5 @@ data/
 
 # Local tool caches
 .edp/
+.codex/
 backend/repository/
