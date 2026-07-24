@@ -133,7 +133,7 @@ onUnmounted(() => {
     </el-card>
 
     <el-card class="glass-card" shadow="never">
-      <el-table v-loading="loading" :data="reminders">
+      <el-table v-loading="loading" :data="reminders" class="desktop-data-table">
         <el-table-column prop="title" label="提醒标题" min-width="220">
           <template #default="{ row }">
             <strong>{{ row.title }}</strong>
@@ -161,6 +161,33 @@ onUnmounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div v-loading="loading" class="mobile-data-list" aria-label="提醒列表">
+        <el-empty v-if="reminders.length === 0" description="暂无提醒" />
+        <article v-for="reminder in reminders" :key="reminder.id" class="mobile-data-card">
+          <div class="mobile-data-head">
+            <div>
+              <strong>{{ reminder.title }}</strong>
+              <p>{{ reminder.content || '暂无提醒说明' }}</p>
+            </div>
+            <el-tag :type="statusType(reminder.status)">{{ labelOf(reminderStatusOptions, reminder.status) }}</el-tag>
+          </div>
+          <div class="mobile-data-meta">
+            <div class="mobile-data-field">
+              <small>提醒类型</small>
+              <span>{{ labelOf(reminderTypeOptions, reminder.reminderType) }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>提醒时间</small>
+              <span>{{ reminder.remindAt }}</span>
+            </div>
+          </div>
+          <div class="mobile-data-actions">
+            <el-button type="primary" plain @click="goBiz(reminder)">查看关联</el-button>
+            <el-button type="success" plain :icon="Check" @click="handleRead(reminder)">标记已读</el-button>
+            <el-button type="warning" plain @click="handleIgnore(reminder)">忽略</el-button>
+          </div>
+        </article>
+      </div>
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"

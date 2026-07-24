@@ -184,7 +184,7 @@ onUnmounted(() => {
     </el-card>
 
     <el-card class="glass-card" shadow="never">
-      <el-table v-loading="loading" :data="consumables">
+      <el-table v-loading="loading" :data="consumables" class="desktop-data-table">
         <el-table-column prop="name" label="耗材" min-width="160">
           <template #default="{ row }">
             <strong>{{ row.name }}</strong>
@@ -216,6 +216,43 @@ onUnmounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div v-loading="loading" class="mobile-data-list" aria-label="耗材列表">
+        <el-empty v-if="consumables.length === 0" description="当前窗口内没有临期耗材" />
+        <article v-for="item in consumables" :key="item.id" class="mobile-data-card">
+          <div class="mobile-data-head">
+            <div>
+              <strong>{{ item.name }}</strong>
+              <p>{{ [item.brand, item.model].filter(Boolean).join(' ') || '未填写品牌型号' }}</p>
+            </div>
+            <el-tag :type="statusType(item.status)">{{ labelOf(consumableStatusOptions, item.status) }}</el-tag>
+          </div>
+          <div class="mobile-data-meta">
+            <div class="mobile-data-field">
+              <small>所属设备</small>
+              <el-link type="primary" @click="router.push(`/devices/${item.deviceId}`)">
+                {{ item.deviceName || `设备 ${item.deviceId}` }}
+              </el-link>
+            </div>
+            <div class="mobile-data-field">
+              <small>更换周期</small>
+              <span>{{ item.cycleDays }} 天</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>上次更换</small>
+              <span>{{ item.lastReplacedDate || '-' }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>下次提醒</small>
+              <span>{{ item.nextRemindDate || '-' }}</span>
+            </div>
+          </div>
+          <div class="mobile-data-actions">
+            <el-button type="primary" plain :icon="Refresh" @click="openReplace(item)">记录更换</el-button>
+            <el-button plain @click="openEdit(item)">编辑</el-button>
+            <el-button type="danger" plain @click="handleDelete(item)">删除</el-button>
+          </div>
+        </article>
+      </div>
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"

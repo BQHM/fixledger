@@ -30,5 +30,10 @@ fixledger:
   jwt:
     secret: fixledger-local-dev-secret-must-be-replaced
     access-token-ttl-seconds: 86400
+  notification:
+    email:
+      enabled: false
+    webhook:
+      enabled: false
 
 

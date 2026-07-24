@@ -76,7 +76,7 @@ flowchart LR
 | JWT | - | 无状态登录凭证 |
 | MyBatis Plus | 3.5.x | ORM 和基础 CRUD |
 | MySQL | 8.x | 业务数据库 |
-| Redis | 7.x | 提醒去重、JWT 黑名单、首页刷新标记/缓存钩子；验证码、用户缓存和 AI 任务状态为后续增强 |
+| Redis | 7.x | 提醒去重、JWT 黑名单、首页短 TTL 摘要缓存；验证码、用户缓存和 AI 任务状态为后续增强 |
 | Spring Scheduler | - | 保修和耗材提醒定时任务 |
 | Spring Validation | - | 参数校验 |
 | MapStruct | - | DTO / Entity 转换 |
@@ -491,7 +491,7 @@ Redis 使用场景：
 | JWT 黑名单 | `fixledger:auth:blacklist:{tokenId}` | Token 剩余有效期 |
 | 用户信息（二期） | `fixledger:user:profile:{userId}` | 30 分钟 |
 | 提醒去重 | `fixledger:reminder:dedupe:{type}:{bizId}:{date}` | 2 天 |
-| 首页刷新标记 / 缓存钩子 | `fixledger:dashboard:summary:{familyId}` | 5 分钟 |
+| 首页摘要缓存 | `fixledger:dashboard:summary:{familyId}` | 2 分钟 |
 | AI 任务状态（二期） | `fixledger:ai:task:{taskId}` | 1 小时 |
 
 缓存原则：
@@ -499,7 +499,7 @@ Redis 使用场景：
 - 重要业务以 MySQL 为准。
 - 缓存必须设置 TTL。
 - Redis Key 集中管理。
-- 当前首页写入刷新标记，为后续完整统计结果缓存预留 Key；更新设备、保修、耗材、维修数据后要考虑缓存失效。
+- 首页缓存完整摘要结果；设备、保修、耗材、维修事务提交后删除对应家庭缓存。
 
 ## 10. 定时任务设计
 
@@ -634,7 +634,7 @@ CI 工作流、前端脚本、JDK 21 配置和关键环境变量模板，避免�
 
 ### 14.4 为什么使用 Redis
 
-Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/缓存钩子；验证码、用户资料缓存和 AI 异步任务状态是后续增强。它能体现工程能力，但不影响 MVP 的核心数据模型。
+Redis 当前主要用于提醒去重、JWT 退出黑名单和首页短 TTL 摘要缓存；验证码、用户资料缓存和 AI 异步任务状态是后续增强。缓存不可用时首页回源 MySQL，不影响核心业务数据模型。
 
 ## 15. 演进路线
 
@@ -686,10 +686,10 @@ Redis 当前主要用于提醒去重、JWT 退出黑名单和首页刷新标记/
 - P15 凭证盒已支持图片/PDF 在线预览，但预览数据仍通过后端鉴权接口转发，未把 RustFS/MinIO 对象 Key 或临时 URL 暴露给浏览器。
 - 当前登录退出已实现 Redis Token 黑名单，Refresh Token 和多端会话机制保留为后续增强。
 - 当前定时任务为 `ReminderScheduler` 单一 cron 入口，扫描所有家庭的保修和耗材提醒；维修待跟进扫描仍是后续增强。
-- 当前已新增 `NotificationService` 基础设施，提醒站内通知写入由该服务统一处理；
-  `EMAIL` 和 `WEBHOOK` 作为枚举扩展点保留，真实外部投递不在当前代码中硬编码密钥或服务地址。
+- 当前 `NotificationService` 统一写入站内通知和外部投递 Outbox；邮件与 Webhook 由独立 Sender
+  异步投递，渠道默认关闭，密钥和服务地址只从环境配置读取。
 - 当前已新增 `modules.exporter` 家庭数据导出能力，设备资产清单和维修费用报表以同步 CSV 下载方式提供；导出接口仍走认证和家庭成员权限校验，并批量补齐分类名/设备名，避免 N+1 查询。
-- 当前首页 Redis Key 作为刷新标记和缓存钩子使用，尚未把完整首页统计结果缓存到 Redis。
+- 当前首页完整摘要使用 2 分钟 Cache-Aside 缓存，写事务提交后按家庭失效，Redis 异常时回源 MySQL。
 
 ## 18. P22 操作日志与通知抽象
 
@@ -776,3 +776,97 @@ fixledger:
 - `path-style-access=true` 适配本地 RustFS、MinIO 这类 S3 兼容对象存储。
 - `create-bucket=true` 时后端启动后首次上传前自动创建 Bucket。
 - `fl_file_resource.storage_path` 保存对象 Key，不保存真实访问 URL，下载时仍由后端鉴权后读取对象流返回。
+
+## 19. P27.2 PWA 基础架构
+
+PWA 继续复用 Vue Router、JWT 鉴权和现有 REST API，不引入离线业务数据库，也不在浏览器持久化业务响应。
+
+```text
+浏览器 / 已安装 PWA
+  ├── manifest.webmanifest：名称、图标、主题色、启动地址
+  ├── Service Worker：离线状态页与安全静态资源
+  └── Vue 应用：安装提示、网络状态、版本更新确认
+            ↓
+       Nginx / Spring Boot API
+```
+
+缓存策略：
+
+- 安装阶段只预缓存离线页、应用清单和公开图标。
+- 导航请求采用网络优先；网络不可用时返回离线页。
+- `/api`、`/actuator`、`/swagger-ui`、`/v3/api-docs` 和非 GET 请求始终直接访问网络且不写缓存。
+- 不缓存请求头包含 `Authorization` 的请求，不缓存跨域资源和业务附件。
+- Service Worker 只在生产构建中注册，开发服务器不启用，避免旧缓存干扰 HMR。
+- 浏览器只允许 HTTPS 或同设备 `localhost` 注册 Service Worker；手机通过普通局域网 HTTP 地址访问时仍可使用响应式页面，但不能安装 PWA。
+
+更新策略：
+
+- 新 Service Worker 安装完成后进入等待状态。
+- 前端显示可控更新入口；用户确认后发送 `SKIP_WAITING`，控制权切换后刷新页面。
+- 不自动刷新正在使用的页面，避免表单内容丢失。
+
+## 20. P28 外部通知 Outbox
+
+邮件与 Webhook 使用数据库 Outbox 和独立调度投递，外部网络调用不进入提醒创建事务。
+
+```text
+ReminderCreationService（事务）
+  ├── fl_reminder_task
+  ├── IN_APP / SENT
+  └── EMAIL、WEBHOOK / PENDING
+                 ↓
+NotificationDeliveryScheduler（无业务事务）
+  ↓
+NotificationDeliveryService
+  ├── 原子领取：PENDING/FAILED -> PROCESSING
+  ├── EmailNotificationSender -> SMTP
+  └── WebhookNotificationSender -> HTTPS Endpoint
+                 ↓
+       SENT 或 FAILED + next_retry_at
+```
+
+边界规则：
+
+- `NotificationService` 只创建通知记录，不调用 SMTP 或 HTTP。
+- 外部投递前通过条件更新原子领取记录，防止同一实例内重复处理，并为多实例竞争提供兜底。
+- 查询只包含当前存在 Sender 的启用渠道，已关闭渠道的历史记录不会阻塞其他渠道。
+- 失败后按指数退避计算 `next_retry_at`，达到最大尝试次数后保留 `FAILED` 且停止自动领取。
+- `PROCESSING` 超过 `processing-timeout` 后恢复为可重试 `FAILED`；已达到上限时直接终止。
+- 发送器只接收通知快照，不依赖当前用户请求上下文。
+- 邮件密码、Webhook 地址和签名密钥只来自环境变量；日志不输出收件地址、端点、密钥或消息正文。
+- Webhook 默认只允许 HTTPS；本地测试如需 HTTP 必须显式启用不安全地址开关。
+- 所有外部渠道默认关闭，测试配置不发送真实邮件或网络请求。
+- Outbox 提供至少一次投递语义；Webhook 接收方应使用 `notificationId` 做幂等去重。
+
+## 21. P29 性能与可观测性
+
+首页摘要采用 Cache-Aside，不把 Redis 作为业务事实来源：
+
+```text
+DashboardService.summary
+  ├── 家庭成员权限校验
+  ├── Redis 命中 -> 返回 DashboardSummaryResponse
+  └── Redis 未命中/不可用
+        -> DashboardStatisticsMapper 单次聚合查询
+        -> 写入短 TTL 缓存
+
+设备/保修/耗材/维修写事务
+  -> 事务提交成功后删除 fixledger:dashboard:summary:{familyId}
+```
+
+一致性与降级规则：
+
+- 权限校验始终在缓存读取前执行，缓存不能绕过家庭空间隔离。
+- 缓存默认 TTL 为 2 分钟，读取、反序列化或写入失败均回源数据库。
+- 写操作只在事务提交成功后失效缓存；事务回滚不触发无意义失效。
+- 首页摘要 SQL 保持单次数据库往返，复杂聚合固定写在 MyBatis XML 中。
+- 缓存指标不使用 `familyId` 标签，避免高基数指标和家庭标识泄露。
+
+可观测性：
+
+- Spring Boot Actuator 提供 `http.server.requests`，P29 增加首页缓存结果、回源耗时和导出结果指标。
+- Prometheus Registry 随应用提供，但 `prometheus`/`metrics` 端点默认不公开。
+- 生产环境只允许监控网络访问指标端点，不允许通过公开 Nginx 路由直接暴露。
+
+导出继续使用同步 CSV，因为家庭场景通常远低于 5000 行。服务查询 `maxSyncRows + 1` 条记录，
+发现超限后返回明确业务错误，不静默截断。只有持续出现超限需求时才进入异步导出阶段。

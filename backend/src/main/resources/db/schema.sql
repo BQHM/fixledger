@@ -104,6 +104,7 @@ CREATE TABLE IF NOT EXISTS fl_device_asset (
   updated_by BIGINT DEFAULT NULL,
   deleted TINYINT NOT NULL DEFAULT 0,
   KEY idx_fl_device_asset_family (family_id),
+  KEY idx_fl_device_asset_list (family_id, updated_at),
   KEY idx_fl_device_asset_category (category_id),
   KEY idx_fl_device_asset_status (family_id, status),
   KEY idx_fl_device_asset_brand (family_id, brand),
@@ -268,8 +269,12 @@ CREATE TABLE IF NOT EXISTS fl_notification_record (
   channel VARCHAR(32) NOT NULL,
   title VARCHAR(128) NOT NULL,
   content VARCHAR(1024) DEFAULT NULL,
+  recipient VARCHAR(512) DEFAULT NULL,
   status VARCHAR(32) NOT NULL,
   error_message VARCHAR(1024) DEFAULT NULL,
+  attempt_count INT NOT NULL DEFAULT 0,
+  next_retry_at DATETIME DEFAULT NULL,
+  last_attempt_at DATETIME DEFAULT NULL,
   sent_at DATETIME DEFAULT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
@@ -279,8 +284,15 @@ CREATE TABLE IF NOT EXISTS fl_notification_record (
   KEY idx_fl_notification_family (family_id),
   KEY idx_fl_notification_user (user_id),
   KEY idx_fl_notification_status (status),
+  KEY idx_fl_notification_dispatch (status, channel, next_retry_at, created_at),
+  KEY idx_fl_notification_processing (status, last_attempt_at),
   KEY idx_fl_notification_sent_at (sent_at)
 );
+
+ALTER TABLE fl_notification_record ADD COLUMN IF NOT EXISTS recipient VARCHAR(512) DEFAULT NULL;
+ALTER TABLE fl_notification_record ADD COLUMN IF NOT EXISTS attempt_count INT NOT NULL DEFAULT 0;
+ALTER TABLE fl_notification_record ADD COLUMN IF NOT EXISTS next_retry_at DATETIME DEFAULT NULL;
+ALTER TABLE fl_notification_record ADD COLUMN IF NOT EXISTS last_attempt_at DATETIME DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS fl_ai_analysis (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,

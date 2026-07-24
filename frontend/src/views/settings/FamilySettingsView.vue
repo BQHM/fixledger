@@ -264,7 +264,7 @@ onMounted(loadData);
           :closable="false"
           show-icon
         />
-        <el-table v-loading="memberLoading" :data="members">
+        <el-table v-loading="memberLoading" :data="members" class="desktop-data-table">
           <el-table-column prop="username" label="账号" min-width="120" />
           <el-table-column prop="nickname" label="昵称" min-width="120" />
           <el-table-column label="角色" width="120">
@@ -282,12 +282,40 @@ onMounted(loadData);
             </template>
           </el-table-column>
         </el-table>
+        <div v-loading="memberLoading" class="mobile-data-list" aria-label="家庭成员列表">
+          <el-empty v-if="members.length === 0" description="暂无家庭成员" />
+          <article v-for="member in members" :key="member.id" class="mobile-data-card">
+            <div class="mobile-data-head">
+              <div>
+                <strong>{{ member.nickname || member.username }}</strong>
+                <p>@{{ member.username }}</p>
+              </div>
+              <el-tag :type="member.role === 'OWNER' ? 'warning' : 'info'" effect="light">
+                {{ roleLabel(member.role) }}
+              </el-tag>
+            </div>
+            <div class="mobile-data-meta">
+              <div class="mobile-data-field">
+                <small>加入时间</small>
+                <span>{{ member.joinedAt || '-' }}</span>
+              </div>
+              <div class="mobile-data-field">
+                <small>协作权限</small>
+                <span>{{ member.role === 'OWNER' ? '管理家庭与成员' : '维护家庭设备档案' }}</span>
+              </div>
+            </div>
+            <div v-if="canManageMembers" class="mobile-data-actions">
+              <el-button type="primary" plain @click="openRoleDialog(member)">调整角色</el-button>
+              <el-button type="danger" plain :icon="Delete" @click="handleRemoveMember(member)">移除成员</el-button>
+            </div>
+          </article>
+        </div>
       </el-card>
     </div>
 
     <el-card class="glass-card" shadow="never">
       <template #header>最近协作日志</template>
-      <el-table v-loading="logLoading" :data="operationLogs">
+      <el-table v-loading="logLoading" :data="operationLogs" class="desktop-data-table">
         <el-table-column label="动作" width="140">
           <template #default="{ row }">{{ logActionLabel(row.action) }}</template>
         </el-table-column>
@@ -295,6 +323,25 @@ onMounted(loadData);
         <el-table-column prop="requestUri" label="接口" min-width="220" />
         <el-table-column prop="createdAt" label="时间" width="180" />
       </el-table>
+      <div v-loading="logLoading" class="mobile-data-list" aria-label="最近协作日志">
+        <el-empty v-if="operationLogs.length === 0" description="暂无协作日志" />
+        <article v-for="log in operationLogs" :key="log.id" class="mobile-data-card">
+          <div class="mobile-data-head">
+            <strong>{{ logActionLabel(log.action) }}</strong>
+            <el-tag effect="plain">{{ log.requestMethod }}</el-tag>
+          </div>
+          <div class="mobile-data-meta">
+            <div class="mobile-data-field">
+              <small>时间</small>
+              <span>{{ log.createdAt }}</span>
+            </div>
+            <div class="mobile-data-field mobile-log-uri">
+              <small>接口</small>
+              <span>{{ log.requestUri }}</span>
+            </div>
+          </div>
+        </article>
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑家庭空间' : '创建家庭空间'" width="520px">
@@ -402,6 +449,31 @@ onMounted(loadData);
   .page-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .header-actions,
+  .family-actions {
+    width: 100%;
+  }
+
+  .header-actions .el-button,
+  .family-actions .el-button {
+    min-height: 44px;
+    flex: 1;
+    margin-left: 0;
+  }
+
+  .card-header-row {
+    align-items: center;
+  }
+
+  .card-header-row .el-button {
+    min-height: 44px;
+    margin-left: 0;
+  }
+
+  .mobile-log-uri {
+    grid-column: 1 / -1;
   }
 }
 </style>

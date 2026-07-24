@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.modules.asset.entity.DeviceAssetEntity;
 import com.fixledger.modules.asset.entity.DeviceCategoryEntity;
 import com.fixledger.modules.asset.enums.DeviceStatus;
@@ -30,7 +31,8 @@ class DeviceAssetServiceFamilyIsolationTest {
     DeviceAssetServiceImpl service = new DeviceAssetServiceImpl(
         deviceAssetMapper,
         deviceCategoryMapper,
-        familyService
+        familyService,
+        mock(DashboardCacheInvalidator.class)
     );
     DeviceAssetEntity device = device(1L, 999L);
     DeviceCategoryEntity otherFamilyCategory = new DeviceCategoryEntity();

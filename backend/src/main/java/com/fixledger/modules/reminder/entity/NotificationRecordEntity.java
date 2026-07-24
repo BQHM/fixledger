@@ -31,9 +31,17 @@ public class NotificationRecordEntity extends BaseEntity {
 
   private String content;
 
+  private String recipient;
+
   private String status;
 
   private String errorMessage;
+
+  private Integer attemptCount;
+
+  private LocalDateTime nextRetryAt;
+
+  private LocalDateTime lastAttemptAt;
 
   private LocalDateTime sentAt;
 
@@ -93,6 +101,14 @@ public class NotificationRecordEntity extends BaseEntity {
     this.content = content;
   }
 
+  public String getRecipient() {
+    return recipient;
+  }
+
+  public void setRecipient(String recipient) {
+    this.recipient = recipient;
+  }
+
   public String getStatus() {
     return status;
   }
@@ -107,6 +123,30 @@ public class NotificationRecordEntity extends BaseEntity {
 
   public void setErrorMessage(String errorMessage) {
     this.errorMessage = errorMessage;
+  }
+
+  public Integer getAttemptCount() {
+    return attemptCount;
+  }
+
+  public void setAttemptCount(Integer attemptCount) {
+    this.attemptCount = attemptCount;
+  }
+
+  public LocalDateTime getNextRetryAt() {
+    return nextRetryAt;
+  }
+
+  public void setNextRetryAt(LocalDateTime nextRetryAt) {
+    this.nextRetryAt = nextRetryAt;
+  }
+
+  public LocalDateTime getLastAttemptAt() {
+    return lastAttemptAt;
+  }
+
+  public void setLastAttemptAt(LocalDateTime lastAttemptAt) {
+    this.lastAttemptAt = lastAttemptAt;
   }
 
   public LocalDateTime getSentAt() {

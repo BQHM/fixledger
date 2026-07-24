@@ -2,6 +2,7 @@ package com.fixledger.modules.asset.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.page.PageResponse;
@@ -39,15 +40,18 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
   private final DeviceAssetMapper deviceAssetMapper;
   private final DeviceCategoryMapper deviceCategoryMapper;
   private final FamilyService familyService;
+  private final DashboardCacheInvalidator dashboardCacheInvalidator;
 
   public DeviceAssetServiceImpl(
       DeviceAssetMapper deviceAssetMapper,
       DeviceCategoryMapper deviceCategoryMapper,
-      FamilyService familyService
+      FamilyService familyService,
+      DashboardCacheInvalidator dashboardCacheInvalidator
   ) {
     this.deviceAssetMapper = deviceAssetMapper;
     this.deviceCategoryMapper = deviceCategoryMapper;
     this.familyService = familyService;
+    this.dashboardCacheInvalidator = dashboardCacheInvalidator;
   }
 
   /**
@@ -104,6 +108,7 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     DeviceAssetEntity device = new DeviceAssetEntity();
     applyCreateRequest(device, familyId, request);
     deviceAssetMapper.insert(device);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return new CreateDeviceResponse(device.getId());
   }
 
@@ -148,6 +153,7 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
 
     applyUpdateRequest(device, request);
     deviceAssetMapper.updateById(device);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toDetailResponse(device);
   }
 
@@ -167,7 +173,11 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     familyService.checkFamilyMember(userId, familyId);
     DeviceAssetEntity device = getDevice(familyId, deviceId);
     // BaseEntity 配置了 @TableLogic，这里会转为逻辑删除而不是物理删除。
-    return deviceAssetMapper.deleteById(device.getId()) > 0;
+    boolean deleted = deviceAssetMapper.deleteById(device.getId()) > 0;
+    if (deleted) {
+      dashboardCacheInvalidator.evictAfterCommit(familyId);
+    }
+    return deleted;
   }
 
   /**
@@ -200,6 +210,7 @@ public class DeviceAssetServiceImpl implements DeviceAssetService {
     validateStatusTransition(device.getStatus(), targetStatus);
     device.setStatus(targetStatus.getCode());
     deviceAssetMapper.updateById(device);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toDetailResponse(device);
   }
 

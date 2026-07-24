@@ -2,6 +2,7 @@ package com.fixledger.modules.warranty.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.page.PageResponse;
@@ -39,15 +40,18 @@ public class WarrantyServiceImpl implements WarrantyService {
   private final WarrantyRecordMapper warrantyRecordMapper;
   private final DeviceAssetMapper deviceAssetMapper;
   private final FamilyService familyService;
+  private final DashboardCacheInvalidator dashboardCacheInvalidator;
 
   public WarrantyServiceImpl(
       WarrantyRecordMapper warrantyRecordMapper,
       DeviceAssetMapper deviceAssetMapper,
-      FamilyService familyService
+      FamilyService familyService,
+      DashboardCacheInvalidator dashboardCacheInvalidator
   ) {
     this.warrantyRecordMapper = warrantyRecordMapper;
     this.deviceAssetMapper = deviceAssetMapper;
     this.familyService = familyService;
+    this.dashboardCacheInvalidator = dashboardCacheInvalidator;
   }
 
   /**
@@ -113,6 +117,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     warranty.setServiceAddress(request.serviceAddress());
     warranty.setServiceNote(request.serviceNote());
     warrantyRecordMapper.insert(warranty);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(warranty, device.getName());
   }
 
@@ -148,6 +153,7 @@ public class WarrantyServiceImpl implements WarrantyService {
     warranty.setServiceAddress(request.serviceAddress());
     warranty.setServiceNote(request.serviceNote());
     warrantyRecordMapper.updateById(warranty);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(warranty, device.getName());
   }
 
@@ -166,7 +172,11 @@ public class WarrantyServiceImpl implements WarrantyService {
   public boolean deleteWarranty(Long userId, Long familyId, Long warrantyId) {
     familyService.checkFamilyMember(userId, familyId);
     WarrantyRecordEntity warranty = getWarranty(familyId, warrantyId);
-    return warrantyRecordMapper.deleteById(warranty.getId()) > 0;
+    boolean deleted = warrantyRecordMapper.deleteById(warranty.getId()) > 0;
+    if (deleted) {
+      dashboardCacheInvalidator.evictAfterCommit(familyId);
+    }
+    return deleted;
   }
 
   /**

@@ -166,7 +166,7 @@ onUnmounted(() => {
     </el-card>
 
     <el-card class="glass-card" shadow="never">
-      <el-table v-loading="loading" :data="warranties">
+      <el-table v-loading="loading" :data="warranties" class="desktop-data-table">
         <el-table-column prop="deviceName" label="设备" min-width="150">
           <template #default="{ row }">
             <el-link type="primary" @click="router.push(`/devices/${row.deviceId}`)">
@@ -195,6 +195,43 @@ onUnmounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div v-loading="loading" class="mobile-data-list" aria-label="保修记录列表">
+        <el-empty v-if="warranties.length === 0" description="当前窗口内没有即将过保记录" />
+        <article v-for="record in warranties" :key="record.id" class="mobile-data-card">
+          <div class="mobile-data-head">
+            <div>
+              <strong>{{ record.deviceName || `设备 ${record.deviceId}` }}</strong>
+              <p>{{ labelOf(warrantyTypeOptions, record.warrantyType) }}</p>
+            </div>
+            <el-tag :type="remainingDays(record.endDate) < 0 ? 'danger' : statusType('DUE_SOON')">
+              {{ remainingDays(record.endDate) < 0 ? '已过保' : `剩余 ${remainingDays(record.endDate)} 天` }}
+            </el-tag>
+          </div>
+          <div class="mobile-data-meta">
+            <div class="mobile-data-field">
+              <small>开始日期</small>
+              <span>{{ record.startDate }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>结束日期</small>
+              <span>{{ record.endDate }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>售后电话</small>
+              <span>{{ record.servicePhone || '-' }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>提前提醒</small>
+              <span>{{ record.remindDaysBefore }} 天</span>
+            </div>
+          </div>
+          <div class="mobile-data-actions">
+            <el-button type="primary" plain @click="openEdit(record)">编辑</el-button>
+            <el-button plain @click="router.push(`/devices/${record.deviceId}`)">设备详情</el-button>
+            <el-button type="danger" plain @click="handleDelete(record)">删除</el-button>
+          </div>
+        </article>
+      </div>
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"

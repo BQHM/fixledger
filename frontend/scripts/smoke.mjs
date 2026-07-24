@@ -19,8 +19,15 @@ function assertContains(source, expected, label) {
   }
 }
 
+function assertCondition(condition, label) {
+  if (!condition) {
+    throw new Error(`Invalid ${label}`);
+  }
+}
+
 const requiredViews = [
   'src/layouts/MainLayout.vue',
+  'src/views/home/HomeLandingView.vue',
   'src/views/auth/LoginView.vue',
   'src/views/auth/RegisterView.vue',
   'src/views/dashboard/DashboardView.vue',
@@ -37,10 +44,20 @@ const requiredViews = [
   'src/views/settings/FamilySettingsView.vue'
 ];
 
+const requiredPwaFiles = [
+  'public/manifest.webmanifest',
+  'public/offline.html',
+  'public/pwa-192x192.png',
+  'public/pwa-512x512.png',
+  'public/service-worker.js',
+  'src/pwa.ts'
+];
+
 const requiredRouteNames = [
   'login',
   'register',
   'dashboard',
+  'calendar',
   'devices',
   'device-create',
   'device-detail',
@@ -82,6 +99,9 @@ const apiContracts = [
 ];
 
 for (const path of requiredViews) {
+  assertFile(path);
+}
+for (const path of requiredPwaFiles) {
   assertFile(path);
 }
 
@@ -126,6 +146,92 @@ const dashboardView = readProjectFile('src/views/dashboard/DashboardView.vue');
 assertContains(dashboardView, 'first-device-guide', 'dashboard first device guide');
 assertContains(dashboardView, 'dataLoaded', 'dashboard empty guide load guard');
 assertContains(dashboardView, '/devices/create', 'dashboard create device action');
+assertContains(dashboardView, 'isCalendarPage', 'calendar page content separation');
+assertContains(dashboardView, 'dashboard-page', 'mobile home content scope');
+assertContains(dashboardView, 'isChartContainerReady', 'hidden chart render guard');
+assertContains(dashboardView, "from 'echarts/core'", 'modular ECharts core import');
+assertCondition(!dashboardView.includes("from 'echarts';"), 'dashboard avoids full ECharts import');
+
+const frontendEntry = readProjectFile('src/main.ts');
+assertContains(frontendEntry, "from './plugins/element-plus'", 'selective Element Plus installer');
+assertCondition(!frontendEntry.includes('import ElementPlus'), 'entry avoids full Element Plus plugin');
+
+const elementPlusInstaller = readProjectFile('src/plugins/element-plus.ts');
+for (const path of ['src/App.vue', ...requiredViews]) {
+  const source = readProjectFile(path);
+  for (const match of source.matchAll(/<el-([a-z-]+)/g)) {
+    const componentName = `El${match[1]
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('')}`;
+    assertContains(elementPlusInstaller, componentName, `${path} component ${componentName}`);
+  }
+}
+
+const mainLayout = readProjectFile('src/layouts/MainLayout.vue');
+assertContains(mainLayout, 'mobile-tabbar', 'mobile primary navigation');
+assertContains(mainLayout, 'aria-current', 'mobile navigation active state');
+assertContains(mainLayout, 'safe-area-inset-bottom', 'mobile safe area spacing');
+assertContains(mainLayout, 'display: none', 'mobile desktop sidebar removal');
+assertContains(mainLayout, 'const mobileMenus', 'mobile app navigation model');
+assertContains(mainLayout, "{ path: '/dashboard', label: '首页'", 'mobile home tab');
+assertContains(mainLayout, "{ path: '/settings/family', label: '我的'", 'mobile profile tab');
+assertContains(mainLayout, "route.path.startsWith('/reminders')", 'reminders calendar tab mapping');
+assertContains(mainLayout, "maintenance: '维修记录'", 'maintenance page title');
+assertContains(mainLayout, '安装到设备', 'PWA install command');
+assertContains(mainLayout, '更新应用', 'PWA update command');
+assertContains(mainLayout, '当前网络不可用', 'PWA offline state');
+
+const indexHtml = readProjectFile('index.html');
+assertContains(indexHtml, '<meta name="color-scheme" content="only light" />', 'light color scheme metadata');
+assertContains(indexHtml, 'rel="manifest" href="/manifest.webmanifest"', 'PWA manifest link');
+assertContains(indexHtml, 'name="theme-color"', 'PWA theme color metadata');
+
+const manifest = JSON.parse(readProjectFile('public/manifest.webmanifest'));
+assertCondition(manifest.name === 'FixLedger 家庭设备档案本', 'PWA manifest name');
+assertCondition(manifest.start_url === '/dashboard', 'PWA start URL');
+assertCondition(manifest.scope === '/', 'PWA scope');
+assertCondition(manifest.display === 'standalone', 'PWA standalone display');
+assertCondition(Array.isArray(manifest.icons) && manifest.icons.length >= 2, 'PWA icons');
+
+const serviceWorker = readProjectFile('public/service-worker.js');
+assertContains(serviceWorker, "'/api'", 'PWA API network-only boundary');
+assertContains(serviceWorker, "'/actuator'", 'PWA Actuator network-only boundary');
+assertContains(serviceWorker, "'/swagger-ui'", 'PWA Swagger network-only boundary');
+assertContains(serviceWorker, "'/v3/api-docs'", 'PWA API docs network-only boundary');
+assertContains(serviceWorker, "request.headers.has('Authorization')", 'PWA authorization cache exclusion');
+assertContains(serviceWorker, "request.mode === 'navigate'", 'PWA offline navigation fallback');
+assertContains(serviceWorker, "event.data?.type === 'SKIP_WAITING'", 'PWA controlled update activation');
+
+const offlinePage = readProjectFile('public/offline.html');
+assertContains(offlinePage, '当前网络不可用', 'PWA offline heading');
+assertContains(offlinePage, '重新连接', 'PWA offline retry command');
+
+const pwaModule = readProjectFile('src/pwa.ts');
+assertContains(pwaModule, "window.addEventListener('beforeinstallprompt'", 'PWA install event');
+assertContains(pwaModule, 'import.meta.env.PROD', 'production-only service worker registration');
+assertContains(pwaModule, "navigator.serviceWorker.register('/service-worker.js')", 'service worker registration');
+assertContains(pwaModule, 'navigator.onLine', 'PWA network status');
+
+const globalStyles = readProjectFile('src/styles/main.css');
+assertContains(globalStyles, 'color-scheme: only light', 'light color scheme style');
+assertContains(globalStyles, '.mobile-data-list', 'mobile data list styles');
+assertContains(globalStyles, '.desktop-data-table', 'desktop data table breakpoint');
+assertContains(globalStyles, 'flex-direction: column', 'mobile inline form stacking');
+assertContains(globalStyles, '.el-form--inline .el-select__selection', 'mobile select shrinking');
+
+const responsiveListViews = [
+  'src/views/settings/FamilySettingsView.vue',
+  'src/views/maintenance/MaintenanceView.vue',
+  'src/views/consumables/ConsumableView.vue',
+  'src/views/warranties/WarrantyView.vue',
+  'src/views/reminders/ReminderView.vue'
+];
+for (const path of responsiveListViews) {
+  const source = readProjectFile(path);
+  assertContains(source, 'desktop-data-table', `${path} desktop table`);
+  assertContains(source, 'mobile-data-list', `${path} mobile card list`);
+}
 
 const fileLibraryView = readProjectFile('src/views/files/FileLibraryView.vue');
 assertContains(fileLibraryView, 'credential-empty-guide', 'credential box empty device guide');

@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.page.PageResponse;
 import com.fixledger.modules.asset.entity.DeviceAssetEntity;
 import com.fixledger.modules.asset.entity.DeviceCategoryEntity;
@@ -35,7 +36,8 @@ class DeviceAssetServiceNPlusOneTest {
     DeviceAssetServiceImpl service = new DeviceAssetServiceImpl(
         deviceAssetMapper,
         deviceCategoryMapper,
-        familyService
+        familyService,
+        mock(DashboardCacheInvalidator.class)
     );
     DevicePageQuery query = new DevicePageQuery();
     query.setPageSize(2);

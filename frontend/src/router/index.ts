@@ -29,6 +29,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/layouts/MainLayout.vue'),
     children: [
       { path: 'dashboard', name: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue') },
+      { path: 'calendar', name: 'calendar', component: () => import('@/views/dashboard/DashboardView.vue') },
       { path: 'devices', name: 'devices', component: () => import('@/views/devices/DeviceListView.vue') },
       { path: 'devices/create', name: 'device-create', component: () => import('@/views/devices/DeviceFormView.vue') },
       { path: 'devices/:id', name: 'device-detail', component: () => import('@/views/devices/DeviceDetailView.vue') },

@@ -7,9 +7,12 @@ import {
   Refresh,
   WarningFilled
 } from '@element-plus/icons-vue';
-import * as echarts from 'echarts';
+import { LineChart, PieChart } from 'echarts/charts';
+import { GridComponent, TooltipComponent } from 'echarts/components';
+import { init, use, type ECharts } from 'echarts/core';
+import { CanvasRenderer } from 'echarts/renderers';
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { getCategoryDistribution, getDashboardSummary, getMaintenanceCostTrend, getReminderCalendar } from '@/api/dashboard';
 import { getDevicePage } from '@/api/device';
@@ -27,6 +30,8 @@ import type {
 } from '@/types/dashboard';
 import { labelOf, maintenanceStatusOptions, reminderTypeOptions, statusType } from '@/utils/dicts';
 
+use([LineChart, PieChart, GridComponent, TooltipComponent, CanvasRenderer]);
+
 interface CalendarCell {
   date: string;
   day: number;
@@ -36,6 +41,7 @@ interface CalendarCell {
 }
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 const loading = ref(false);
 const dataLoaded = ref(false);
@@ -50,12 +56,15 @@ const selectedMonth = ref(startOfMonth(new Date()));
 const selectedDate = ref(formatDate(new Date()));
 const categoryChartRef = ref<HTMLDivElement>();
 const costChartRef = ref<HTMLDivElement>();
-let categoryChart: echarts.ECharts | undefined;
-let costChart: echarts.ECharts | undefined;
+let categoryChart: ECharts | undefined;
+let costChart: ECharts | undefined;
 
 const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
 const familyId = computed(() => auth.currentFamilyId);
 const familyName = computed(() => auth.families.find((family) => family.id === auth.currentFamilyId)?.name ?? '我的家');
+const isCalendarPage = computed(() =>
+  route.path === '/calendar' || (route.path === '/dashboard' && route.query.focus === 'calendar')
+);
 
 const healthScore = computed(() => {
   const overdue = summary.value?.consumableOverdueCount ?? 0;
@@ -257,8 +266,8 @@ function addDays(date: Date, offset: number) {
 }
 
 function renderCharts() {
-  if (categoryChartRef.value) {
-    categoryChart = categoryChart || echarts.init(categoryChartRef.value);
+  if (isChartContainerReady(categoryChartRef.value)) {
+    categoryChart = categoryChart || init(categoryChartRef.value);
     categoryChart.setOption({
       tooltip: { trigger: 'item' },
       color: ['#ff6900', '#3aa6b9', '#6b7280', '#ff9f0a', '#ff3b30'],
@@ -272,8 +281,8 @@ function renderCharts() {
       ]
     });
   }
-  if (costChartRef.value) {
-    costChart = costChart || echarts.init(costChartRef.value);
+  if (isChartContainerReady(costChartRef.value)) {
+    costChart = costChart || init(costChartRef.value);
     costChart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { left: 42, right: 18, top: 34, bottom: 36 },
@@ -292,7 +301,12 @@ function renderCharts() {
   }
 }
 
+function isChartContainerReady(element?: HTMLDivElement): element is HTMLDivElement {
+  return Boolean(element && element.clientWidth > 0 && element.clientHeight > 0);
+}
+
 function resizeCharts() {
+  renderCharts();
   categoryChart?.resize();
   costChart?.resize();
 }
@@ -312,8 +326,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-loading="loading" class="page-shell home-shell">
-    <section class="home-summary">
+  <div
+    v-loading="loading"
+    class="page-shell home-shell"
+    :class="isCalendarPage ? 'calendar-page' : 'dashboard-page'"
+  >
+    <section v-if="!isCalendarPage" class="home-summary">
       <div class="summary-copy">
         <p class="section-kicker">总览</p>
         <h1>{{ familyName }}</h1>
@@ -330,14 +348,14 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <div class="metric-grid home-metrics">
+    <div v-if="!isCalendarPage" class="metric-grid home-metrics">
       <div v-for="item in metrics" :key="item.label" class="metric-card">
         <div class="metric-label">{{ item.label }}</div>
         <div class="metric-value">{{ item.value }}<small>{{ item.suffix }}</small></div>
       </div>
     </div>
 
-    <section v-if="hasNoDevices" class="first-device-guide" aria-label="新用户设备引导">
+    <section v-if="!isCalendarPage && hasNoDevices" class="first-device-guide" aria-label="新用户设备引导">
       <div>
         <p class="section-kicker">开始使用</p>
         <h2>先添加第一台设备</h2>
@@ -356,7 +374,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <div class="home-grid">
+    <div v-if="!isCalendarPage" class="home-grid">
       <el-card class="glass-card task-card" shadow="never">
         <template #header>
           <div class="card-title-row">
@@ -472,7 +490,7 @@ onUnmounted(() => {
       </div>
     </el-card>
 
-    <div class="section-grid">
+    <div v-if="!isCalendarPage" class="section-grid">
       <el-card class="glass-card" shadow="never">
         <template #header>设备分类分布</template>
         <div ref="categoryChartRef" class="chart-box" />
@@ -483,7 +501,7 @@ onUnmounted(() => {
       </el-card>
     </div>
 
-    <div class="section-grid">
+    <div v-if="!isCalendarPage" class="section-grid">
       <el-card class="glass-card" shadow="never">
         <template #header>最近提醒</template>
         <el-timeline>
@@ -962,12 +980,86 @@ onUnmounted(() => {
 }
 
 @media (max-width: 760px) {
+  .dashboard-page .summary-copy > .section-kicker,
+  .dashboard-page .summary-copy > p:not(.section-kicker),
+  .dashboard-page .home-grid,
+  .dashboard-page .calendar-card,
+  .dashboard-page .section-grid {
+    display: none;
+  }
+
   .home-summary {
-    padding: 20px;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .summary-copy h1 {
+    font-size: 26px;
+  }
+
+  .summary-copy p {
+    margin: 10px 0 0;
+    line-height: 1.65;
+  }
+
+  .summary-actions {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .summary-actions .el-button {
+    min-width: 0;
+    flex: 1;
+    margin-left: 0;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .health-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 0;
+    padding: 14px 16px;
+    align-items: center;
+    gap: 4px 14px;
   }
 
   .health-card strong {
-    font-size: 38px;
+    margin-top: 0;
+    font-size: 32px;
+  }
+
+  .health-card p {
+    grid-row: 1 / 3;
+    grid-column: 2;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .home-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home-metrics .metric-card {
+    min-height: 94px;
+    padding: 14px;
+  }
+
+  .home-metrics .metric-card:last-child {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 76px;
+  }
+
+  .dashboard-page .home-metrics .metric-card:last-child {
+    display: none;
+  }
+
+  .home-metrics .metric-card:last-child .metric-value {
+    margin-top: 0;
   }
 
   .calendar-head {
@@ -988,8 +1080,8 @@ onUnmounted(() => {
   }
 
   .calendar-cell {
-    min-height: 86px;
-    padding: 8px;
+    min-height: 54px;
+    padding: 6px;
   }
 
   .cell-reminder-title {

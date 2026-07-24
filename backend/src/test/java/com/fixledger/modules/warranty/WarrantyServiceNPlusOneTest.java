@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.page.PageResponse;
 import com.fixledger.modules.asset.entity.DeviceAssetEntity;
 import com.fixledger.modules.asset.mapper.DeviceAssetMapper;
@@ -35,7 +36,8 @@ class WarrantyServiceNPlusOneTest {
     WarrantyServiceImpl service = new WarrantyServiceImpl(
         warrantyRecordMapper,
         deviceAssetMapper,
-        familyService
+        familyService,
+        mock(DashboardCacheInvalidator.class)
     );
     WarrantyExpiringQuery query = new WarrantyExpiringQuery();
     query.setPageSize(2);

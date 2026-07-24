@@ -3,9 +3,9 @@ package com.fixledger.infrastructure.notification;
 import com.fixledger.modules.reminder.entity.ReminderTaskEntity;
 
 /**
- * 通知基础设施入口。当前实现只写站内通知记录，真实邮件/Webhook 后续在此扩展。
+ * 通知记录创建入口。提醒事务只写数据库记录，不调用外部邮件或 Webhook。
  */
 public interface NotificationService {
 
-  void createInAppNotifications(ReminderTaskEntity reminder);
+  void createNotifications(ReminderTaskEntity reminder);
 }

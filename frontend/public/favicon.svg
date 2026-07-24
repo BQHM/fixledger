@@ -6,12 +6,12 @@
       <stop offset="1" stop-color="#e8e6ff"/>
     </linearGradient>
     <linearGradient id="accent" x1="18" y1="16" x2="48" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0a84ff"/>
-      <stop offset="1" stop-color="#8e8cff"/>
+      <stop offset="0" stop-color="#ff8f2f"/>
+      <stop offset="1" stop-color="#ff6900"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="18" fill="#f3f8ff"/>
   <rect x="10" y="9" width="44" height="46" rx="14" fill="url(#glass)" stroke="#ffffff" stroke-width="2"/>
   <path d="M20 28h24M20 38h15" stroke="url(#accent)" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="43" cy="39" r="5" fill="#0a84ff"/>
+  <circle cx="43" cy="39" r="5" fill="#ff6900"/>
 </svg>

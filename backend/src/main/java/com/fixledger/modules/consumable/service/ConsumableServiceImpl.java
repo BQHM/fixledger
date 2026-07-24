@@ -2,6 +2,7 @@ package com.fixledger.modules.consumable.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.page.PageResponse;
@@ -43,17 +44,20 @@ public class ConsumableServiceImpl implements ConsumableService {
   private final ConsumableReplaceRecordMapper replaceRecordMapper;
   private final DeviceAssetMapper deviceAssetMapper;
   private final FamilyService familyService;
+  private final DashboardCacheInvalidator dashboardCacheInvalidator;
 
   public ConsumableServiceImpl(
       ConsumableItemMapper consumableItemMapper,
       ConsumableReplaceRecordMapper replaceRecordMapper,
       DeviceAssetMapper deviceAssetMapper,
-      FamilyService familyService
+      FamilyService familyService,
+      DashboardCacheInvalidator dashboardCacheInvalidator
   ) {
     this.consumableItemMapper = consumableItemMapper;
     this.replaceRecordMapper = replaceRecordMapper;
     this.deviceAssetMapper = deviceAssetMapper;
     this.familyService = familyService;
+    this.dashboardCacheInvalidator = dashboardCacheInvalidator;
   }
 
   /**
@@ -126,6 +130,7 @@ public class ConsumableServiceImpl implements ConsumableService {
     refreshStatus(entity);
     entity.setRemark(request.remark());
     consumableItemMapper.insert(entity);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(entity, device.getName());
   }
 
@@ -167,6 +172,7 @@ public class ConsumableServiceImpl implements ConsumableService {
     refreshStatus(entity);
     entity.setRemark(request.remark());
     consumableItemMapper.updateById(entity);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(entity, device.getName());
   }
 
@@ -185,7 +191,11 @@ public class ConsumableServiceImpl implements ConsumableService {
   public boolean deleteConsumable(Long userId, Long familyId, Long consumableId) {
     familyService.checkFamilyMember(userId, familyId);
     ConsumableItemEntity entity = getConsumable(familyId, consumableId);
-    return consumableItemMapper.deleteById(entity.getId()) > 0;
+    boolean deleted = consumableItemMapper.deleteById(entity.getId()) > 0;
+    if (deleted) {
+      dashboardCacheInvalidator.evictAfterCommit(familyId);
+    }
+    return deleted;
   }
 
   /**
@@ -230,6 +240,7 @@ public class ConsumableServiceImpl implements ConsumableService {
     ));
     refreshStatus(consumable);
     consumableItemMapper.updateById(consumable);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toReplaceResponse(record);
   }
 

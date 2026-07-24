@@ -33,7 +33,7 @@ FixLedger 要解决的问题是：
 | Spring Security + JWT | 登录认证和接口鉴权 | 无状态认证，退出登录通过 Redis 黑名单让旧 Token 失效 |
 | MyBatis Plus | ORM 和分页 CRUD | 简化常规 CRUD，复杂查询仍可扩展 XML |
 | MySQL 8 | 主业务数据库 | 保存设备、保修、耗材、维修、提醒和附件元数据 |
-| Redis 7 | 去重、Token 黑名单、缓存钩子 | 提醒去重、退出登录黑名单、首页刷新标记/缓存钩子 |
+| Redis 7 | 去重、Token 黑名单、热点缓存 | 提醒去重、退出登录黑名单、首页短 TTL 摘要缓存 |
 | Spring Scheduler | 定时任务 | 定期扫描保修到期和耗材更换提醒 |
 | RustFS / S3 兼容存储 | 文件内容存储 | Docker 默认对象存储，本地文件保留测试兜底 |
 | 自定义 AiClient | AI 辅助能力抽象 | Mock 和 OpenAI-compatible 可替换，AI 失败不影响核心流程 |
@@ -254,7 +254,7 @@ AI 不能做：
 | 场景 | Key | 说明 |
 | --- | --- | --- |
 | 提醒去重 | `fixledger:reminder:dedupe:{type}:{bizId}:{date}` | 避免同一事项同一天重复生成提醒 |
-| 首页刷新标记 / 缓存钩子 | `fixledger:dashboard:summary:{familyId}` | 当前写入刷新标记，后续可扩展为首页热点数据短期缓存 |
+| 首页摘要缓存 | `fixledger:dashboard:summary:{familyId}` | 完整摘要缓存 2 分钟，写事务提交后按家庭失效，异常时回源 MySQL |
 | JWT 黑名单 | `fixledger:auth:blacklist:{tokenId}` | 退出登录后让旧 Token 立即失效 |
 
 面试口径：
@@ -329,7 +329,7 @@ docker compose config --quiet
 2. 在提醒中心触发手动扫描，说明真实提醒由后端定时任务生成，不依赖前端触发。
 3. 打开 Docker Compose，说明前端、后端、MySQL、Redis、RustFS 的一键编排。
 4. 展示 `docs/tasks.md` 的 P12/P13/P14 验证记录，说明测试、安全和演示留痕。
-5. 说明 Redis 的职责边界：提醒去重、JWT 黑名单、首页刷新标记/缓存钩子。
+5. 说明 Redis 的职责边界：提醒去重、JWT 黑名单、首页短 TTL 摘要缓存和失败回源。
 6. 说明 P13 安全收口：家庭空间隔离、附件扩展名/MIME/魔数校验、JWT fail-safe、金额和分页边界。
 
 ### 14.3 现场兜底口径
@@ -354,20 +354,20 @@ docker compose config --quiet
 - P15-P18：完成公开首页、Liquid Glass 风格前端重做、设备护照、凭证盒预览、说明书关键词搜索、默认分类初始化和空数据引导收口。
 - P19-P23：完成演示契约检查、家庭成员协作、票据草稿分类预填、操作日志、通知抽象、CI 门禁和生产准备检查。
 - P24：完成家庭数据导出，设备清单和维修费用报表都可下载 CSV，并保留家庭权限校验、批量查询和 CSV 安全处理。
+- P27：完成移动端主流程与 PWA 基础，业务 API 和鉴权响应不进入离线缓存。
+- P28：完成邮件/Webhook Outbox 投递、失败重试和超时领取恢复，外部渠道默认关闭。
+- P29：完成首页缓存与单次聚合查询、Micrometer 指标、同步导出边界和前端生产拆包。
 
 当前对演示边界的取舍：
 
-- 已做 Docker 一键启动、RustFS、Mock AI、CI、测试记录、安全审计、家庭协作、操作日志和 CSV 导出，因为它们能直接提升演示可信度。
-- 暂缓 OCR、复杂 PDF 解析、邮件/Webhook、对象存储临时 URL、真实 AI Provider、多端 Refresh Token 和完整 RBAC，因为它们会引入外部服务、密钥、访问有效期和更复杂的会话策略；P15 已先用后端鉴权下载流完成图片/PDF Blob 预览，P16.2 已补充说明书第一版关键词搜索。
+- 已做 Docker 一键启动、RustFS、Mock AI、CI、测试记录、安全审计、家庭协作、操作日志、CSV 导出、可选外部通知和关键指标，因为它们能直接提升演示可信度。
+- 暂缓 OCR、复杂 PDF 解析、对象存储临时 URL、真实 AI Provider、多端 Refresh Token 和完整 RBAC，因为它们会引入外部服务、访问有效期和更复杂的会话策略；P15 已先用后端鉴权下载流完成图片/PDF Blob 预览，P16.2 已补充说明书第一版关键词搜索。
 - 初始化 SQL 中的附件数据是元数据样例；如果要现场下载文件，应提前通过页面上传真实文件。
 
 后续建议：
 
 - P25：设备二维码标签，支持扫码查看设备档案或受限只读设备卡片。
 - P26：OCR 与智能归档，发票图片和说明书 PDF 识别后生成可确认草稿。
-- P27：移动端与 PWA，优化手机端查看设备、凭证和维修记录的体验。
-- P28：外部通知渠道，在 `NotificationService` 后接入邮件/Webhook、失败记录和重试。
-- P29：性能与可观测性，补首页缓存、慢查询审查、关键接口指标和导出异步化预案。
 - P30：生产发布收口，补生产配置、备份恢复、HTTPS、回滚和发布说明。
 
 ## 16. 高频问答

@@ -16,7 +16,7 @@ FixLedger 要做的是一个面向家庭场景的设备生命周期管理工具�
 | 层级 | 技术 | 当前约定 |
 | --- | --- | --- |
 | 后端 | JDK 21 / Spring Boot 3.3.x / Spring Security / MyBatis Plus 3.5.x | 单应用、模块化分包、REST API |
-| 数据 | MySQL 8 / Redis 7 | MySQL 保存业务事实，Redis 用于提醒去重、JWT 黑名单和首页刷新标记/缓存钩子 |
+| 数据 | MySQL 8 / Redis 7 | MySQL 保存业务事实，Redis 用于提醒去重、JWT 黑名单和首页短 TTL 摘要缓存 |
 | 文件 | RustFS / S3 兼容对象存储 / 本地文件兜底 | Docker 默认 RustFS，测试环境默认本地文件 |
 | AI | 自定义 AiClient / Mock / OpenAI-compatible | AI 可关闭、可 Mock、不能成为核心依赖 |
 | 前端 | Vue 3 / TypeScript / Vite / Element Plus / Pinia / Vue Router / Axios / ECharts | 场景化家庭应用，不做泛后台模板 |

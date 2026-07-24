@@ -2,6 +2,7 @@ package com.fixledger.modules.maintenance.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
 import com.fixledger.common.page.PageResponse;
@@ -42,15 +43,18 @@ public class MaintenanceServiceImpl implements MaintenanceService {
   private final MaintenanceRecordMapper maintenanceRecordMapper;
   private final DeviceAssetMapper deviceAssetMapper;
   private final FamilyService familyService;
+  private final DashboardCacheInvalidator dashboardCacheInvalidator;
 
   public MaintenanceServiceImpl(
       MaintenanceRecordMapper maintenanceRecordMapper,
       DeviceAssetMapper deviceAssetMapper,
-      FamilyService familyService
+      FamilyService familyService,
+      DashboardCacheInvalidator dashboardCacheInvalidator
   ) {
     this.maintenanceRecordMapper = maintenanceRecordMapper;
     this.deviceAssetMapper = deviceAssetMapper;
     this.familyService = familyService;
+    this.dashboardCacheInvalidator = dashboardCacheInvalidator;
   }
 
   /**
@@ -85,6 +89,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     entity.setRepairChannel(request.repairChannel());
     entity.setRepairContact(request.repairContact());
     maintenanceRecordMapper.insert(entity);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(entity, device.getName());
   }
 
@@ -164,6 +169,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     entity.setResultDescription(request.resultDescription());
     entity.setCompletedAt(request.completedAt());
     maintenanceRecordMapper.updateById(entity);
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(entity);
   }
 
@@ -205,6 +211,7 @@ public class MaintenanceServiceImpl implements MaintenanceService {
     if (target == MaintenanceStatus.REPAIRING) {
       syncDeviceStatus(familyId, entity.getDeviceId(), DeviceStatus.REPAIRING);
     }
+    dashboardCacheInvalidator.evictAfterCommit(familyId);
     return toResponse(entity);
   }
 
@@ -223,7 +230,11 @@ public class MaintenanceServiceImpl implements MaintenanceService {
   public boolean deleteMaintenance(Long userId, Long familyId, Long maintenanceId) {
     familyService.checkFamilyMember(userId, familyId);
     MaintenanceRecordEntity entity = getMaintenance(familyId, maintenanceId);
-    return maintenanceRecordMapper.deleteById(entity.getId()) > 0;
+    boolean deleted = maintenanceRecordMapper.deleteById(entity.getId()) > 0;
+    if (deleted) {
+      dashboardCacheInvalidator.evictAfterCommit(familyId);
+    }
+    return deleted;
   }
 
   /**

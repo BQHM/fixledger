@@ -2,18 +2,14 @@ package com.fixledger.modules.dashboard.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.fixledger.common.constant.RedisKeys;
 import com.fixledger.common.exception.BusinessException;
 import com.fixledger.common.exception.ErrorCode;
-import com.fixledger.infrastructure.redis.RedisService;
 import com.fixledger.modules.asset.entity.DeviceAssetEntity;
 import com.fixledger.modules.asset.entity.DeviceCategoryEntity;
-import com.fixledger.modules.asset.enums.DeviceStatus;
 import com.fixledger.modules.asset.mapper.DeviceAssetMapper;
 import com.fixledger.modules.asset.mapper.DeviceCategoryMapper;
-import com.fixledger.modules.consumable.entity.ConsumableItemEntity;
-import com.fixledger.modules.consumable.enums.ConsumableStatus;
-import com.fixledger.modules.consumable.mapper.ConsumableItemMapper;
+import com.fixledger.modules.dashboard.dto.DashboardSummaryStatisticsDTO;
+import com.fixledger.modules.dashboard.mapper.DashboardStatisticsMapper;
 import com.fixledger.modules.dashboard.response.DashboardSummaryResponse;
 import com.fixledger.modules.dashboard.response.DeviceCategoryDistributionResponse;
 import com.fixledger.modules.dashboard.response.MaintenanceCostTrendResponse;
@@ -25,10 +21,9 @@ import com.fixledger.modules.maintenance.enums.MaintenanceStatus;
 import com.fixledger.modules.maintenance.mapper.MaintenanceRecordMapper;
 import com.fixledger.modules.reminder.entity.ReminderTaskEntity;
 import com.fixledger.modules.reminder.mapper.ReminderTaskMapper;
-import com.fixledger.modules.warranty.entity.WarrantyRecordEntity;
-import com.fixledger.modules.warranty.mapper.WarrantyRecordMapper;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -37,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 /**
@@ -51,35 +47,37 @@ public class DashboardServiceImpl implements DashboardService {
 
   private static final int DEFAULT_MONTHS = 6;
   private static final int MAX_MONTHS = 24;
-  private static final Duration SUMMARY_CACHE_TTL = Duration.ofMinutes(5);
+  private static final String SUMMARY_LOAD_METRIC = "fixledger.dashboard.summary.load";
 
   private final DeviceAssetMapper deviceAssetMapper;
   private final DeviceCategoryMapper deviceCategoryMapper;
-  private final WarrantyRecordMapper warrantyRecordMapper;
-  private final ConsumableItemMapper consumableItemMapper;
   private final MaintenanceRecordMapper maintenanceRecordMapper;
   private final ReminderTaskMapper reminderTaskMapper;
+  private final DashboardStatisticsMapper dashboardStatisticsMapper;
   private final FamilyService familyService;
-  private final RedisService redisService;
+  private final DashboardSummaryCacheService summaryCacheService;
+  private final Timer summaryLoadTimer;
 
   public DashboardServiceImpl(
       DeviceAssetMapper deviceAssetMapper,
       DeviceCategoryMapper deviceCategoryMapper,
-      WarrantyRecordMapper warrantyRecordMapper,
-      ConsumableItemMapper consumableItemMapper,
       MaintenanceRecordMapper maintenanceRecordMapper,
       ReminderTaskMapper reminderTaskMapper,
+      DashboardStatisticsMapper dashboardStatisticsMapper,
       FamilyService familyService,
-      RedisService redisService
+      DashboardSummaryCacheService summaryCacheService,
+      MeterRegistry meterRegistry
   ) {
     this.deviceAssetMapper = deviceAssetMapper;
     this.deviceCategoryMapper = deviceCategoryMapper;
-    this.warrantyRecordMapper = warrantyRecordMapper;
-    this.consumableItemMapper = consumableItemMapper;
     this.maintenanceRecordMapper = maintenanceRecordMapper;
     this.reminderTaskMapper = reminderTaskMapper;
+    this.dashboardStatisticsMapper = dashboardStatisticsMapper;
     this.familyService = familyService;
-    this.redisService = redisService;
+    this.summaryCacheService = summaryCacheService;
+    this.summaryLoadTimer = Timer.builder(SUMMARY_LOAD_METRIC)
+        .publishPercentileHistogram()
+        .register(meterRegistry);
   }
 
   /**
@@ -94,19 +92,34 @@ public class DashboardServiceImpl implements DashboardService {
   @Override
   public DashboardSummaryResponse summary(Long userId, Long familyId) {
     familyService.checkFamilyMember(userId, familyId);
-    // 当前先写入刷新标记，后续可替换为完整摘要缓存。
-    redisService.set(RedisKeys.dashboardSummary(familyId), "refreshed", SUMMARY_CACHE_TTL);
+    Optional<DashboardSummaryResponse> cached = summaryCacheService.get(familyId);
+    if (cached.isPresent()) {
+      return cached.get();
+    }
+    DashboardSummaryResponse summary = summaryLoadTimer.record(() -> loadSummary(familyId));
+    summaryCacheService.put(familyId, summary);
+    return summary;
+  }
+
+  private DashboardSummaryResponse loadSummary(Long familyId) {
     LocalDate today = LocalDate.now();
     LocalDateTime monthStart = YearMonth.from(today).atDay(1).atStartOfDay();
     LocalDateTime monthEnd = YearMonth.from(today).plusMonths(1).atDay(1).atStartOfDay();
+    DashboardSummaryStatisticsDTO statistics = dashboardStatisticsMapper.selectSummary(
+        familyId,
+        today,
+        today.plusDays(30),
+        monthStart,
+        monthEnd
+    );
     return new DashboardSummaryResponse(
-        countDevices(familyId),
-        countWarrantyExpiring(familyId, today),
-        countWarrantyExpired(familyId, today),
-        countConsumables(familyId, ConsumableStatus.DUE_SOON),
-        countConsumables(familyId, ConsumableStatus.OVERDUE),
-        countRepairing(familyId),
-        sumMaintenanceCost(familyId, monthStart, monthEnd)
+        statistics.getDeviceTotal(),
+        statistics.getWarrantyExpiringCount(),
+        statistics.getWarrantyExpiredCount(),
+        statistics.getConsumableDueSoonCount(),
+        statistics.getConsumableOverdueCount(),
+        statistics.getRepairingCount(),
+        statistics.getMonthlyMaintenanceCost()
     );
   }
 
@@ -253,49 +266,6 @@ public class DashboardServiceImpl implements DashboardService {
       return number.longValue();
     }
     return Long.valueOf(value.toString());
-  }
-
-  private long countDevices(Long familyId) {
-    return deviceAssetMapper.selectCount(new LambdaQueryWrapper<DeviceAssetEntity>()
-        .eq(DeviceAssetEntity::getFamilyId, familyId));
-  }
-
-  private long countWarrantyExpiring(Long familyId, LocalDate today) {
-    return warrantyRecordMapper.selectCount(new LambdaQueryWrapper<WarrantyRecordEntity>()
-        .eq(WarrantyRecordEntity::getFamilyId, familyId)
-        .ge(WarrantyRecordEntity::getEndDate, today)
-        .le(WarrantyRecordEntity::getEndDate, today.plusDays(30)));
-  }
-
-  private long countWarrantyExpired(Long familyId, LocalDate today) {
-    return warrantyRecordMapper.selectCount(new LambdaQueryWrapper<WarrantyRecordEntity>()
-        .eq(WarrantyRecordEntity::getFamilyId, familyId)
-        .lt(WarrantyRecordEntity::getEndDate, today));
-  }
-
-  private long countConsumables(Long familyId, ConsumableStatus status) {
-    return consumableItemMapper.selectCount(new LambdaQueryWrapper<ConsumableItemEntity>()
-        .eq(ConsumableItemEntity::getFamilyId, familyId)
-        .eq(ConsumableItemEntity::getStatus, status.getCode())
-        .eq(ConsumableItemEntity::getEnabled, true));
-  }
-
-  private long countRepairing(Long familyId) {
-    return maintenanceRecordMapper.selectCount(new LambdaQueryWrapper<MaintenanceRecordEntity>()
-        .eq(MaintenanceRecordEntity::getFamilyId, familyId)
-        .eq(MaintenanceRecordEntity::getStatus, MaintenanceStatus.REPAIRING.getCode()));
-  }
-
-  private BigDecimal sumMaintenanceCost(
-      Long familyId,
-      LocalDateTime start,
-      LocalDateTime end
-  ) {
-    BigDecimal total = BigDecimal.ZERO;
-    for (MaintenanceRecordEntity record : listCostRecords(familyId, start, end)) {
-      total = total.add(record.getRepairCost());
-    }
-    return total;
   }
 
   private List<MaintenanceRecordEntity> listCostRecords(

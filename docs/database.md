@@ -319,6 +319,7 @@ CREATE TABLE fl_device_asset (
   updated_by BIGINT DEFAULT NULL,
   deleted TINYINT NOT NULL DEFAULT 0,
   KEY idx_fl_device_asset_family (family_id),
+  KEY idx_fl_device_asset_list (family_id, updated_at),
   KEY idx_fl_device_asset_category (category_id),
   KEY idx_fl_device_asset_status (family_id, status),
   KEY idx_fl_device_asset_brand (family_id, brand),
@@ -470,8 +471,12 @@ CREATE TABLE fl_notification_record (
   channel VARCHAR(32) NOT NULL,
   title VARCHAR(128) NOT NULL,
   content VARCHAR(1024) DEFAULT NULL,
+  recipient VARCHAR(512) DEFAULT NULL,
   status VARCHAR(32) NOT NULL,
   error_message VARCHAR(1024) DEFAULT NULL,
+  attempt_count INT NOT NULL DEFAULT 0,
+  next_retry_at DATETIME DEFAULT NULL,
+  last_attempt_at DATETIME DEFAULT NULL,
   sent_at DATETIME DEFAULT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
@@ -481,9 +486,19 @@ CREATE TABLE fl_notification_record (
   KEY idx_fl_notification_family (family_id),
   KEY idx_fl_notification_user (user_id),
   KEY idx_fl_notification_status (status),
+  KEY idx_fl_notification_dispatch (status, channel, next_retry_at, created_at),
+  KEY idx_fl_notification_processing (status, last_attempt_at),
   KEY idx_fl_notification_sent_at (sent_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
+
+P28 字段说明：
+
+- `recipient`：邮件收件地址快照；Webhook 使用配置标识，不保存带密钥的 URL。
+- `attempt_count`：已领取的投递尝试次数，领取时原子加一。
+- `next_retry_at`：失败后的下一次可领取时间；达到最大次数后为空。
+- `last_attempt_at`：最近一次领取时间，超过配置时限的 `PROCESSING` 记录会自动恢复。
+- `status`：`PENDING`、`PROCESSING`、`SENT`、`FAILED`。
 
 ## 4.15 fl_file_resource 文件资源表
 
@@ -611,7 +626,8 @@ erDiagram
 
 ### 6.2 常用筛选索引
 
-- 设备列表：`family_id + status`、`family_id + brand`、`category_id`。
+- 设备列表：默认排序使用 `family_id + updated_at`，筛选使用 `family_id + status`、
+  `family_id + brand`、`category_id`。
 - 保修提醒：`family_id + end_date`。
 - 耗材提醒：`family_id + next_remind_date`。
 - 维修列表：`family_id + status`、`device_id`。
@@ -721,7 +737,9 @@ P14 在不改变表结构的前提下，把现有演示数据整理成可讲解�
 
 ### 11.3 fl_export_record 导出记录表
 
-用于异步导出家庭设备清单和维修费用报表。P24 先实现同步 CSV 下载，不新建该表；如果后续需要大文件、导出历史、失败重试或后台任务，再落该表。
+用于未来异步导出家庭设备清单和维修费用报表。P29 保留同步 5000 行上限，不新建该表；
+当真实家庭数据持续超过同步阈值时，再按 `PENDING -> PROCESSING -> SUCCEEDED/FAILED`
+状态流转落表，并记录文件资源、尝试次数、下次重试时间和失败原因。
 
 ## 12. P10.3 当前表结构对齐说明
 

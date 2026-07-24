@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fixledger.modules.dashboard.mapper.DashboardStatisticsMapper">
+
+  <select id="selectSummary"
+          resultType="com.fixledger.modules.dashboard.dto.DashboardSummaryStatisticsDTO">
+    SELECT
+      (
+        SELECT COUNT(*)
+        FROM fl_device_asset
+        WHERE family_id = #{familyId} AND deleted = 0
+      ) AS device_total,
+      (
+        SELECT COUNT(*)
+        FROM fl_warranty_record
+        WHERE family_id = #{familyId}
+          AND end_date &gt;= #{today}
+          AND end_date &lt;= #{warrantyEnd}
+          AND deleted = 0
+      ) AS warranty_expiring_count,
+      (
+        SELECT COUNT(*)
+        FROM fl_warranty_record
+        WHERE family_id = #{familyId}
+          AND end_date &lt; #{today}
+          AND deleted = 0
+      ) AS warranty_expired_count,
+      (
+        SELECT COUNT(*)
+        FROM fl_consumable_item
+        WHERE family_id = #{familyId}
+          AND status = 'DUE_SOON'
+          AND enabled = 1
+          AND deleted = 0
+      ) AS consumable_due_soon_count,
+      (
+        SELECT COUNT(*)
+        FROM fl_consumable_item
+        WHERE family_id = #{familyId}
+          AND status = 'OVERDUE'
+          AND enabled = 1
+          AND deleted = 0
+      ) AS consumable_overdue_count,
+      (
+        SELECT COUNT(*)
+        FROM fl_maintenance_record
+        WHERE family_id = #{familyId}
+          AND status = 'REPAIRING'
+          AND deleted = 0
+      ) AS repairing_count,
+      (
+        SELECT COALESCE(SUM(repair_cost), 0)
+        FROM fl_maintenance_record
+        WHERE family_id = #{familyId}
+          AND status != 'CANCELED'
+          AND repair_cost IS NOT NULL
+          AND completed_at &gt;= #{monthStart}
+          AND completed_at &lt; #{monthEnd}
+          AND deleted = 0
+      ) AS monthly_maintenance_cost
+  </select>
+</mapper>

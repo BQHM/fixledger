@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fixledger.common.cache.DashboardCacheInvalidator;
 import com.fixledger.modules.asset.entity.DeviceAssetEntity;
 import com.fixledger.modules.asset.mapper.DeviceAssetMapper;
 import com.fixledger.modules.family.service.FamilyService;
@@ -30,7 +31,8 @@ class MaintenanceServiceFamilyIsolationTest {
     MaintenanceServiceImpl service = new MaintenanceServiceImpl(
         maintenanceRecordMapper,
         deviceAssetMapper,
-        familyService
+        familyService,
+        mock(DashboardCacheInvalidator.class)
     );
     MaintenanceRecordEntity maintenance = maintenance(1L, 999L);
     DeviceAssetEntity otherFamilyDevice = new DeviceAssetEntity();

@@ -1,16 +1,16 @@
 import 'element-plus/dist/index.css';
 import './styles/main.css';
 
-import ElementPlus from 'element-plus';
-import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 
 import App from './App.vue';
+import { installElementPlus } from './plugins/element-plus';
+import { initializePwa } from './pwa';
 import router from './router';
 
-createApp(App)
-  .use(createPinia())
-  .use(router)
-  .use(ElementPlus, { locale: zhCn })
-  .mount('#app');
+initializePwa();
+
+const app = createApp(App);
+installElementPlus(app);
+app.use(createPinia()).use(router).mount('#app');

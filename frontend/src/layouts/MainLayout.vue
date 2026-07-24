@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import {
   Calendar,
+  Download,
   Files,
   HomeFilled,
   House,
   MagicStick,
   Memo,
-  Setting
+  RefreshRight,
+  Setting,
+  User,
+  WarningFilled
 } from '@element-plus/icons-vue';
 import { computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import {
+  applyPwaUpdate,
+  installPwa,
+  pwaCanInstall,
+  pwaIsOnline,
+  pwaUpdateAvailable
+} from '@/pwa';
 import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
@@ -18,20 +29,36 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const activeMenu = computed(() => {
-  if (route.path.startsWith('/devices')) return '/devices';
+  if (route.path.startsWith('/calendar') || route.path.startsWith('/reminders')) return '/calendar';
+  if (
+    route.path.startsWith('/devices') ||
+    route.path.startsWith('/warranties') ||
+    route.path.startsWith('/consumables') ||
+    route.path.startsWith('/maintenance')
+  ) {
+    return '/devices';
+  }
   if (route.path.startsWith('/files')) return '/files';
   if (route.path.startsWith('/ai-tools')) return '/ai-tools';
   if (route.path.startsWith('/settings')) return '/settings/family';
-  if (route.path.startsWith('/dashboard') && route.query.focus === 'calendar') return '/dashboard?focus=calendar';
+  if (route.path.startsWith('/dashboard') && route.query.focus === 'calendar') return '/calendar';
   return '/dashboard';
 });
 
 const primaryMenus = [
   { path: '/dashboard', label: '总览', hint: '设备状态与待办', icon: HomeFilled },
-  { path: '/dashboard?focus=calendar', label: '日历', hint: '提醒排期', icon: Calendar },
+  { path: '/calendar', label: '日历', hint: '提醒排期', icon: Calendar },
   { path: '/devices', label: '设备', hint: '档案与保修', icon: Memo },
   { path: '/files', label: '凭证', hint: '发票与说明书', icon: Files },
   { path: '/ai-tools', label: '辅助', hint: '提取与总结', icon: MagicStick }
+];
+
+const mobileMenus = [
+  { path: '/dashboard', label: '首页', icon: HomeFilled },
+  { path: '/devices', label: '设备', icon: Memo },
+  { path: '/calendar', label: '日历', icon: Calendar },
+  { path: '/files', label: '凭证', icon: Files },
+  { path: '/settings/family', label: '我的', icon: User }
 ];
 
 const secondaryMenus = [
@@ -43,12 +70,31 @@ const currentFamilyName = computed(() => {
 });
 
 const pageTitle = computed(() => {
-  if (route.path.startsWith('/devices')) return '设备档案';
-  if (route.path.startsWith('/files')) return '凭证归档';
-  if (route.path.startsWith('/ai-tools')) return '辅助工具';
-  if (route.path.startsWith('/settings')) return '家庭设置';
   if (route.path.startsWith('/dashboard') && route.query.focus === 'calendar') return '家庭日历';
-  return '家庭总览';
+  return {
+    dashboard: '家庭总览',
+    calendar: '家庭日历',
+    devices: '设备档案',
+    'device-create': '新建设备',
+    'device-detail': '设备详情',
+    'device-edit': '编辑设备',
+    warranties: '保修记录',
+    consumables: '耗材管理',
+    maintenance: '维修记录',
+    'maintenance-detail': '维修详情',
+    reminders: '提醒中心',
+    files: '凭证归档',
+    'ai-tools': '辅助工具',
+    'family-settings': '家庭设置'
+  }[String(route.name)] ?? '家庭总览';
+});
+
+const mobilePageTitle = computed(() => {
+  if (route.name === 'dashboard') return '首页';
+  if (route.name === 'calendar') return '日历';
+  if (route.name === 'devices') return '设备';
+  if (route.name === 'family-settings') return '我的';
+  return pageTitle.value;
 });
 
 onMounted(() => {
@@ -65,6 +111,14 @@ function handleFamilyChange(value: number) {
 async function handleLogout() {
   await auth.logout();
   router.push('/login');
+}
+
+async function handleInstallPwa() {
+  await installPwa();
+}
+
+function handlePwaUpdate() {
+  applyPwaUpdate();
 }
 </script>
 
@@ -104,10 +158,11 @@ async function handleLogout() {
       </div>
     </el-aside>
 
-    <el-container>
+    <el-container class="app-workspace">
       <el-header class="app-header">
-        <div>
-          <div class="header-title">{{ pageTitle }}</div>
+        <div class="header-copy">
+          <div class="header-title desktop-header-title">{{ pageTitle }}</div>
+          <div class="header-title mobile-header-title">{{ mobilePageTitle }}</div>
           <div class="header-subtitle">先处理待办，再补齐设备资料。</div>
         </div>
         <div class="header-actions">
@@ -129,16 +184,42 @@ async function handleLogout() {
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item disabled>{{ auth.user?.username }}</el-dropdown-item>
+                <el-dropdown-item @click="router.push('/settings/family')">家庭设置</el-dropdown-item>
+                <el-dropdown-item v-if="pwaCanInstall" :icon="Download" @click="handleInstallPwa">
+                  安装到设备
+                </el-dropdown-item>
+                <el-dropdown-item v-if="pwaUpdateAvailable" :icon="RefreshRight" @click="handlePwaUpdate">
+                  更新应用
+                </el-dropdown-item>
                 <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
       </el-header>
+      <div v-if="!pwaIsOnline" class="pwa-offline-bar" role="status">
+        <el-icon><WarningFilled /></el-icon>
+        <span>当前网络不可用，恢复连接后再重试。</span>
+      </div>
       <el-main class="app-main">
         <RouterView />
       </el-main>
     </el-container>
+
+    <nav class="mobile-tabbar" aria-label="主要导航">
+      <button
+        v-for="menu in mobileMenus"
+        :key="menu.path"
+        class="mobile-tab"
+        :class="{ 'is-active': activeMenu === menu.path }"
+        type="button"
+        :aria-current="activeMenu === menu.path ? 'page' : undefined"
+        @click="router.push(menu.path)"
+      >
+        <el-icon><component :is="menu.icon" /></el-icon>
+        <span>{{ menu.label }}</span>
+      </button>
+    </nav>
   </el-container>
 </template>
 
@@ -146,6 +227,10 @@ async function handleLogout() {
 .app-layout {
   min-height: 100dvh;
   background: transparent;
+}
+
+.app-workspace {
+  min-width: 0;
 }
 
 .app-sidebar {
@@ -407,33 +492,164 @@ async function handleLogout() {
   padding: 22px;
 }
 
+.pwa-offline-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 105, 0, 0.16);
+  background: rgba(255, 105, 0, 0.08);
+  color: var(--fl-primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mobile-tabbar {
+  display: none;
+}
+
+.mobile-header-title {
+  display: none;
+}
+
 @media (max-width: 840px) {
   .app-layout {
     display: block;
+    min-height: 100dvh;
   }
 
   .app-sidebar {
-    position: relative;
-    width: 100% !important;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--fl-line);
+    display: none;
+  }
+
+  .app-workspace {
+    display: block;
+    width: 100%;
   }
 
   .app-header {
-    align-items: flex-start;
-    flex-direction: column;
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    align-items: center;
+    flex-direction: row;
+    min-height: 64px;
     height: auto;
-    padding: 16px;
+    gap: 12px;
+    padding: max(10px, env(safe-area-inset-top)) 14px 10px;
+  }
+
+  .header-copy {
+    min-width: 68px;
+  }
+
+  .header-title {
+    overflow: hidden;
+    font-size: 17px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .desktop-header-title {
+    display: none;
+  }
+
+  .mobile-header-title {
+    display: block;
+  }
+
+  .header-subtitle {
+    display: none;
   }
 
   .header-actions {
-    width: 100%;
-    justify-content: space-between;
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .family-select {
+    width: min(40vw, 152px);
+    min-width: 112px;
+  }
+
+  .user-avatar {
+    width: 40px;
+    height: 40px;
   }
 
   .app-main {
-    padding: 16px;
+    overflow-x: hidden;
+    padding: 16px 14px calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-tabbar {
+    position: fixed;
+    right: 12px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 12px;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    min-height: 68px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 22px;
+    background: rgba(250, 251, 253, 0.86);
+    box-shadow: var(--fl-liquid-edge), 0 16px 38px rgba(31, 41, 55, 0.14);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+  }
+
+  .mobile-tab {
+    display: grid;
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px 2px;
+    place-items: center;
+    align-content: center;
+    gap: 3px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--fl-muted);
+    cursor: pointer;
+    font: inherit;
+    touch-action: manipulation;
+    transition: background 0.2s var(--fl-ease), color 0.2s var(--fl-ease), box-shadow 0.2s var(--fl-ease);
+  }
+
+  .mobile-tab .el-icon {
+    font-size: 21px;
+  }
+
+  .mobile-tab span {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-tab.is-active {
+    background: rgba(255, 105, 0, 0.1);
+    color: var(--fl-primary-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .mobile-tab:focus-visible {
+    outline: 2px solid var(--fl-primary);
+    outline-offset: -2px;
+  }
+
+  .mobile-tab:active {
+    background: rgba(255, 105, 0, 0.16);
   }
 }
 </style>

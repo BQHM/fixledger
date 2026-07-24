@@ -229,7 +229,7 @@ onUnmounted(() => {
     </el-card>
 
     <el-card class="glass-card" shadow="never">
-      <el-table v-loading="loading" :data="records">
+      <el-table v-loading="loading" :data="records" class="desktop-data-table">
         <el-table-column prop="title" label="维修事项" min-width="180">
           <template #default="{ row }">
             <el-link type="primary" @click="router.push(`/maintenance/${row.id}`)">{{ row.title }}</el-link>
@@ -259,6 +259,43 @@ onUnmounted(() => {
           </template>
         </el-table-column>
       </el-table>
+      <div v-loading="loading" class="mobile-data-list" aria-label="维修记录列表">
+        <el-empty v-if="records.length === 0" description="暂无维修记录" />
+        <article v-for="record in records" :key="record.id" class="mobile-data-card">
+          <div class="mobile-data-head">
+            <div>
+              <strong>{{ record.title }}</strong>
+              <p>{{ record.faultDescription || '暂无故障描述' }}</p>
+            </div>
+            <el-tag :type="statusType(record.status)">{{ labelOf(maintenanceStatusOptions, record.status) }}</el-tag>
+          </div>
+          <div class="mobile-data-meta">
+            <div class="mobile-data-field">
+              <small>设备</small>
+              <el-link type="primary" @click="router.push(`/devices/${record.deviceId}`)">
+                {{ record.deviceName || `设备 ${record.deviceId}` }}
+              </el-link>
+            </div>
+            <div class="mobile-data-field">
+              <small>故障时间</small>
+              <span>{{ record.occurredAt || '-' }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>维修渠道</small>
+              <span>{{ record.repairChannel || '-' }}</span>
+            </div>
+            <div class="mobile-data-field">
+              <small>维修费用</small>
+              <span>{{ record.repairCost ?? 0 }} 元</span>
+            </div>
+          </div>
+          <div class="mobile-data-actions">
+            <el-button type="primary" plain @click="openStatus(record)">状态流转</el-button>
+            <el-button plain @click="router.push(`/maintenance/${record.id}`)">查看详情</el-button>
+            <el-button type="danger" plain @click="handleDelete(record)">删除</el-button>
+          </div>
+        </article>
+      </div>
       <el-pagination
         v-model:current-page="query.pageNum"
         v-model:page-size="query.pageSize"

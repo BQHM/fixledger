@@ -1,4 +1,5 @@
 :root {
+  color-scheme: only light;
   --fl-primary: #ff6900;
   --fl-primary-strong: #d95500;
   --fl-primary-soft: rgba(255, 105, 0, 0.12);
@@ -52,6 +53,7 @@
 html {
   min-width: 320px;
   background: var(--fl-bg);
+  color-scheme: only light;
 }
 
 body {
@@ -406,6 +408,82 @@ button:focus-visible,
   outline-offset: 3px;
 }
 
+.mobile-data-list {
+  display: none;
+}
+
+.mobile-data-card {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--fl-glass-line);
+  border-radius: var(--fl-radius-md);
+  background: var(--fl-glass-chip);
+  box-shadow: var(--fl-shadow-sm);
+}
+
+.mobile-data-head,
+.mobile-data-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mobile-data-head strong {
+  display: block;
+  color: var(--fl-ink);
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.mobile-data-head p {
+  margin: 4px 0 0;
+  color: var(--fl-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.mobile-data-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.mobile-data-field {
+  min-width: 0;
+}
+
+.mobile-data-field small {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--fl-muted);
+  font-size: 12px;
+}
+
+.mobile-data-field span,
+.mobile-data-field a {
+  overflow-wrap: anywhere;
+  color: var(--fl-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mobile-data-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--fl-line);
+}
+
+.mobile-data-actions .el-button {
+  min-height: 44px;
+  margin-left: 0;
+  padding: 8px 12px;
+}
+
 @media (max-width: 1080px) {
   .metric-grid,
   .section-grid,
@@ -422,6 +500,75 @@ button:focus-visible,
 
   .metric-card {
     padding: 16px;
+  }
+
+  .desktop-data-table {
+    display: none;
+  }
+
+  .mobile-data-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .el-form--inline .el-form-item {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .el-form--inline .el-form-item__label {
+    width: auto;
+    height: auto;
+    padding: 0 0 6px;
+    line-height: 1.5;
+  }
+
+  .el-form--inline .el-form-item__content {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .el-form--inline .el-select,
+  .el-form--inline .el-input,
+  .el-form--inline .el-input-number,
+  .el-form--inline .el-date-editor {
+    flex: 1 1 0;
+    width: auto !important;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .el-form--inline .el-select__wrapper,
+  .el-form--inline .el-select__selection,
+  .el-form--inline .el-input__wrapper {
+    min-width: 0;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 24px) !important;
+    max-width: 560px;
+    margin-top: max(16px, env(safe-area-inset-top)) !important;
+    margin-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .el-dialog__body {
+    max-height: calc(100dvh - 180px);
+    overflow-y: auto;
+  }
+
+  .pager {
+    justify-content: center !important;
+  }
+
+  .pager .el-pagination__total,
+  .pager .el-pagination__sizes,
+  .pager .el-pager,
+  .pager .el-pagination__jump {
+    display: none;
   }
 }
 

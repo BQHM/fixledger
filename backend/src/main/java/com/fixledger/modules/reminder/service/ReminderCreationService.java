@@ -68,7 +68,7 @@ public class ReminderCreationService {
     reminder.setRemindAt(remindAt);
     reminder.setStatus(ReminderStatus.PENDING.getCode());
     reminderTaskMapper.insert(reminder);
-    notificationService.createInAppNotifications(reminder);
+    notificationService.createNotifications(reminder);
     return true;
   }
 

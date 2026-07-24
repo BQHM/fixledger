@@ -9,6 +9,8 @@ package com.fixledger.modules.reminder.enums;
  */
 public enum NotificationStatus {
 
+  PENDING("PENDING", "待发送"),
+  PROCESSING("PROCESSING", "发送中"),
   SENT("SENT", "已发送"),
   FAILED("FAILED", "发送失败");
 

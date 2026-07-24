@@ -1345,3 +1345,38 @@ P10.3 复核结论：
 - 当前设备分页接口没有 `warrantyStatus` 查询参数，列表中的 `warrantyStatus` 和 `nextReminderDate` 是后续聚合优化预留字段。
 - 当前提醒扫描接口只生成保修和耗材提醒，维修待跟进仅保留提醒类型。
 - 当前 RustFS 文件下载仍走后端鉴权转发，不暴露对象存储临时 URL。
+# P28 外部通知说明
+
+P28 不新增面向前端的公开通知投递接口。邮件与 Webhook 由提醒事务写入 Outbox，再由后端调度器处理，避免浏览器触发外部投递或绕过提醒去重。
+
+Webhook 请求体使用固定 JSON 契约：
+
+```json
+{
+  "event": "reminder.notification",
+  "notificationId": 1001,
+  "familyId": 10,
+  "reminderId": 2001,
+  "title": "净水器滤芯即将更换",
+  "content": "预计 7 天后到期",
+  "createdAt": "2026-07-20T08:00:00"
+}
+```
+
+Webhook 成功条件为 HTTP `2xx`。响应体不进入业务数据；非 `2xx`、超时和连接异常统一记录为投递失败，并由 Outbox 重试。
+
+Outbox 使用至少一次投递语义。Webhook 接收方必须使用 `notificationId` 作为幂等键，重复事件应返回成功而不是重复执行副作用。
+
+# P29 性能与可观测性说明
+
+现有首页与导出 URL 不变：
+
+- `GET /api/families/{familyId}/dashboard/summary`：权限校验后使用短 TTL Cache-Aside。
+- `GET /api/families/{familyId}/exports/devices.csv`：同步导出最多 5000 行。
+- `GET /api/families/{familyId}/exports/maintenance-costs.csv`：同步导出最多 5000 行。
+
+同步导出超过配置阈值时返回统一业务错误，不返回被截断的 CSV。P29 不新增异步导出接口和
+`fl_export_record`，后续只有在真实数据规模证明有必要时才扩展任务创建、状态查询和文件下载接口。
+
+Actuator 默认仍只公开 `/actuator/health` 与 `/actuator/info`。`metrics` 和 `prometheus` 必须通过
+部署环境显式开启，并由内部监控网络或反向代理访问控制保护。
