@@ -16,6 +16,13 @@
 - 时间使用 `DATETIME`；Java 侧使用 `LocalDateTime`，纯日期使用 `LocalDate`。
 - 附件只存元数据，文件内容默认存 RustFS；本地文件系统保留为测试和兜底。
 
+环境初始化规则：
+
+- H2 测试和本地 Docker 演示使用 `db/schema.sql`，便于快速重建测试数据。
+- 生产 Profile 关闭 Spring SQL 初始化，只使用 `db/migration` 下的 Flyway 版本迁移。
+- 已发布迁移不可修改；新增或修改表、列、索引时同时更新本文件、`schema.sql` 和新的迁移版本。
+- 已有非空生产库首次接入 Flyway 时基线版本为 0，随后执行幂等 V1 与后续增量迁移。
+
 
 ## 1.1 表结构变更边界
 

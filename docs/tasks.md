@@ -158,8 +158,8 @@
 | P28 外部通知渠道 | P28.2 失败追踪与重试 | 记录外部通知失败原因，提供可控重试，不影响核心事务 | 已完成 |
 | P29 性能与可观测性 | P29.1 热点查询治理 | 首页统计缓存、慢查询复核和常用索引验证 | 已完成 |
 | P29 性能与可观测性 | P29.2 观测与异步预案 | 关键接口指标、导出异步化边界和生产日志说明 | 已完成 |
-| P30 生产发布收口 | P30.1 生产配置清单 | 环境变量、HTTPS、反向代理、备份和恢复步骤 | 计划中 |
-| P30 生产发布收口 | P30.2 发布与回滚演练 | 固化发布前检查、版本标记、回滚清单和演示验收 | 计划中 |
+| P30 生产发布收口 | P30.1 生产配置清单 | 环境变量、HTTPS、反向代理、备份和恢复步骤 | 已完成 |
+| P30 生产发布收口 | P30.2 发布与回滚演练 | 固化发布前检查、版本标记、回滚清单和演示验收 | 已完成 |
 
 ## 2.2 开发留痕规则
 
@@ -3189,6 +3189,15 @@ P17 的目标是根据用户反馈推倒重做上一版前端视觉。上一版�
 - 发布前检查脚本覆盖关键配置。
 - 有可执行的备份恢复和回滚清单。
 
+实施约束：
+
+- 使用独立生产 Compose，不从本地演示 Compose 合并，确保只公开 HTTPS 网关端口。
+- 生产 Profile 关闭 SQL 初始化与 Swagger，启用 Flyway、优雅停机和启动期凭据检查。
+- 生产反向代理负责 TLS、安全响应头和静态资源缓存，不公开 Actuator 与接口文档。
+- MySQL 与 RustFS 使用同一批次号备份；恢复脚本必须要求显式确认，Redis 不作为业务备份。
+- 发布使用版本化应用镜像与环境清单，回滚默认只回退应用；只有数据损坏时才执行恢复。
+- 强化生产检查脚本，并把生产 Compose 解析纳入 CI，不依赖文件中是否出现某个字符串。
+
 ## 30. P27.1 移动端主导航修复
 
 用户实际检查 `390px` 页面后发现，当前主布局只是把桌面侧栏改为纵向长列表，导致移动端首屏被导航占满，业务内容被推到下方。本批次先修复登录后主框架，不提前实现 P27.2 PWA。
@@ -3384,3 +3393,43 @@ P17 的目标是根据用户反馈推倒重做上一版前端视觉。上一版�
 - `npm.cmd run smoke`、`npx.cmd vue-tsc --noEmit -p tsconfig.json` 和 `npx.cmd vite build --outDir dist-ci --emptyOutDir` 通过。
 - 前端入口与首页基线分块由 `1074.33 KiB`、`1025.64 KiB` 降为入口业务块 `442.80 KiB`、首页页面块加图表 vendor `484.67 KiB`。
 - `docker compose config --quiet` 与 `git diff --check` 通过。
+
+## 34. P30 生产发布收口
+
+目标：
+
+- 分离本地演示和生产部署配置，生产环境只保留单一 HTTPS 入口。
+- 使用版本化数据库迁移替代生产 SQL 自动初始化。
+- 固化启动期密钥检查、备份恢复、发布健康检查和应用回滚路径。
+
+完成记录：
+
+- 新增独立 `docker-compose.prod.yml` 和 `.env.production.example`；只有 Gateway 发布 80/443，
+  MySQL、Redis、RustFS、后端和前端只在容器网络通信，数据网络标记为 internal。
+- 新增 `application-prod.yml`，关闭 SQL 初始化、Swagger 和详细错误，启用优雅停机、代理头、
+  MySQL TLS 与 Flyway；后端镜像默认 Profile 从 dev 调整为 prod，本地 Compose 继续显式使用 dev。
+- 新增生产配置启动检查，拒绝空值、过短密钥、示例占位值和已知开发密码；接口文档匿名访问由
+  `SecurityProperties` 控制，生产环境关闭。
+- 增加 Flyway V1 当前基线和 V2 幂等补列/索引迁移，已有非空库以版本 0 baseline 后向前迁移；
+  条件 DDL 使用 MySQL 8.4 支持的 `information_schema` 与动态 SQL，不依赖 H2 专用语法。
+- 新增 Nginx HTTPS Gateway，配置 HTTP 跳转、HSTS、CSP、安全响应头、静态资源缓存，并公开阻断
+  Actuator、OpenAPI 和 Swagger。
+- 新增备份、恢复、部署、回滚和生产健康检查 PowerShell 脚本；恢复必须显式确认，应用回滚默认
+  不恢复数据。
+- 强化 `check-production-readiness.ps1`：解析生产 Compose JSON，检查端口、Profile、网络、镜像、
+  Flyway、Swagger、TLS、安全头、凭据独立性和证书文件；CI 同时验证本地与生产 Compose。
+- README、需求、架构、数据库、运维文档和 ADR 0005 已同步生产部署边界。
+
+验证记录：
+
+- 后端全量测试通过：170 个测试，0 失败、0 错误、0 跳过。
+- 前端 `npm.cmd run smoke`、`npx.cmd vue-tsc --noEmit -p tsconfig.json` 和生产构建通过。
+- PowerShell Parser 验证 7 个生产脚本无语法错误。
+- `check-production-readiness.ps1 -Strict` 使用生产模板通过结构检查；启用 `-ValidateSecrets` 时模板
+  因示例凭据、示例域名、示例应用镜像和缺少证书被正确拒绝。
+- 本地与生产 Compose 均通过 `config --quiet`，生产渲染结果只有 Gateway 发布 80/443。
+- 通过 Docker Hub 官方标签接口确认 MySQL 8.4.10、Redis 7.4.9-alpine、Nginx 1.30.4-alpine、
+  Alpine 3.21.7 和 RustFS 1.0.0-beta.11 标签存在。
+- `git diff --check` 通过。
+- 当前 Docker Desktop 未运行，因此未执行真实 `nginx -t`、Flyway MySQL 容器迁移、备份恢复和
+  HTTPS 发布演练；这些步骤必须在具备真实生产镜像、证书和隔离数据卷的部署环境执行。

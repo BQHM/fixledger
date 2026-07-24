@@ -33,11 +33,20 @@ public class SecurityConfig {
       "/api/auth/register",
       "/api/auth/login",
       "/actuator/health",
-      "/actuator/info",
+      "/actuator/info"
+  };
+
+  private static final String[] API_DOCUMENTATION_ENDPOINTS = {
       "/v3/api-docs/**",
       "/swagger-ui/**",
       "/swagger-ui.html"
   };
+
+  private final SecurityProperties securityProperties;
+
+  public SecurityConfig(SecurityProperties securityProperties) {
+    this.securityProperties = securityProperties;
+  }
 
   /**
    * @Author FixLedger
@@ -59,9 +68,13 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(session -> session
             .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authorizeHttpRequests(authorize -> authorize
-            .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-            .anyRequest().authenticated())
+        .authorizeHttpRequests(authorize -> {
+          authorize.requestMatchers(PUBLIC_ENDPOINTS).permitAll();
+          if (securityProperties.apiDocsPublic()) {
+            authorize.requestMatchers(API_DOCUMENTATION_ENDPOINTS).permitAll();
+          }
+          authorize.anyRequest().authenticated();
+        })
         .exceptionHandling(exception -> exception
             .authenticationEntryPoint((request, response, authException) ->
                 writeError(response, objectMapper, ErrorCode.UNAUTHORIZED))

@@ -1,0 +1,206 @@
+name: ${COMPOSE_PROJECT_NAME:-fixledger-prod}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  mysql:
+    image: ${MYSQL_IMAGE:?MYSQL_IMAGE is required}
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-fixledger}
+      MYSQL_USER: ${MYSQL_USERNAME:?MYSQL_USERNAME is required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ${BACKUP_DIR:-./backups}:/backups
+    networks:
+      - data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h 127.0.0.1 -u root --silent
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    logging: *default-logging
+
+  redis:
+    image: ${REDIS_IMAGE:?REDIS_IMAGE is required}
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    volumes:
+      - redis_data:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  rustfs:
+    image: ${RUSTFS_IMAGE:?RUSTFS_IMAGE is required}
+    restart: unless-stopped
+    environment:
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_ACCESS_KEY: ${FILE_S3_ACCESS_KEY:?FILE_S3_ACCESS_KEY is required}
+      RUSTFS_SECRET_KEY: ${FILE_S3_SECRET_KEY:?FILE_S3_SECRET_KEY is required}
+      RUSTFS_CONSOLE_ENABLE: "false"
+    command:
+      - --address
+      - :9000
+      - /data
+    volumes:
+      - rustfs_data:/data
+    networks:
+      - data
+    logging: *default-logging
+
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rustfs:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: 8080
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-fixledger}
+      MYSQL_USERNAME: ${MYSQL_USERNAME:?MYSQL_USERNAME is required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDIS_DATABASE: ${REDIS_DATABASE:-0}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_TOKEN_TTL_SECONDS: ${JWT_ACCESS_TOKEN_TTL_SECONDS:-86400}
+      FILE_STORAGE_TYPE: ${FILE_STORAGE_TYPE:-rustfs}
+      FILE_STORAGE_ROOT: /app/uploads
+      FILE_S3_ENDPOINT: ${FILE_S3_ENDPOINT:-http://rustfs:9000}
+      FILE_S3_ACCESS_KEY: ${FILE_S3_ACCESS_KEY:?FILE_S3_ACCESS_KEY is required}
+      FILE_S3_SECRET_KEY: ${FILE_S3_SECRET_KEY:?FILE_S3_SECRET_KEY is required}
+      FILE_S3_BUCKET: ${FILE_S3_BUCKET:-fixledger-files}
+      FILE_S3_REGION: ${FILE_S3_REGION:-us-east-1}
+      FILE_S3_PATH_STYLE_ACCESS: ${FILE_S3_PATH_STYLE_ACCESS:-true}
+      FILE_S3_CREATE_BUCKET: ${FILE_S3_CREATE_BUCKET:-true}
+      FILE_MAX_SIZE: ${FILE_MAX_SIZE:-20MB}
+      FILE_MAX_REQUEST_SIZE: ${FILE_MAX_REQUEST_SIZE:-25MB}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
+      REMINDER_SCAN_CRON: ${REMINDER_SCAN_CRON:-0 0 8 * * *}
+      DASHBOARD_SUMMARY_CACHE_ENABLED: ${DASHBOARD_SUMMARY_CACHE_ENABLED:-true}
+      DASHBOARD_SUMMARY_CACHE_TTL: ${DASHBOARD_SUMMARY_CACHE_TTL:-2m}
+      EXPORT_MAX_SYNC_ROWS: ${EXPORT_MAX_SYNC_ROWS:-5000}
+      NOTIFICATION_DISPATCH_CRON: ${NOTIFICATION_DISPATCH_CRON:-0 */1 * * * *}
+      NOTIFICATION_BATCH_SIZE: ${NOTIFICATION_BATCH_SIZE:-50}
+      NOTIFICATION_MAX_ATTEMPTS: ${NOTIFICATION_MAX_ATTEMPTS:-3}
+      NOTIFICATION_RETRY_DELAY: ${NOTIFICATION_RETRY_DELAY:-5m}
+      NOTIFICATION_MAX_RETRY_DELAY: ${NOTIFICATION_MAX_RETRY_DELAY:-6h}
+      NOTIFICATION_CONNECT_TIMEOUT: ${NOTIFICATION_CONNECT_TIMEOUT:-5s}
+      NOTIFICATION_REQUEST_TIMEOUT: ${NOTIFICATION_REQUEST_TIMEOUT:-10s}
+      NOTIFICATION_PROCESSING_TIMEOUT: ${NOTIFICATION_PROCESSING_TIMEOUT:-15m}
+      NOTIFICATION_EMAIL_ENABLED: ${NOTIFICATION_EMAIL_ENABLED:-false}
+      NOTIFICATION_EMAIL_FROM: ${NOTIFICATION_EMAIL_FROM:-}
+      MAIL_HOST: ${MAIL_HOST:-localhost}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_STARTTLS_ENABLED: ${MAIL_STARTTLS_ENABLED:-true}
+      NOTIFICATION_WEBHOOK_ENABLED: ${NOTIFICATION_WEBHOOK_ENABLED:-false}
+      NOTIFICATION_WEBHOOK_ENDPOINT: ${NOTIFICATION_WEBHOOK_ENDPOINT:-}
+      NOTIFICATION_WEBHOOK_SECRET: ${NOTIFICATION_WEBHOOK_SECRET:-}
+      NOTIFICATION_WEBHOOK_ALLOW_INSECURE_HTTP: "false"
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - edge
+      - data
+    stop_grace_period: 40s
+    logging: *default-logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  gateway:
+    image: ${GATEWAY_IMAGE:?GATEWAY_IMAGE is required}
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/nginx/fixledger.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/nginx/security-headers.conf:/etc/nginx/fixledger/security-headers.conf:ro
+      - ${TLS_CERTIFICATE_DIR:-./deploy/certs}:/etc/nginx/certs:ro
+    networks:
+      - edge
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/gateway-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+
+  backup-tools:
+    image: ${BACKUP_TOOLS_IMAGE:?BACKUP_TOOLS_IMAGE is required}
+    profiles: ["tools"]
+    command: ["sleep", "infinity"]
+    volumes:
+      - rustfs_data:/rustfs-data
+      - ${BACKUP_DIR:-./backups}:/backups
+    networks:
+      - data
+
+volumes:
+  mysql_data:
+  redis_data:
+  rustfs_data:
+  backend_uploads:
+
+networks:
+  edge:
+  data:
+    internal: true

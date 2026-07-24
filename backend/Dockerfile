@@ -13,7 +13,7 @@ RUN mvn -q -DskipTests package
 FROM ${JRE_IMAGE}
 WORKDIR /app
 
-ENV SPRING_PROFILES_ACTIVE=dev \
+ENV SPRING_PROFILES_ACTIVE=prod \
     SERVER_PORT=8080 \
     FILE_STORAGE_ROOT=/app/uploads
 

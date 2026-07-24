@@ -7,9 +7,15 @@ Thumbs.db
 .vscode/
 *.iml
 
-# Env
-.env
+# Env and production secrets
+.env*
+!.env.example
+!.env.production.example
 *.local
+*.key
+*.pem
+*.p12
+*.jks
 
 # Logs
 *.log
@@ -35,6 +41,11 @@ uploads/
 
 # Docker data
 data/
+backups/
+
+# TLS material
+deploy/certs/*
+!deploy/certs/README.md
 
 # Local tool caches
 .edp/

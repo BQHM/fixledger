@@ -87,10 +87,17 @@ jobs:
       - name: Validate Docker Compose config
         run: docker compose config --quiet
 
+      - name: Validate production Docker Compose config
+        run: >-
+          docker compose --env-file .env.production.example
+          -f docker-compose.prod.yml config --quiet
+
       - name: Run Docker health check dry run
         shell: pwsh
         run: ./scripts/check-docker-health.ps1 -DryRun
 
       - name: Run production readiness check
         shell: pwsh
-        run: ./scripts/check-production-readiness.ps1 -Strict
+        run: >-
+          ./scripts/check-production-readiness.ps1 -Strict
+          -ProductionEnvFile .env.production.example

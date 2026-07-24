@@ -606,6 +606,42 @@ Redis
 RustFS
 ```
 
+生产环境使用独立的 `docker-compose.prod.yml`，不与本地演示编排叠加，避免 Compose 合并后保留
+开发端口和默认值。生产拓扑如下：
+
+```text
+Internet
+  -> Nginx Gateway :80/:443
+       ├── /api/* -> Spring Boot backend:8080
+       └── /*     -> Vue static frontend:80
+
+internal network only
+  ├── MySQL 8
+  ├── Redis 7
+  ├── RustFS
+  ├── Spring Boot backend
+  └── Vue static frontend
+```
+
+生产边界：
+
+- 只有 Gateway 发布宿主机端口，HTTP 统一跳转 HTTPS。
+- Gateway 不代理 Actuator、OpenAPI 和 Swagger；健康检查从容器内部访问后端。
+- 后端到 MySQL 使用 Connector/J `sslMode=REQUIRED`，凭据不在容器网络中明文传输。
+- TLS 证书由部署主机提供并只读挂载，仓库只保留空目录与说明，不保存私钥。
+- 所有镜像使用版本标签或摘要；应用镜像通过生产环境文件指定发布版本。
+- `application-prod.yml` 关闭 SQL 初始化与接口文档，启用优雅停机、转发头和 Flyway。
+- 生产配置缺失或仍使用已知开发示例值时，后端在创建业务 Bean 前失败退出。
+
+数据库迁移与数据生命周期：
+
+- `schema.sql` 继续服务 H2 测试和本地演示初始化，生产数据库以 `db/migration` 为唯一演进入口。
+- 首个 Flyway 迁移建立当前基线；已有非空数据库可在版本 0 建立基线后执行幂等迁移。
+- 迁移前先备份 MySQL 与 RustFS，迁移脚本遵循只前进原则；应用回滚不自动回滚数据库结构。
+- 破坏性迁移必须拆为“先兼容、再切换、后清理”多个版本，保证至少一个应用版本可回退。
+- MySQL 是业务结构化数据事实来源，RustFS 是附件内容事实来源，二者必须使用同一备份批次标识。
+- Redis 不纳入业务恢复点，恢复后由缓存回源、提醒扫描和去重 TTL 自然重建。
+
 CI/CD 门禁：
 
 ```text
@@ -617,6 +653,8 @@ GitHub Actions
 
 `scripts/check-production-readiness.ps1` 负责检查 Docker Compose、`.env.example`、
 CI 工作流、前端脚本、JDK 21 配置和关键环境变量模板，避免生产准备项散落在口头说明里。
+P30 后该脚本还会解析生产 Compose 的渲染结果，检查公开端口、Profile、镜像版本、危险默认值、
+迁移开关和备份恢复脚本；实际发布时必须额外传入生产环境文件并启用密钥校验。
 
 ## 14. 关键设计取舍
 

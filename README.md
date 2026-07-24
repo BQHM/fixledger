@@ -30,6 +30,7 @@
 | `docs/tasks.md` | 开发留痕：阶段计划、验收、验证记录和后续任务 |
 | `docs/security-test-review.md` | P9 测试与安全审查：认证、权限、文件、JWT、日志等风险控制证据 |
 | `docs/interview-guide.md` | 面试讲解指南：项目背景、技术栈、架构、数据库、Docker、AI、Redis 和演示路线 |
+| `docs/operations.md` | 生产运维：监控、迁移、HTTPS、备份恢复、发布与回滚 |
 | `docs/decisions/` | ADR：核心技术栈、RustFS、AI 辅助定位、家庭场景 UI 等关键决策 |
 
 `AGENTS.md` 是项目编码规范和边界约束；README 面向运行、展示和面试讲解。
@@ -510,10 +511,10 @@ docker compose up -d --build
 
 - 后端质量门禁：JDK 21 + Maven 缓存 + `cd backend && mvn -q test`。
 - 前端质量门禁：Node.js 22 + npm 缓存，分步执行 `npx vue-tsc --noEmit -p tsconfig.json`、`npx vite build --outDir dist-ci --emptyOutDir`、`npm run smoke` 和生产依赖 critical 级安全审计。
-- 部署配置门禁：`docker compose config --quiet`、Docker 健康检查 dry-run 和生产准备检查脚本，提前发现 Compose、环境变量模板、构建脚本和 JDK 配置错误。
+- 部署配置门禁：同时解析本地与生产 Compose，执行 Docker 健康检查 dry-run 和生产准备检查脚本，检查公开端口、生产 Profile、Flyway、镜像版本和 HTTPS 网关配置。
 - 手动触发：CI 支持 `workflow_dispatch`，需要演示或发布前可在 GitHub Actions 页面手动跑完整门禁。
 
-面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。当前凭证盒图片/PDF 预览走前端 Blob 预览层，P16.2 已补充说明书第一版关键词搜索；P22 已落地操作日志和通知抽象，P24 已补齐设备清单和维修费用 CSV 导出。真实邮件/Webhook 投递、OCR、复杂 PDF 解析、对象存储临时 URL、Refresh Token 和生产域名仍属于后续增强或部署平台配置。
+面试时可以说明：CI 的作用是把本地验证固化成仓库级自动检查，避免“只在我电脑能跑”的问题。当前凭证盒图片/PDF 预览走前端 Blob 预览层，P16.2 已补充说明书第一版关键词搜索；P28 已落地可选邮件/Webhook Outbox 投递，P30 已补生产配置和回滚工具。OCR、复杂 PDF 解析、对象存储临时 URL、Refresh Token 和真实生产域名仍属于后续增强或部署平台配置。
 
 生产准备检查可以本地执行：
 
@@ -558,6 +559,31 @@ docker compose down -v
 ```
 
 首次构建会拉取 MySQL、Redis、RustFS、Maven/JDK、Node.js 和 Nginx 基础镜像，并在镜像内下载 Maven 与 npm 依赖。如果 Docker Hub 网络超时或认证失败，需要先在 Docker Desktop 配置镜像加速或代理；也可以在 `.env` 中覆盖 `MAVEN_IMAGE`、`JRE_IMAGE`、`NODE_IMAGE`、`NGINX_IMAGE` 为可访问的镜像仓库地址，然后重新执行 `docker compose up -d --build`。
+
+## 生产部署
+
+生产部署使用独立的 `docker-compose.prod.yml`，不会继承本地演示密码、演示数据或 MySQL、Redis、
+RustFS、后端调试端口。只有 Nginx Gateway 对外发布 80/443，HTTP 自动跳转 HTTPS。
+
+部署前需要准备：
+
+1. 把 `.env.production.example` 另存为不入库的 `.env.production`，替换域名、镜像和全部凭据。
+2. 构建并推送带明确版本的 `BACKEND_IMAGE`、`FRONTEND_IMAGE`，其他镜像也使用固定版本或摘要。
+3. 把证书链和私钥放到 `deploy/certs/fullchain.pem`、`deploy/certs/privkey.pem`，或修改
+   `TLS_CERTIFICATE_DIR`。
+4. 在 DNS 中把 `APP_DOMAIN` 指向部署主机，并确认防火墙只开放 80/443 和必要的管理入口。
+
+```powershell
+# 校验真实环境文件、示例值、证书、公开端口和生产安全配置
+./scripts/check-production-readiness.ps1 `
+  -Strict -ProductionEnvFile .env.production -ValidateSecrets
+
+# 自动执行发布前备份、拉取版本化镜像、启动与健康检查
+./scripts/deploy-production.ps1 -EnvFile .env.production
+```
+
+生产后端启用 `prod` Profile、Flyway、优雅停机和启动期凭据检查，并关闭 SQL 自动初始化、
+Swagger 与详细错误输出。发布、备份、恢复、证书续期和应用回滚命令见 `docs/operations.md`。
 
 ## 使用场景
 
@@ -609,7 +635,7 @@ MIT License
 
 ## 当前完善状态
 
-截至 P29，项目已经从“能运行”推进到“能演示、能解释、能验证，并具备家庭协作、基础生产门禁、家庭数据出口、可安装移动体验、可选外部通知和基础可观测性”的状态：
+截至 P30，项目已经从“能运行”推进到“能演示、能解释、能验证，并具备家庭协作、生产发布门禁、家庭数据出口、可安装移动体验、可选外部通知和基础可观测性”的状态：
 
 - P10 文档深度对齐已完成：需求、架构、接口、数据库、UI 和 README 与当前实现保持一致。
 - P11 代码质量治理已完成：异常、日志、事务、配置、前端 API 封装和构建静态检查已收口。
@@ -629,10 +655,10 @@ MIT License
 - P27 移动端与 PWA 已完成：登录后页面采用手机底部导航和移动信息卡，支持安装到设备、独立窗口启动、离线状态页和用户可控更新；Service Worker 不缓存 API、附件或鉴权响应。
 - P28 外部通知渠道已完成：邮件和 Webhook 通过数据库 Outbox 独立投递，支持原子领取、指数退避、最大尝试次数和超时领取恢复，所有外部渠道默认关闭。
 - P29 性能与可观测性已完成：首页摘要使用短 TTL 缓存和单次聚合查询，关键路径提供低基数指标，同步导出有明确容量边界，前端生产构建已消除大分块警告。
-- 真实 AI Provider、OCR、复杂 PDF 解析、对象存储临时 URL、Refresh Token、生产域名和云端发布仍作为后续增强。
+- P30 生产发布收口已完成：独立生产 Compose 只公开 HTTPS Gateway，生产 Profile、Flyway、密钥检查、版本化镜像、备份恢复、发布回滚和运维文档已形成闭环。
+- 真实 AI Provider、OCR、复杂 PDF 解析、对象存储临时 URL、Refresh Token，以及真实域名的 DNS、证书签发和云端发布仍需后续能力或部署环境提供。
 
 ### 推荐后续开发路线
 
-- P30 生产发布收口：补生产环境变量、备份恢复、反向代理、域名 HTTPS、回滚清单和发布说明。
 - P25 设备二维码标签：为设备生成二维码标签，第一版扫码后登录并进入设备详情，不公开家庭数据。
 - P26 OCR 与智能归档：在主动通知和生产稳定性收口后，再补发票图片/说明书识别草稿。

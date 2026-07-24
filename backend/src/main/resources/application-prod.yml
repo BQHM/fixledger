@@ -1,0 +1,78 @@
+server:
+  forward-headers-strategy: framework
+  shutdown: graceful
+  error:
+    include-binding-errors: never
+    include-exception: false
+    include-message: never
+    include-stacktrace: never
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    clean-disabled: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:fixledger}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&sslMode=REQUIRED&allowPublicKeyRetrieval=false
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+  sql:
+    init:
+      mode: never
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      database: ${REDIS_DATABASE:0}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+fixledger:
+  security:
+    api-docs-public: false
+  jwt:
+    secret: ${JWT_SECRET}
+  file:
+    storage-type: ${FILE_STORAGE_TYPE:rustfs}
+    local-root: ${FILE_STORAGE_ROOT:/app/uploads}
+    s3:
+      endpoint: ${FILE_S3_ENDPOINT:http://rustfs:9000}
+      access-key: ${FILE_S3_ACCESS_KEY}
+      secret-key: ${FILE_S3_SECRET_KEY}
+      bucket: ${FILE_S3_BUCKET:fixledger-files}
+      region: ${FILE_S3_REGION:us-east-1}
+      path-style-access: ${FILE_S3_PATH_STYLE_ACCESS:true}
+      create-bucket: ${FILE_S3_CREATE_BUCKET:false}
+  ai:
+    enabled: ${AI_ENABLED:false}
+  notification:
+    email:
+      enabled: ${NOTIFICATION_EMAIL_ENABLED:false}
+    webhook:
+      enabled: ${NOTIFICATION_WEBHOOK_ENABLED:false}
+      allow-insecure-http: false
+
+logging:
+  level:
+    com.fixledger: info
+    org.springframework.security: warn
